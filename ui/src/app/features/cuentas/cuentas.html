@@ -199,13 +199,15 @@
 
     <!-- Panel -->
     <main class="flex-1 overflow-y-auto bg-gray-50 p-6">
-      <router-outlet #outlet="outlet" />
-      @if (!outlet.isActivated) {
-        <div class="h-full flex flex-col items-center justify-center gap-2 text-center">
-          <p class="text-sm font-medium text-gray-400">Selecciona una cuenta o una acción del menú</p>
-          <p class="text-xs text-gray-300">El detalle aparecerá aquí</p>
-        </div>
-      }
+      <div class="max-w-2xl mx-auto">
+        <router-outlet #outlet="outlet" />
+        @if (!outlet.isActivated) {
+          <div class="flex flex-col items-center justify-center gap-2 text-center py-24">
+            <p class="text-sm font-medium text-gray-400">Selecciona una cuenta o una acción del menú</p>
+            <p class="text-xs text-gray-300">El detalle aparecerá aquí</p>
+          </div>
+        }
+      </div>
     </main>
 
   </div>

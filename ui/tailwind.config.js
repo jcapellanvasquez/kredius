@@ -21,7 +21,7 @@ module.exports = {
         },
         // Semantic financial colors — ONLY for financial meaning
         income:  '#16a34a', // green — inflows, deposits, credits
-        expense: '#dc2626', // red   — outflows, payments, debits
+        expense: '#ef4444', // red   — outflows, payments, debits
       },
     },
   },

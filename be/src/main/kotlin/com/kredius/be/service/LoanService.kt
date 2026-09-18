@@ -18,13 +18,13 @@ class LoanService {
     fun getAll(status: LoanStatus?): List<LoanResponse> =
         if (status != null) loans.filter { it.status == status } else loans.toList()
 
-    fun getById(loanId: String): LoanResponse =
+    fun getById(loanId: UUID): LoanResponse =
         loans.find { it.id == loanId }
             ?: throw ApiException("LOAN_NOT_FOUND", "Loan not found: $loanId", HttpStatus.NOT_FOUND)
 
     fun create(request: CreateLoanRequest): LoanResponse {
         val loan = LoanResponse(
-            id = UUID.randomUUID().toString(),
+            id = UUID.randomUUID(),
             amount = request.amount,
             term = request.term,
             interestRate = 5.5,

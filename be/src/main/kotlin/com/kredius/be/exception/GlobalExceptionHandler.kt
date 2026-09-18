@@ -1,14 +1,18 @@
 package com.kredius.be.exception
 
 import com.kredius.be.model.ErrorResponse
+import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
+import org.springframework.http.HttpStatusCode
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
+import org.springframework.web.context.request.WebRequest
+import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler
 
 @RestControllerAdvice
-class GlobalExceptionHandler {
+class GlobalExceptionHandler : ResponseEntityExceptionHandler() {
 
     @ExceptionHandler(ApiException::class)
     fun handleApiException(ex: ApiException): ResponseEntity<ErrorResponse> {
@@ -20,8 +24,13 @@ class GlobalExceptionHandler {
         return ResponseEntity.status(ex.httpStatus).body(error)
     }
 
-    @ExceptionHandler(MethodArgumentNotValidException::class)
-    fun handleValidationException(ex: MethodArgumentNotValidException): ResponseEntity<ErrorResponse> {
+    // Override parent to use our ErrorResponse format for validation errors
+    override fun handleMethodArgumentNotValid(
+        ex: MethodArgumentNotValidException,
+        headers: HttpHeaders,
+        status: HttpStatusCode,
+        request: WebRequest
+    ): ResponseEntity<Any> {
         val details = ex.bindingResult.fieldErrors.map { "${it.field}: ${it.defaultMessage}" }
         val error = ErrorResponse(
             code = "VALIDATION_ERROR",
@@ -31,6 +40,8 @@ class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error)
     }
 
+    // Catches truly unexpected exceptions — Spring MVC exceptions (404, 405, etc.)
+    // are handled by the parent class with correct status codes before reaching here
     @ExceptionHandler(Exception::class)
     fun handleGenericException(ex: Exception): ResponseEntity<ErrorResponse> {
         val error = ErrorResponse(

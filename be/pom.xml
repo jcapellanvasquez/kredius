@@ -97,7 +97,7 @@
                 <useTags>true</useTags>
                 <reactive>false</reactive>
                 <serializationLibrary>jackson</serializationLibrary>
-                <enumPropertyNaming>UPPER_CASE</enumPropertyNaming>
+                <enumPropertyNaming>UPPERCASE</enumPropertyNaming>
                 <exceptionHandler>false</exceptionHandler>
                 <gradleBuildFile>false</gradleBuildFile>
               </configOptions>

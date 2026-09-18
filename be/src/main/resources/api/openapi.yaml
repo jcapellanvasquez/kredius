@@ -1,0 +1,239 @@
+openapi: 3.0.3
+info:
+  title: Kredius API
+  description: |
+    Kredius Backend REST API — OpenAPI-first design.
+
+    ## How it works
+    This YAML file is the **single source of truth** for all API endpoints and model classes.
+    The `openapi-generator-maven-plugin` reads this file during the `generate-sources` phase and
+    produces:
+    - `com.kredius.be.api.*` — Spring MVC interfaces annotated with `@RequestMapping`
+    - `com.kredius.be.model.*` — Kotlin data classes for request/response bodies
+
+    ## Adding a new endpoint
+    1. Define the path + operation in this file
+    2. Run `mvn generate-sources`
+    3. Implement the updated interface in the matching `controller/` class
+
+  version: 1.0.0
+  contact:
+    name: Kredius Engineering
+    email: dev@kredius.com
+
+servers:
+  - url: http://localhost:8080
+    description: Local development
+
+tags:
+  - name: Health
+    description: Health and readiness checks
+  - name: Loans
+    description: Loan application management
+
+paths:
+
+  /health:
+    get:
+      tags: [Health]
+      summary: Health check
+      description: Returns the health status of the API
+      operationId: healthCheck
+      responses:
+        '200':
+          description: API is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /api/v1/loans:
+    get:
+      tags: [Loans]
+      summary: List loans
+      description: Returns all loans, optionally filtered by status
+      operationId: getLoans
+      parameters:
+        - name: status
+          in: query
+          description: Filter by loan status
+          required: false
+          schema:
+            $ref: '#/components/schemas/LoanStatus'
+        - name: page
+          in: query
+          description: Page number (0-based)
+          required: false
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+        - name: size
+          in: query
+          description: Page size
+          required: false
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 100
+      responses:
+        '200':
+          description: Loans retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LoanResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      tags: [Loans]
+      summary: Create a loan application
+      description: Submits a new loan application
+      operationId: createLoan
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLoanRequest'
+      responses:
+        '201':
+          description: Loan created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoanResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/loans/{loanId}:
+    get:
+      tags: [Loans]
+      summary: Get loan by ID
+      operationId: getLoanById
+      parameters:
+        - name: loanId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Loan retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoanResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  schemas:
+
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: UP
+        timestamp:
+          type: string
+          format: date-time
+
+    LoanStatus:
+      type: string
+      enum:
+        - PENDING
+        - APPROVED
+        - REJECTED
+        - ACTIVE
+        - CLOSED
+
+    LoanResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        amount:
+          type: number
+          format: double
+          example: 10000.00
+        term:
+          type: integer
+          description: Loan term in months
+          example: 12
+        interestRate:
+          type: number
+          format: double
+          example: 5.5
+        status:
+          $ref: '#/components/schemas/LoanStatus'
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+
+    CreateLoanRequest:
+      type: object
+      required:
+        - amount
+        - term
+      properties:
+        amount:
+          type: number
+          format: double
+          minimum: 100
+          maximum: 1000000
+          description: Requested loan amount in USD
+          example: 10000.00
+        term:
+          type: integer
+          minimum: 1
+          maximum: 360
+          description: Loan term in months
+          example: 12
+
+    ErrorResponse:
+      type: object
+      properties:
+        code:
+          type: string
+          example: VALIDATION_ERROR
+        message:
+          type: string
+          example: Request validation failed
+        details:
+          type: array
+          items:
+            type: string
+
+  responses:
+    BadRequest:
+      description: Bad request — validation error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'

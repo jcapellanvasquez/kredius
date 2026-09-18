@@ -1,37 +1,43 @@
 <div class="flex flex-col h-screen bg-gray-50">
 
   <!-- Top bar -->
-  <header class="flex items-center gap-4 px-6 h-14 bg-white border-b border-gray-200 shrink-0">
-    <span class="text-base font-bold text-violet-600 tracking-tight">Kredius</span>
+  <header class="flex items-center gap-3 px-6 h-14 bg-white border-b border-gray-200 shrink-0">
+    <span class="text-base font-bold text-brand-500 tracking-tight">Kredius</span>
 
     <nav class="ml-auto flex items-center gap-1">
       <button
         [routerLink]="['new-account']"
-        class="px-3 py-1.5 text-sm text-gray-600 rounded-lg hover:bg-violet-50 hover:text-violet-600 transition-colors"
+        class="px-3 py-1.5 text-sm text-gray-600 rounded-lg hover:bg-brand-50 hover:text-brand-600 transition-colors"
       >
         + Nueva cuenta
       </button>
       <button
+        class="px-3 py-1.5 text-sm text-gray-600 rounded-lg hover:bg-brand-50 hover:text-brand-600 transition-colors"
+      >
+        Revisar presupuestos
+      </button>
+      <div class="w-px h-5 bg-gray-200 mx-1"></div>
+      <button
         [routerLink]="['dictionary']"
-        class="px-3 py-1.5 text-sm text-gray-600 rounded-lg hover:bg-violet-50 hover:text-violet-600 transition-colors"
+        class="px-3 py-1.5 text-sm text-gray-600 rounded-lg hover:bg-brand-50 hover:text-brand-600 transition-colors"
       >
         Diccionario
       </button>
       <button
         [routerLink]="['income']"
-        class="px-3 py-1.5 text-sm text-gray-600 rounded-lg hover:bg-violet-50 hover:text-violet-600 transition-colors"
+        class="px-3 py-1.5 text-sm text-gray-600 rounded-lg hover:bg-brand-50 hover:text-brand-600 transition-colors"
       >
         Ingresos
       </button>
       <button
         [routerLink]="['upload-statement']"
-        class="px-3 py-1.5 text-sm text-gray-600 rounded-lg hover:bg-violet-50 hover:text-violet-600 transition-colors"
+        class="px-3 py-1.5 text-sm text-gray-600 rounded-lg hover:bg-brand-50 hover:text-brand-600 transition-colors"
       >
         Subir corte
       </button>
       <button
         [routerLink]="['reports']"
-        class="px-3 py-1.5 text-sm text-gray-600 rounded-lg hover:bg-violet-50 hover:text-violet-600 transition-colors"
+        class="px-3 py-1.5 text-sm text-gray-600 rounded-lg hover:bg-brand-50 hover:text-brand-600 transition-colors"
       >
         Reportes
       </button>
@@ -41,73 +47,150 @@
   <!-- Body -->
   <div class="flex flex-1 overflow-hidden">
 
-    <!-- Sidebar -->
-    <aside class="w-72 bg-white border-r border-gray-200 overflow-y-auto shrink-0">
-      <div class="p-3 space-y-4">
+    <!-- Sidebar: account list -->
+    <aside class="w-96 bg-gray-50 border-r border-gray-200 flex flex-col shrink-0">
 
+      <!-- Search -->
+      <div class="px-3 pt-3 pb-2 shrink-0">
+        <input
+          type="text"
+          placeholder="Buscar cuenta..."
+          class="w-full px-3 py-2 text-sm bg-white border border-gray-200 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-400 transition-colors"
+        />
+      </div>
+
+      <!-- Account groups -->
+      <div class="flex-1 overflow-y-auto px-3 pb-3 space-y-4">
+
+        <!-- Activo -->
         <div>
-          <p class="px-2 py-1 text-[10px] font-semibold uppercase tracking-widest text-gray-400">Activos</p>
-          <div class="space-y-0.5">
-            <button
-              [routerLink]="['detail']"
-              class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors group"
-            >
-              <span>Cuenta corriente</span>
-              <svg class="w-3.5 h-3.5 text-gray-300 group-hover:text-gray-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>
+          <p class="text-sm text-gray-500 font-medium px-1 mb-2">Activo</p>
+          <div class="space-y-2">
+
+            <button [routerLink]="['detail']" class="account-row group">
+              <div class="flex-1 min-w-0 text-left">
+                <p class="text-sm font-medium text-gray-900 truncate">1020 Cuenta ahorros BHD</p>
+                <p class="text-xs text-gray-400 truncate">9 oct · Depósito nómina</p>
+              </div>
+              <div class="flex items-center gap-2 shrink-0">
+                <div class="text-right">
+                  <p class="text-sm font-medium text-gray-900">RD$51,100</p>
+                  <p class="text-xs text-income">+RD$25,876</p>
+                </div>
+                <svg class="w-3.5 h-3.5 text-gray-300 group-hover:text-gray-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>
+              </div>
             </button>
-            <button
-              [routerLink]="['detail']"
-              class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors group"
-            >
-              <span>Cuenta de ahorros</span>
-              <svg class="w-3.5 h-3.5 text-gray-300 group-hover:text-gray-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>
+
+            <button [routerLink]="['detail']" class="account-row group">
+              <div class="flex-1 min-w-0 text-left">
+                <p class="text-sm font-medium text-gray-900 truncate">1030 Cuenta corriente BHD</p>
+                <p class="text-xs text-gray-400 truncate">5 oct · Pago servicios</p>
+              </div>
+              <div class="flex items-center gap-2 shrink-0">
+                <div class="text-right">
+                  <p class="text-sm font-medium text-gray-900">RD$12,450</p>
+                  <p class="text-xs text-expense">-RD$3,200</p>
+                </div>
+                <svg class="w-3.5 h-3.5 text-gray-300 group-hover:text-gray-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>
+              </div>
             </button>
+
           </div>
         </div>
 
+        <!-- Pasivo -->
         <div>
-          <p class="px-2 py-1 text-[10px] font-semibold uppercase tracking-widest text-gray-400">Pasivos</p>
-          <div class="space-y-0.5">
-            <button
-              [routerLink]="['detail']"
-              class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors group"
-            >
-              <span>Tarjeta de crédito</span>
-              <svg class="w-3.5 h-3.5 text-gray-300 group-hover:text-gray-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>
+          <p class="text-sm text-gray-500 font-medium px-1 mb-2">Pasivo</p>
+          <div class="space-y-2">
+
+            <!-- Dual-currency credit card -->
+            <button [routerLink]="['detail']" class="account-row group">
+              <div class="flex-1 min-w-0 text-left">
+                <p class="text-sm font-medium text-gray-900 truncate">2010 Tarjeta de crédito</p>
+                <p class="text-xs text-gray-400 truncate">14 oct · Ocho santos · brugal</p>
+              </div>
+              <div class="flex items-center gap-2 shrink-0">
+                <div class="text-right">
+                  <p class="text-sm font-medium text-expense">RD$60,000</p>
+                  <p class="text-sm font-medium text-expense">US$1,200</p>
+                  <p class="text-xs text-expense">-RD$795</p>
+                </div>
+                <svg class="w-3.5 h-3.5 text-gray-300 group-hover:text-gray-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>
+              </div>
             </button>
-            <button
-              [routerLink]="['financing']"
-              class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors group"
-            >
-              <span>Préstamo personal</span>
-              <svg class="w-3.5 h-3.5 text-gray-300 group-hover:text-gray-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>
+
+            <button [routerLink]="['financing']" class="account-row group">
+              <div class="flex-1 min-w-0 text-left">
+                <p class="text-sm font-medium text-gray-900 truncate">2020 Préstamo carro</p>
+                <p class="text-xs text-gray-400 truncate">1 oct · Cuota mensual</p>
+              </div>
+              <div class="flex items-center gap-2 shrink-0">
+                <div class="text-right">
+                  <p class="text-sm font-medium text-expense">RD$15,230</p>
+                  <p class="text-xs text-expense">-RD$8,500</p>
+                </div>
+                <svg class="w-3.5 h-3.5 text-gray-300 group-hover:text-gray-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>
+              </div>
             </button>
+
           </div>
         </div>
 
+        <!-- Gasto -->
         <div>
-          <p class="px-2 py-1 text-[10px] font-semibold uppercase tracking-widest text-gray-400">Gastos</p>
-          <div class="space-y-0.5">
-            <button
-              [routerLink]="['detail']"
-              class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors group"
-            >
-              <span>Alimentación</span>
-              <svg class="w-3.5 h-3.5 text-gray-300 group-hover:text-gray-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>
+          <p class="text-sm text-gray-500 font-medium px-1 mb-2">Gasto</p>
+          <div class="space-y-2">
+
+            <button [routerLink]="['detail']" class="account-row group">
+              <div class="flex-1 min-w-0 text-left">
+                <p class="text-sm font-medium text-gray-900 truncate">3010 Alimentación</p>
+                <p class="text-xs text-gray-400 truncate">12 oct · La Sirena</p>
+              </div>
+              <div class="flex items-center gap-2 shrink-0">
+                <div class="text-right">
+                  <p class="text-sm font-medium text-gray-900">RD$12,300</p>
+                  <p class="text-xs text-expense">-RD$580</p>
+                </div>
+                <svg class="w-3.5 h-3.5 text-gray-300 group-hover:text-gray-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>
+              </div>
             </button>
+
+            <button [routerLink]="['detail']" class="account-row group">
+              <div class="flex-1 min-w-0 text-left">
+                <p class="text-sm font-medium text-gray-900 truncate">3020 Transporte</p>
+                <p class="text-xs text-gray-400 truncate">13 oct · Uber</p>
+              </div>
+              <div class="flex items-center gap-2 shrink-0">
+                <div class="text-right">
+                  <p class="text-sm font-medium text-gray-900">RD$3,100</p>
+                  <p class="text-xs text-expense">-RD$320</p>
+                </div>
+                <svg class="w-3.5 h-3.5 text-gray-300 group-hover:text-gray-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>
+              </div>
+            </button>
+
           </div>
         </div>
 
+        <!-- Ingreso -->
         <div>
-          <p class="px-2 py-1 text-[10px] font-semibold uppercase tracking-widest text-gray-400">Ingresos</p>
-          <div class="space-y-0.5">
-            <button
-              [routerLink]="['detail']"
-              class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors group"
-            >
-              <span>Salario</span>
-              <svg class="w-3.5 h-3.5 text-gray-300 group-hover:text-gray-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>
+          <p class="text-sm text-gray-500 font-medium px-1 mb-2">Ingreso</p>
+          <div class="space-y-2">
+
+            <button [routerLink]="['detail']" class="account-row group">
+              <div class="flex-1 min-w-0 text-left">
+                <p class="text-sm font-medium text-gray-900 truncate">4010 Salario</p>
+                <p class="text-xs text-gray-400 truncate">1 oct · Nómina oct.</p>
+              </div>
+              <div class="flex items-center gap-2 shrink-0">
+                <div class="text-right">
+                  <p class="text-sm font-medium text-gray-900">RD$85,000</p>
+                  <p class="text-xs text-income">+RD$85,000</p>
+                </div>
+                <svg class="w-3.5 h-3.5 text-gray-300 group-hover:text-gray-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>
+              </div>
             </button>
+
           </div>
         </div>
 

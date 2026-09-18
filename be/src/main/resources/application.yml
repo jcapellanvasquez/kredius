@@ -3,8 +3,6 @@ spring:
     name: kredius-api
   jackson:
     default-property-inclusion: non_null
-    serialization:
-      write-dates-as-timestamps: false
 
 server:
   port: 8080

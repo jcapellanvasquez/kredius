@@ -1,12 +1,221 @@
 import { Component } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+
+interface Merchant {
+  id:       number;
+  pattern:  string;
+  category: string;
+}
+
+const CATEGORIES = [
+  'Alimentación',
+  'Transporte',
+  'Entretenimiento',
+  'Salud',
+  'Servicios del hogar',
+  'Ropa y calzado',
+  'Tecnología',
+  'Educación',
+  'Gasolina',
+  'Farmacia',
+  'Restaurantes',
+  'Otro',
+];
 
 @Component({
   selector: 'app-dictionary',
+  imports: [FormsModule],
+  host: { class: 'block' },
   template: `
-    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-      <h1 class="text-lg font-semibold text-gray-900">Diccionario de comercios</h1>
-      <p class="mt-1 text-sm text-gray-400">Gestión de comercios y categorías automáticas.</p>
+    <div class="flex flex-col gap-5">
+
+      <!-- Header -->
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900">Diccionario de comercios</h1>
+        <p class="text-sm text-gray-400 mt-0.5">Mapeos aprendidos para categorizar automaticamente tus estados de cuenta.</p>
+      </div>
+
+      <!-- Search + count + add -->
+      <div class="flex flex-col gap-2">
+        <div class="flex items-center gap-2">
+          <div class="relative flex-1">
+            <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
+              fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/>
+            </svg>
+            <input
+              type="text"
+              [(ngModel)]="searchQuery"
+              placeholder="Buscar comercio..."
+              class="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-300 focus:border-brand-400 transition-colors"
+            />
+          </div>
+          <button
+            type="button"
+            (click)="toggleAddForm()"
+            class="px-3 py-2 text-sm font-medium text-brand-600 border border-brand-300 rounded-lg hover:bg-brand-50 transition-colors shrink-0"
+          >
+            + Agregar manual
+          </button>
+        </div>
+        <p class="text-xs text-gray-400 px-1">{{ countLabel }}</p>
+      </div>
+
+      <!-- Add manual inline form -->
+      @if (showAddForm) {
+        <div class="rounded-xl border border-brand-200 bg-brand-50 p-4 flex flex-col gap-3">
+          <p class="text-sm font-semibold text-brand-700">Nuevo mapeo manual</p>
+          <div class="flex flex-col gap-2">
+            <div class="flex flex-col gap-1">
+              <label class="text-xs font-medium text-gray-600">Patron del comercio</label>
+              <input
+                type="text"
+                [(ngModel)]="newPattern"
+                placeholder="Ej. NETFLIX, UBER EATS, SUPERMERCADO"
+                class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-300 focus:border-brand-400"
+              />
+              <p class="text-xs text-gray-400">El texto tal como aparece en el estado de cuenta (sin distinguir mayusculas).</p>
+            </div>
+            <div class="flex flex-col gap-1">
+              <label class="text-xs font-medium text-gray-600">Categoria</label>
+              <select
+                [(ngModel)]="newCategory"
+                class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-300"
+              >
+                @for (cat of categories; track cat) {
+                  <option [value]="cat">{{ cat }}</option>
+                }
+              </select>
+            </div>
+          </div>
+          <div class="flex gap-2 justify-end">
+            <button type="button" (click)="cancelAdd()"
+              class="px-3 py-1.5 text-sm text-gray-600 rounded-lg hover:bg-white transition-colors">
+              Cancelar
+            </button>
+            <button type="button" (click)="addMerchant()" [disabled]="!newPattern.trim()"
+              class="px-3 py-1.5 text-sm font-medium text-white bg-brand-600 rounded-lg hover:bg-brand-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+              Guardar
+            </button>
+          </div>
+        </div>
+      }
+
+      <!-- Note -->
+      <div class="flex items-start gap-2 rounded-lg bg-gray-50 border border-gray-200 px-4 py-3">
+        <svg class="w-4 h-4 text-gray-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z"/>
+        </svg>
+        <p class="text-xs text-gray-500 leading-relaxed">
+          Editar o eliminar un mapeo solo afecta transacciones futuras. Las lineas ya categorizadas en estados anteriores no se recalculan.
+        </p>
+      </div>
+
+      <!-- Merchant list -->
+      <div class="rounded-xl border border-gray-200 bg-white overflow-hidden divide-y divide-gray-100">
+
+        @if (filteredMerchants.length === 0) {
+          <p class="text-xs text-gray-400 text-center px-4 py-8">
+            {{ searchQuery ? 'Sin resultados para "' + searchQuery + '".' : 'No hay comercios registrados aun.' }}
+          </p>
+        }
+
+        @for (merchant of filteredMerchants; track merchant.id) {
+          <div class="flex items-center gap-3 px-4 py-3">
+
+            <!-- Pattern -->
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium text-gray-900 truncate font-mono tracking-tight">{{ merchant.pattern }}</p>
+            </div>
+
+            <!-- Category dropdown (inline edit) -->
+            <select
+              [(ngModel)]="merchant.category"
+              class="text-sm border border-gray-200 rounded-md px-2 py-1 text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-brand-300 focus:border-brand-400 transition-colors"
+            >
+              @for (cat of categories; track cat) {
+                <option [value]="cat">{{ cat }}</option>
+              }
+            </select>
+
+            <!-- Delete -->
+            <button
+              type="button"
+              (click)="deleteMerchant(merchant.id)"
+              class="p-1.5 text-gray-300 rounded-md hover:text-expense hover:bg-red-50 transition-colors shrink-0"
+              title="Eliminar mapeo"
+            >
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/>
+              </svg>
+            </button>
+
+          </div>
+        }
+
+      </div>
+
     </div>
   `,
 })
-export class DictionaryComponent {}
+export class DictionaryComponent {
+  searchQuery  = '';
+  showAddForm  = false;
+  newPattern   = '';
+  newCategory  = CATEGORIES[0];
+
+  readonly categories = CATEGORIES;
+
+  merchants: Merchant[] = [
+    { id:  1, pattern: 'NETFLIX',              category: 'Entretenimiento'     },
+    { id:  2, pattern: 'SUPERMERCADO NACIONAL', category: 'Alimentación'       },
+    { id:  3, pattern: 'UBER',                 category: 'Transporte'          },
+    { id:  4, pattern: 'LA SIRENA',            category: 'Alimentación'        },
+    { id:  5, pattern: 'CLARO',                category: 'Servicios del hogar' },
+    { id:  6, pattern: 'SPOTIFY',              category: 'Entretenimiento'     },
+    { id:  7, pattern: 'TEXACO',               category: 'Gasolina'            },
+    { id:  8, pattern: 'FARMACIA CAROL',        category: 'Farmacia'            },
+    { id:  9, pattern: 'AMAZON',               category: 'Tecnología'          },
+    { id: 10, pattern: 'UBER EATS',            category: 'Restaurantes'        },
+    { id: 11, pattern: 'PLAZA VALERIO',        category: 'Entretenimiento'     },
+    { id: 12, pattern: 'COLMADO DON RAMON',    category: 'Alimentación'        },
+  ];
+
+  get filteredMerchants(): Merchant[] {
+    if (!this.searchQuery.trim()) return this.merchants;
+    const q = this.searchQuery.toLowerCase();
+    return this.merchants.filter(m => m.pattern.toLowerCase().includes(q));
+  }
+
+  get countLabel(): string {
+    return this.merchants.length + ' comercios aprendidos';
+  }
+
+  toggleAddForm(): void {
+    this.showAddForm = !this.showAddForm;
+    if (!this.showAddForm) {
+      this.newPattern  = '';
+      this.newCategory = CATEGORIES[0];
+    }
+  }
+
+  cancelAdd(): void {
+    this.showAddForm = false;
+    this.newPattern  = '';
+    this.newCategory = CATEGORIES[0];
+  }
+
+  addMerchant(): void {
+    const pattern = this.newPattern.trim().toUpperCase();
+    if (!pattern) return;
+    const nextId = this.merchants.length
+      ? Math.max(...this.merchants.map(m => m.id)) + 1
+      : 1;
+    this.merchants.unshift({ id: nextId, pattern, category: this.newCategory });
+    this.cancelAdd();
+  }
+
+  deleteMerchant(id: number): void {
+    this.merchants = this.merchants.filter(m => m.id !== id);
+  }
+}

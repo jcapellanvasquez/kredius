@@ -5,42 +5,59 @@
     <span class="text-base font-bold text-brand-500 tracking-tight">Kredius</span>
 
     <nav class="ml-auto flex items-center gap-1">
-      <button
-        [routerLink]="['new-account']"
-        class="px-3 py-1.5 text-sm text-gray-600 rounded-lg hover:bg-brand-50 hover:text-brand-600 transition-colors"
-      >
-        + Nueva cuenta
-      </button>
-      <button
-        class="px-3 py-1.5 text-sm text-gray-600 rounded-lg hover:bg-brand-50 hover:text-brand-600 transition-colors"
-      >
-        Revisar presupuestos
-      </button>
-      <div class="w-px h-5 bg-gray-200 mx-1"></div>
-      <button
-        [routerLink]="['dictionary']"
-        class="px-3 py-1.5 text-sm text-gray-600 rounded-lg hover:bg-brand-50 hover:text-brand-600 transition-colors"
-      >
-        Diccionario
-      </button>
-      <button
-        [routerLink]="['income']"
-        class="px-3 py-1.5 text-sm text-gray-600 rounded-lg hover:bg-brand-50 hover:text-brand-600 transition-colors"
-      >
-        Ingresos
-      </button>
-      <button
-        [routerLink]="['upload-statement']"
-        class="px-3 py-1.5 text-sm text-gray-600 rounded-lg hover:bg-brand-50 hover:text-brand-600 transition-colors"
-      >
-        Subir corte
-      </button>
-      <button
-        [routerLink]="['reports']"
-        class="px-3 py-1.5 text-sm text-gray-600 rounded-lg hover:bg-brand-50 hover:text-brand-600 transition-colors"
-      >
-        Reportes
-      </button>
+      @if (!showBudgetMode) {
+        <button
+          [routerLink]="['new-account']"
+          class="px-3 py-1.5 text-sm text-gray-600 rounded-lg hover:bg-brand-50 hover:text-brand-600 transition-colors"
+        >
+          + Nueva cuenta
+        </button>
+        <button
+          (click)="showBudgetMode = true"
+          class="px-3 py-1.5 text-sm text-gray-600 rounded-lg hover:bg-brand-50 hover:text-brand-600 transition-colors"
+        >
+          Revisar presupuestos
+        </button>
+        <div class="w-px h-5 bg-gray-200 mx-1"></div>
+        <button
+          [routerLink]="['dictionary']"
+          class="px-3 py-1.5 text-sm text-gray-600 rounded-lg hover:bg-brand-50 hover:text-brand-600 transition-colors"
+        >
+          Diccionario
+        </button>
+        <button
+          [routerLink]="['income']"
+          class="px-3 py-1.5 text-sm text-gray-600 rounded-lg hover:bg-brand-50 hover:text-brand-600 transition-colors"
+        >
+          Ingresos
+        </button>
+        <button
+          [routerLink]="['upload-statement']"
+          class="px-3 py-1.5 text-sm text-gray-600 rounded-lg hover:bg-brand-50 hover:text-brand-600 transition-colors"
+        >
+          Subir corte
+        </button>
+        <button
+          [routerLink]="['reports']"
+          class="px-3 py-1.5 text-sm text-gray-600 rounded-lg hover:bg-brand-50 hover:text-brand-600 transition-colors"
+        >
+          Reportes
+        </button>
+      } @else {
+        <span class="text-sm font-medium text-gray-500 mr-2">Revisando presupuestos</span>
+        <button
+          (click)="cancelBudget()"
+          class="px-3 py-1.5 text-sm text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
+        >
+          Cancelar
+        </button>
+        <button
+          (click)="saveBudget()"
+          class="px-3 py-1.5 text-sm font-medium text-white bg-brand-600 rounded-lg hover:bg-brand-700 transition-colors"
+        >
+          Guardar cambios
+        </button>
+      }
     </nav>
   </header>
 
@@ -62,9 +79,9 @@
       <!-- Account groups -->
       <div class="flex-1 overflow-y-auto px-3 pb-3 space-y-4">
 
-        <!-- Activo -->
+        <!-- Asset -->
         <div>
-          <p class="text-sm text-gray-500 font-medium px-1 mb-2">Activo</p>
+          <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide px-1 mb-2">Activo</p>
           <div class="space-y-2">
 
             <button [routerLink]="['detail']" class="account-row group">
@@ -98,12 +115,12 @@
           </div>
         </div>
 
-        <!-- Pasivo -->
+        <!-- Liability -->
         <div>
-          <p class="text-sm text-gray-500 font-medium px-1 mb-2">Pasivo</p>
+          <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide px-1 mb-2">Pasivo</p>
           <div class="space-y-2">
 
-            <!-- Dual-currency credit card -->
+            <!-- Multi-currency credit card: two stacked balances, no consolidated total -->
             <button [routerLink]="['detail']" class="account-row group">
               <div class="flex-1 min-w-0 text-left">
                 <p class="text-sm font-medium text-gray-900 truncate">2010 Tarjeta de crédito</p>
@@ -111,8 +128,8 @@
               </div>
               <div class="flex items-center gap-2 shrink-0">
                 <div class="text-right">
-                  <p class="text-sm font-medium text-expense">RD$60,000</p>
-                  <p class="text-sm font-medium text-expense">US$1,200</p>
+                  <p class="text-sm font-medium text-gray-900">RD$60,000</p>
+                  <p class="text-sm font-medium text-gray-900">US$1,200</p>
                   <p class="text-xs text-expense">-RD$795</p>
                 </div>
                 <svg class="w-3.5 h-3.5 text-gray-300 group-hover:text-gray-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>
@@ -126,7 +143,7 @@
               </div>
               <div class="flex items-center gap-2 shrink-0">
                 <div class="text-right">
-                  <p class="text-sm font-medium text-expense">RD$15,230</p>
+                  <p class="text-sm font-medium text-gray-900">RD$15,230</p>
                   <p class="text-xs text-expense">-RD$8,500</p>
                 </div>
                 <svg class="w-3.5 h-3.5 text-gray-300 group-hover:text-gray-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>
@@ -136,45 +153,54 @@
           </div>
         </div>
 
-        <!-- Gasto -->
+        <!-- Expense -->
         <div>
-          <p class="text-sm text-gray-500 font-medium px-1 mb-2">Gasto</p>
+          <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide px-1 mb-2">Gasto</p>
           <div class="space-y-2">
 
-            <button [routerLink]="['detail']" class="account-row group">
-              <div class="flex-1 min-w-0 text-left">
-                <p class="text-sm font-medium text-gray-900 truncate">3010 Alimentación</p>
-                <p class="text-xs text-gray-400 truncate">12 oct · La Sirena</p>
-              </div>
-              <div class="flex items-center gap-2 shrink-0">
-                <div class="text-right">
-                  <p class="text-sm font-medium text-gray-900">RD$12,300</p>
-                  <p class="text-xs text-expense">-RD$580</p>
+            @for (account of expenseBudgets; track account.id) {
+              @if (!showBudgetMode) {
+                <button [routerLink]="['detail']" class="account-row group">
+                  <div class="flex-1 min-w-0 text-left">
+                    <p class="text-sm font-medium text-gray-900 truncate">{{ account.name }}</p>
+                    <p class="text-xs text-gray-400 truncate">{{ account.lastDate }} · {{ account.lastDesc }}</p>
+                  </div>
+                  <div class="flex items-center gap-2 shrink-0">
+                    <div class="text-right">
+                      <p class="text-sm font-medium text-gray-900">RD${{ account.budget | number }}</p>
+                    </div>
+                    <svg class="w-3.5 h-3.5 text-gray-300 group-hover:text-gray-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>
+                  </div>
+                </button>
+              } @else {
+                <div class="account-row">
+                  <div class="flex-1 min-w-0 text-left">
+                    <p class="text-sm font-medium text-gray-900 truncate">{{ account.name }}</p>
+                    <p class="text-xs text-gray-400 truncate">{{ account.lastDate }} · {{ account.lastDesc }}</p>
+                  </div>
+                  <div class="flex items-center gap-3 shrink-0">
+                    <div class="text-right">
+                      <div class="flex items-center gap-1.5">
+                        <span class="text-xs text-gray-400">RD$</span>
+                        <input
+                          type="number"
+                          [(ngModel)]="account.budget"
+                          class="w-24 text-right text-sm font-medium text-gray-900 border border-gray-300 rounded-md px-2 py-0.5 focus:outline-none focus:ring-2 focus:ring-brand-300 focus:border-brand-400"
+                        />
+                      </div>
+                      <p class="text-xs text-gray-400 mt-0.5">Sugerido: RD${{ account.suggestion | number }}</p>
+                    </div>
+                  </div>
                 </div>
-                <svg class="w-3.5 h-3.5 text-gray-300 group-hover:text-gray-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>
-              </div>
-            </button>
-
-            <button [routerLink]="['detail']" class="account-row group">
-              <div class="flex-1 min-w-0 text-left">
-                <p class="text-sm font-medium text-gray-900 truncate">3020 Transporte</p>
-                <p class="text-xs text-gray-400 truncate">13 oct · Uber</p>
-              </div>
-              <div class="flex items-center gap-2 shrink-0">
-                <div class="text-right">
-                  <p class="text-sm font-medium text-gray-900">RD$3,100</p>
-                  <p class="text-xs text-expense">-RD$320</p>
-                </div>
-                <svg class="w-3.5 h-3.5 text-gray-300 group-hover:text-gray-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>
-              </div>
-            </button>
+              }
+            }
 
           </div>
         </div>
 
-        <!-- Ingreso -->
+        <!-- Income -->
         <div>
-          <p class="text-sm text-gray-500 font-medium px-1 mb-2">Ingreso</p>
+          <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide px-1 mb-2">Ingreso</p>
           <div class="space-y-2">
 
             <button [routerLink]="['detail']" class="account-row group">

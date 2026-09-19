@@ -3,6 +3,9 @@ module.exports = {
   content: ['./src/**/*.{html,ts}'],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+      },
       colors: {
         // Brand violet — primary accent (nav, switches, CTAs)
         // Never used for financial meaning

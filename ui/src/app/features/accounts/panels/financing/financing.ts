@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink, ActivatedRoute } from '@angular/router';
+import { ActivatedRoute } from '@angular/router';
 import { LoanScheduleDocComponent } from './loan-schedule-doc';
 
 type LoanType     = 'received' | 'given';
@@ -49,22 +49,10 @@ const GIVEN = {
 
 @Component({
   selector: 'app-financing',
-  imports: [FormsModule, RouterLink, LoanScheduleDocComponent],
+  imports: [FormsModule, LoanScheduleDocComponent],
   host: { class: 'block' },
   template: `
     <div class="flex flex-col gap-5">
-
-      <!-- Back to detail -->
-      <a [routerLink]="['../detail']"
-        class="inline-flex items-center gap-1.5 text-sm text-gray-900 hover:text-gray-700 w-fit">
-        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-          <path d="M5 12l14 0" />
-          <path d="M5 12l6 6" />
-          <path d="M5 12l6 -6" />
-        </svg>
-        Detalle de cuenta
-      </a>
 
       <!-- Header -->
       <div class="flex items-start justify-between gap-4">

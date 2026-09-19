@@ -2,9 +2,9 @@ import { Component } from '@angular/core';
 import { RouterLink, RouterOutlet } from '@angular/router';
 
 @Component({
-  selector: 'app-cuentas',
+  selector: 'app-accounts',
   imports: [RouterOutlet, RouterLink],
-  templateUrl: './cuentas.html',
-  styleUrl: './cuentas.css',
+  templateUrl: './accounts.html',
+  styleUrl: './accounts.css',
 })
-export class CuentasComponent {}
+export class AccountsComponent {}

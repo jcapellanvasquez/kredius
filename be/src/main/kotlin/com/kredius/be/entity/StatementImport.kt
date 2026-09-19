@@ -1,9 +1,11 @@
 package com.kredius.be.entity
 
 import jakarta.persistence.*
+import org.hibernate.annotations.Filter
 import java.time.LocalDate
 import java.time.OffsetDateTime
 
+@Filter(name = "userFilter", condition = "user_id = :userId")
 @Entity
 @Table(name = "statement_imports")
 class StatementImport(

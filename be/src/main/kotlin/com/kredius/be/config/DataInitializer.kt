@@ -25,35 +25,35 @@ class DataInitializer(
 
     override fun run(vararg args: String) {
         // ── Users ──────────────────────────────────────────────────────
-        val testing = userRepo.save(User(name = "testing", email = "testing@kredius.local"))
         val jcapellan = userRepo.save(User(name = "jcapellan", email = "jcapellan@kredius.local"))
+        val jcapellanTest = userRepo.save(User(name = "jcapellan-test", email = "jcapellan-test@kredius.local"))
 
         // ── Accounts ───────────────────────────────────────────────────
-        val savings = accountRepo.save(Account(code = "1020", name = "Cuenta Ahorros BHD", type = AccountType.ASSET))
-        val checking = accountRepo.save(Account(code = "1030", name = "Cuenta Corriente BHD", type = AccountType.ASSET))
-        val creditCard = accountRepo.save(Account(code = "2010", name = "Tarjeta de Crédito BHD", type = AccountType.LIABILITY))
-        val loanGivenAccount = accountRepo.save(Account(code = "3010", name = "Préstamo Dado – Pedro Gómez", type = AccountType.ASSET))
-        val loanReceivedAccount = accountRepo.save(Account(code = "3020", name = "Préstamo Recibido – Banco Popular", type = AccountType.LIABILITY))
-        val equityAccount = accountRepo.save(Account(code = "3000", name = "Capital Inicial", type = AccountType.EQUITY))
-        val salaryAccount = accountRepo.save(Account(code = "4010", name = "Salario", type = AccountType.INCOME))
+        val savings = accountRepo.save(Account(user = jcapellan, code = "1020", name = "Cuenta Ahorros BHD", type = AccountType.ASSET))
+        val checking = accountRepo.save(Account(user = jcapellan, code = "1030", name = "Cuenta Corriente BHD", type = AccountType.ASSET))
+        val creditCard = accountRepo.save(Account(user = jcapellan, code = "2010", name = "Tarjeta de Crédito BHD", type = AccountType.LIABILITY))
+        val loanGivenAccount = accountRepo.save(Account(user = jcapellan, code = "3010", name = "Préstamo Dado – Pedro Gómez", type = AccountType.ASSET))
+        val loanReceivedAccount = accountRepo.save(Account(user = jcapellan, code = "3020", name = "Préstamo Recibido – Banco Popular", type = AccountType.LIABILITY))
+        val equityAccount = accountRepo.save(Account(user = jcapellan, code = "3000", name = "Capital Inicial", type = AccountType.EQUITY))
+        val salaryAccount = accountRepo.save(Account(user = jcapellan, code = "4010", name = "Salario", type = AccountType.INCOME))
         val superAccount = accountRepo.save(Account(
-            code = "5010", name = "Supermercado", type = AccountType.EXPENSE,
+            user = jcapellan, code = "5010", name = "Supermercado", type = AccountType.EXPENSE,
             thresholdPct = BigDecimal("20.00"), showInAlerts = true,
         ))
         val gasAccount = accountRepo.save(Account(
-            code = "5020", name = "Gasolina", type = AccountType.EXPENSE,
+            user = jcapellan, code = "5020", name = "Gasolina", type = AccountType.EXPENSE,
             thresholdPct = BigDecimal("10.00"), showInAlerts = true,
         ))
         val restaurantAccount = accountRepo.save(Account(
-            code = "5030", name = "Restaurantes", type = AccountType.EXPENSE,
+            user = jcapellan, code = "5030", name = "Restaurantes", type = AccountType.EXPENSE,
             thresholdPct = BigDecimal("15.00"), showInAlerts = true,
         ))
         val servicesAccount = accountRepo.save(Account(
-            code = "5040", name = "Servicios", type = AccountType.EXPENSE,
+            user = jcapellan, code = "5040", name = "Servicios", type = AccountType.EXPENSE,
             thresholdPct = BigDecimal("10.00"), showInAlerts = false,
         ))
         val financialExpenseAccount = accountRepo.save(Account(
-            code = "5050", name = "Gastos Financieros", type = AccountType.EXPENSE,
+            user = jcapellan, code = "5050", name = "Gastos Financieros", type = AccountType.EXPENSE,
         ))
 
         // ── Exchange rates ─────────────────────────────────────────────

@@ -1,10 +1,12 @@
 package com.kredius.be.entity
 
 import jakarta.persistence.*
+import org.hibernate.annotations.Filter
 import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.OffsetDateTime
 
+@Filter(name = "userFilter", condition = "user_id = :userId")
 @Entity
 @Table(name = "loans")
 class Loan(

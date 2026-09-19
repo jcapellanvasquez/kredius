@@ -1,13 +1,22 @@
 package com.kredius.be.entity
 
 import jakarta.persistence.*
+import org.hibernate.annotations.Filter
+import org.hibernate.annotations.FilterDef
+import org.hibernate.annotations.ParamDef
 import java.math.BigDecimal
 import java.time.OffsetDateTime
 
+@FilterDef(name = "userFilter", parameters = [ParamDef(name = "userId", type = Long::class)])
+@Filter(name = "userFilter", condition = "user_id = :userId")
 @Entity
 @Table(name = "accounts")
 class Account(
-    @Column(length = 10, unique = true)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    var user: User = User(),
+
+    @Column(length = 10)
     var code: String? = null,
 
     @Column(nullable = false, length = 120)

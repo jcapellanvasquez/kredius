@@ -10,7 +10,9 @@ import javax.sql.DataSource
 class EmbeddedPostgresConfig {
 
     @Bean(destroyMethod = "close")
-    fun embeddedPostgres(): EmbeddedPostgres = EmbeddedPostgres.builder().start()
+    fun embeddedPostgres(): EmbeddedPostgres = EmbeddedPostgres.builder()
+        .setPort(5432)
+        .start()
 
     @Bean
     @Primary

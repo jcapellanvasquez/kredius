@@ -8,6 +8,8 @@ import { DictionaryComponent } from './panels/dictionary/dictionary';
 import { IncomeComponent } from './panels/income/income';
 import { UploadStatementComponent } from './panels/upload-statement/upload-statement';
 import { ReportsComponent } from './panels/reports/reports';
+import { NewLoanComponent } from './panels/new-loan/new-loan';
+import { NewLoanReceivedComponent } from './panels/new-loan-received/new-loan-received';
 
 export const accountsRoutes: Routes = [
   {
@@ -15,6 +17,8 @@ export const accountsRoutes: Routes = [
     component: AccountsComponent,
     children: [
       { path: 'detail', component: DetailComponent },
+      { path: 'new-loan', component: NewLoanComponent },
+      { path: 'new-loan-received', component: NewLoanReceivedComponent },
       { path: 'financing', component: FinancingComponent },
       { path: 'payment', component: PaymentComponent },
       { path: 'new-account', component: NewAccountComponent },

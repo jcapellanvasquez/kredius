@@ -17,7 +17,8 @@ const MONTHLY_INCOME = 85_000;
   styleUrl: './accounts.css',
 })
 export class AccountsComponent {
-  showBudgetMode = false;
+  showBudgetMode  = false;
+  showLoanPicker  = false;
 
   expenseBudgets: ExpenseBudget[] = [
     { id: '3010', name: '3010 Alimentación',   lastDate: '12 oct', lastDesc: 'La Sirena',    budget: 12300, suggestion: 11500, actual: 10355, threshold: 15 },

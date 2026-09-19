@@ -161,6 +161,11 @@ const CATEGORIES = [
             <span class="font-medium text-gray-900">{{ usdRdEquivFormatted }}</span>
           </div>
 
+          <div class="flex items-center justify-between text-sm">
+            <span class="text-gray-600">Total comisiones bancarias</span>
+            <span class="font-medium text-expense">{{ ccTotalFeesFormatted }}</span>
+          </div>
+
           <div class="flex items-center justify-between pt-3 border-t border-gray-100">
             <span class="text-sm font-semibold text-gray-700">Total consolidado</span>
             <span class="text-lg font-bold text-gray-900">{{ consolidatedTotalFormatted }}</span>
@@ -350,7 +355,7 @@ const CATEGORIES = [
         </div>
 
         <!-- Summary stats -->
-        <div class="grid grid-cols-3 gap-3">
+        <div class="grid grid-cols-2 gap-3">
           <div class="rounded-xl border border-gray-200 bg-white px-3 py-3">
             <p class="text-xs text-gray-400 mb-0.5">Total depósitos</p>
             <p class="text-sm font-bold text-income">{{ savingsTotalDepositsFormatted }}</p>
@@ -362,6 +367,10 @@ const CATEGORIES = [
           <div class="rounded-xl border border-gray-200 bg-white px-3 py-3">
             <p class="text-xs text-gray-400 mb-0.5">Balance resultante</p>
             <p class="text-sm font-bold text-gray-900">{{ savingsBalanceFormatted }}</p>
+          </div>
+          <div class="rounded-xl border border-gray-200 bg-white px-3 py-3">
+            <p class="text-xs text-gray-400 mb-0.5">Total comisiones</p>
+            <p class="text-sm font-bold text-expense">{{ savingsTotalFeesFormatted }}</p>
           </div>
         </div>
 
@@ -487,6 +496,9 @@ export class UploadStatementComponent {
     return this.newMerchants.filter(m => m.status === 'pending').length;
   }
 
+  readonly ccTotalFees = 890;
+  get ccTotalFeesFormatted(): string { return 'RD$' + this.ccTotalFees.toLocaleString(); }
+
   get usdRdEquiv(): number {
     return Math.round(1240 * this.consolidationRate);
   }
@@ -533,9 +545,14 @@ export class UploadStatementComponent {
     return this.savingsTotalDeposits - this.savingsTotalWithdrawals;
   }
 
+  get savingsTotalFees(): number {
+    return this.savingsDeposits.reduce((s, d) => s + d.fee, 0);
+  }
+
   get savingsTotalDepositsFormatted():    string { return 'RD$' + this.savingsTotalDeposits.toLocaleString(); }
   get savingsTotalWithdrawalsFormatted(): string { return 'RD$' + this.savingsTotalWithdrawals.toLocaleString(); }
   get savingsBalanceFormatted():          string { return 'RD$' + this.savingsBalance.toLocaleString(); }
+  get savingsTotalFeesFormatted():        string { return 'RD$' + this.savingsTotalFees.toLocaleString(); }
 
   // ── Shared ─────────────────────────────────────────────────────────
   formatRD(v: number): string { return 'RD$' + v.toLocaleString(); }

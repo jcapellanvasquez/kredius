@@ -10,15 +10,15 @@ module.exports = {
         // Brand violet — primary accent (nav, switches, CTAs)
         // Never used for financial meaning
         brand: {
-          50:  '#f3f1fb',
+          50:  '#f5f3fb', // --accent-soft-bg (spec exact)
           100: '#e8e5f7',
           200: '#d4cdf1',
           300: '#b9afe7',
           400: '#9d8eda',
-          500: '#8b7bc7',
-          600: '#7a65b8',
+          500: '#8b7bc7', // --accent (spec exact)
+          600: '#7a68b8', // --accent-hover (spec exact)
           700: '#6852a5',
-          800: '#554387',
+          800: '#5b4e8c', // --accent-soft-text (spec exact)
           900: '#45376e',
           950: '#2a2043',
         },

@@ -189,7 +189,12 @@
                   <div class="flex-1 min-w-0 text-left">
                     <div class="flex items-center gap-1.5 min-w-0">
                       @if (isOverThreshold(account)) {
-                        <span class="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0"></span>
+                        <span class="relative group/tip shrink-0 cursor-default">
+                          <span class="w-1.5 h-1.5 rounded-full bg-amber-400 block"></span>
+                          <span class="pointer-events-none absolute bottom-full left-0 mb-1.5 whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-[11px] leading-snug text-white opacity-0 group-hover/tip:opacity-100 transition-opacity z-20">
+                            RD${{ account.actual | number }} real &middot; umbral {{ account.threshold }}% del ingreso
+                          </span>
+                        </span>
                       }
                       <p class="text-sm font-medium text-gray-900 truncate">{{ account.name }}</p>
                     </div>

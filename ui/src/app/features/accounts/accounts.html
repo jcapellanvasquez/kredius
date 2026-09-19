@@ -12,48 +12,57 @@
         >
           <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-            <path d="M12 5l0 14" />
-            <path d="M5 12l14 0" />
+            <path d="M12 5l0 14" /><path d="M5 12l14 0" />
           </svg>
           Nueva cuenta
         </button>
-        <button
-          (click)="showBudgetMode = true"
-          class="flex items-center gap-1 px-3 py-1.5 text-sm text-gray-600 rounded-lg hover:bg-brand-50 hover:text-brand-600 transition-colors"
-        >
-          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-            <path d="M7 7h-1a2 2 0 0 0 -2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2 -2v-1" />
-            <path d="M20.385 6.585a2.1 2.1 0 0 0 -2.97 -2.97l-8.415 8.385v3h3l8.385 -8.415z" />
-            <path d="M16 5l3 3" />
-          </svg>
-          Revisar presupuestos
-        </button>
-        <div class="w-px h-5 bg-gray-200 mx-1"></div>
-        <button
-          [routerLink]="['dictionary']"
-          class="px-3 py-1.5 text-sm text-gray-600 rounded-lg hover:bg-brand-50 hover:text-brand-600 transition-colors"
-        >
-          Diccionario
-        </button>
-        <button
-          [routerLink]="['income']"
-          class="px-3 py-1.5 text-sm text-gray-600 rounded-lg hover:bg-brand-50 hover:text-brand-600 transition-colors"
-        >
-          Ingresos
-        </button>
-        <button
-          [routerLink]="['upload-statement']"
-          class="px-3 py-1.5 text-sm text-gray-600 rounded-lg hover:bg-brand-50 hover:text-brand-600 transition-colors"
-        >
-          Subir corte
-        </button>
-        <button
-          [routerLink]="['reports']"
-          class="px-3 py-1.5 text-sm text-gray-600 rounded-lg hover:bg-brand-50 hover:text-brand-600 transition-colors"
-        >
-          Presupuesto
-        </button>
+
+        <!-- Nav dropdown -->
+        <div class="relative">
+          <button type="button" (click)="showNavMenu = !showNavMenu"
+            class="flex items-center gap-1 px-3 py-1.5 text-sm text-gray-600 rounded-lg hover:bg-brand-50 hover:text-brand-600 transition-colors"
+            [class.bg-brand-50]="showNavMenu" [class.text-brand-600]="showNavMenu">
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+              <path d="M5 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
+              <path d="M12 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
+              <path d="M19 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
+            </svg>
+          </button>
+
+          @if (showNavMenu) {
+            <div class="fixed inset-0 z-10" (click)="showNavMenu = false"></div>
+            <div class="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl border border-gray-200 shadow-lg z-20 py-1 overflow-hidden">
+
+              <!-- Group 1: transacciones -->
+              <button [routerLink]="['income']" (click)="showNavMenu = false"
+                class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                Ingresos
+              </button>
+              <button [routerLink]="['upload-statement']" (click)="showNavMenu = false"
+                class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                Subir corte
+              </button>
+
+              <div class="my-1 border-t border-gray-100"></div>
+
+              <!-- Group 2: configuración -->
+              <button [routerLink]="['dictionary']" (click)="showNavMenu = false"
+                class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                Diccionario
+              </button>
+              <button (click)="showBudgetMode = true; showNavMenu = false"
+                class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                Revisar presupuestos
+              </button>
+              <button [routerLink]="['reports']" (click)="showNavMenu = false"
+                class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                Presupuesto
+              </button>
+
+            </div>
+          }
+        </div>
       } @else {
         <span class="text-sm font-medium text-gray-500 mr-2">Revisando presupuestos</span>
         <button

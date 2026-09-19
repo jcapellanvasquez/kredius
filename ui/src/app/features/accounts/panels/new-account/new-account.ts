@@ -17,9 +17,18 @@ interface TypeOption {
     <div class="flex flex-col gap-5">
 
       <!-- Header -->
-      <div>
-        <h1 class="text-2xl font-bold text-gray-900">Nueva cuenta</h1>
-        <p class="text-sm text-gray-400 mt-0.5">Completa los campos para registrar la cuenta en el sistema.</p>
+      <div class="flex items-start justify-between">
+        <div>
+          <h1 class="text-2xl font-bold text-gray-900">Nueva cuenta</h1>
+          <p class="text-sm text-gray-400 mt-0.5">Completa los campos para registrar la cuenta en el sistema.</p>
+        </div>
+        <a [routerLink]="['/accounts']" class="text-gray-400 hover:text-gray-600 transition-colors p-1">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+            <path d="M18 6l-12 12" />
+            <path d="M6 6l12 12" />
+          </svg>
+        </a>
       </div>
 
       <div class="rounded-xl border border-gray-200 bg-white p-5 flex flex-col gap-5">

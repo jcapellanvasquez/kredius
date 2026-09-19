@@ -215,9 +215,10 @@ interface HistoryEntry {
                 <svg
                   class="w-3.5 h-3.5 text-gray-300 transition-transform shrink-0"
                   [class.rotate-90]="entry.expanded"
-                  viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                  viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                 >
-                  <path d="m9 18 6-6-6-6"/>
+                  <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                  <path d="M9 6l6 6l-6 6" />
                 </svg>
               </div>
             </button>

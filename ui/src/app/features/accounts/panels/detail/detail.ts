@@ -64,9 +64,19 @@ type AccountType = 'asset' | 'liability' | 'expense' | 'income';
               [class.bg-green-50]="!isNegativeTrend()"
               [class.text-income]="!isNegativeTrend()"
             >
-              <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18 9 11.25l4.306 4.306a11.95 11.95 0 0 1 5.814-5.518l2.74-1.22m0 0-5.94-2.281m5.94 2.28-2.28 5.941" />
-              </svg>
+              @if (isNegativeTrend()) {
+                <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                  <path d="M3 17l4 -4l4 4l4 -4l6 6" />
+                  <path d="M14 9l7 0l0 7" />
+                </svg>
+              } @else {
+                <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                  <path d="M3 7l4 4l4 -4l4 4l6 -6" />
+                  <path d="M21 15l0 -7l-7 0" />
+                </svg>
+              }
               {{ trendBadgeText }}
             </span>
           </div>
@@ -86,8 +96,11 @@ type AccountType = 'asset' | 'liability' | 'expense' | 'income';
             <h2 class="text-sm font-semibold text-gray-800">Alertas de concentraci&oacute;n</h2>
             <button type="button" class="text-gray-400 hover:text-gray-500"
               title="El porcentaje siempre se calcula. Este switch solo controla si la cuenta aparece resaltada en el panel de alertas cuando supera el umbral.">
-              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                <path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0" />
+                <path d="M12 9h.01" />
+                <path d="M11 12h1v4h1" />
               </svg>
             </button>
           </div>
@@ -139,8 +152,9 @@ type AccountType = 'asset' | 'liability' | 'expense' | 'income';
               <p class="text-xs text-brand-500">Tabla de cuotas, abonos a capital y m&aacute;s</p>
             </div>
           </div>
-          <svg class="w-4 h-4 text-brand-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" d="m9 18 6-6-6-6"/>
+          <svg class="w-4 h-4 text-brand-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+            <path d="M9 6l6 6l-6 6" />
           </svg>
         </a>
       }

@@ -94,8 +94,12 @@ const CATEGORIES = [
         <div
           class="rounded-xl border-2 border-dashed border-gray-300 bg-white px-6 py-10 flex flex-col items-center gap-3 hover:border-brand-300 hover:bg-brand-50 transition-colors cursor-pointer"
           (click)="simulateParse()">
-          <svg class="w-10 h-10 text-gray-300" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"/>
+          <svg class="w-[22px] h-[22px] text-brand-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+            <path d="M14 3v4a1 1 0 0 0 1 1h4" />
+            <path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z" />
+            <path d="M12 11v6" />
+            <path d="M9.5 13.5l2.5 -2.5l2.5 2.5" />
           </svg>
           <div class="text-center">
             <p class="text-sm font-medium text-gray-700">Haz clic para seleccionar el archivo</p>
@@ -201,8 +205,9 @@ const CATEGORIES = [
             </div>
             <svg class="w-4 h-4 text-gray-400 transition-transform"
               [class.rotate-180]="showCategorized"
-              fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/>
+              viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+              <path d="M6 9l6 6l6 -6" />
             </svg>
           </button>
           @if (showCategorized) {
@@ -291,8 +296,9 @@ const CATEGORIES = [
             </div>
             <svg class="w-4 h-4 text-gray-400 transition-transform"
               [class.rotate-180]="showExcluded"
-              fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/>
+              viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+              <path d="M6 9l6 6l6 -6" />
             </svg>
           </button>
           @if (showExcluded) {

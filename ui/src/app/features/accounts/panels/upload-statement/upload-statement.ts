@@ -354,68 +354,102 @@ const CATEGORIES = [
           </button>
         </div>
 
-        <!-- Summary stats -->
-        <div class="grid grid-cols-2 gap-3">
-          <div class="rounded-xl border border-gray-200 bg-white px-3 py-3">
-            <p class="text-xs text-gray-400 mb-0.5">Total depósitos</p>
-            <p class="text-sm font-bold text-income">{{ savingsTotalDepositsFormatted }}</p>
+        <!-- Consolidation box -->
+        <div class="rounded-xl border border-gray-200 bg-white p-4 flex flex-col gap-4">
+          <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Resumen del período</p>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div class="rounded-lg bg-gray-50 px-3 py-3">
+              <p class="text-xs text-gray-400 mb-0.5">Total depósitos</p>
+              <p class="text-base font-bold text-income">{{ savingsTotalDepositsFormatted }}</p>
+            </div>
+            <div class="rounded-lg bg-gray-50 px-3 py-3">
+              <p class="text-xs text-gray-400 mb-0.5">Total retiros</p>
+              <p class="text-base font-bold text-expense">{{ savingsTotalWithdrawalsFormatted }}</p>
+            </div>
           </div>
-          <div class="rounded-xl border border-gray-200 bg-white px-3 py-3">
-            <p class="text-xs text-gray-400 mb-0.5">Total retiros</p>
-            <p class="text-sm font-bold text-expense">{{ savingsTotalWithdrawalsFormatted }}</p>
+
+          <div class="flex items-center justify-between text-sm">
+            <span class="text-gray-600">Total comisiones bancarias</span>
+            <span class="font-medium text-expense">{{ savingsTotalFeesFormatted }}</span>
           </div>
-          <div class="rounded-xl border border-gray-200 bg-white px-3 py-3">
-            <p class="text-xs text-gray-400 mb-0.5">Balance resultante</p>
-            <p class="text-sm font-bold text-gray-900">{{ savingsBalanceFormatted }}</p>
-          </div>
-          <div class="rounded-xl border border-gray-200 bg-white px-3 py-3">
-            <p class="text-xs text-gray-400 mb-0.5">Total comisiones</p>
-            <p class="text-sm font-bold text-expense">{{ savingsTotalFeesFormatted }}</p>
+
+          <div class="flex items-center justify-between pt-3 border-t border-gray-100">
+            <span class="text-sm font-semibold text-gray-700">Balance resultante</span>
+            <span class="text-lg font-bold text-gray-900">{{ savingsBalanceFormatted }}</span>
           </div>
         </div>
 
-        <!-- Deposits with paired fees -->
+        <!-- Deposits with paired fees (expandable) -->
         <div class="rounded-xl border border-gray-200 bg-white overflow-hidden">
-          <p class="px-4 py-3 text-sm font-medium text-gray-700 border-b border-gray-100">Depósitos</p>
-          <div class="divide-y divide-gray-50">
-            @for (dep of savingsDeposits; track dep.id) {
-              <div class="px-4 pt-3 pb-2">
-                <div class="flex items-center justify-between">
-                  <div>
+          <button type="button" (click)="showSavingsDeposits = !showSavingsDeposits"
+            class="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors">
+            <div class="flex items-center gap-2">
+              <span class="text-sm font-medium text-gray-700">Depósitos</span>
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-income">
+                {{ savingsDeposits.length }}
+              </span>
+            </div>
+            <svg class="w-4 h-4 text-gray-400 transition-transform"
+              [class.rotate-180]="showSavingsDeposits"
+              fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/>
+            </svg>
+          </button>
+          @if (showSavingsDeposits) {
+            <div class="border-t border-gray-100 divide-y divide-gray-50">
+              @for (dep of savingsDeposits; track dep.id) {
+                <div class="px-4 pt-3 pb-2">
+                  <div class="flex items-center justify-between">
                     <p class="text-sm text-gray-800">{{ dep.date }} &middot; {{ dep.desc }}</p>
+                    <span class="text-sm font-medium text-income">{{ formatRD(dep.amount) }}</span>
                   </div>
-                  <span class="text-sm font-medium text-income">{{ formatRD(dep.amount) }}</span>
+                  @if (dep.fee > 0) {
+                    <div class="ml-4 mt-1 flex items-center justify-between text-xs text-gray-400 pl-3 border-l-2 border-gray-100">
+                      <span>Comisión de transferencia</span>
+                      <span class="text-expense">-{{ formatRD(dep.fee) }}</span>
+                    </div>
+                    <div class="mt-1 flex items-center justify-between text-xs font-semibold text-gray-600 pt-1 border-t border-gray-100">
+                      <span>Neto recibido</span>
+                      <span>{{ formatRD(dep.amount - dep.fee) }}</span>
+                    </div>
+                  }
                 </div>
-                @if (dep.fee > 0) {
-                  <div class="ml-4 mt-1 flex items-center justify-between text-xs text-gray-400 pl-3 border-l-2 border-gray-100">
-                    <span>Comisión de transferencia</span>
-                    <span class="text-expense">-{{ formatRD(dep.fee) }}</span>
-                  </div>
-                  <div class="mt-1 flex items-center justify-between text-xs font-semibold text-gray-600 pt-1 border-t border-gray-100">
-                    <span>Neto recibido</span>
-                    <span>{{ formatRD(dep.amount - dep.fee) }}</span>
-                  </div>
-                }
-              </div>
-            }
-          </div>
+              }
+            </div>
+          }
         </div>
 
-        <!-- Other movements -->
+        <!-- Other movements (expandable) -->
         <div class="rounded-xl border border-gray-200 bg-white overflow-hidden">
-          <p class="px-4 py-3 text-sm font-medium text-gray-700 border-b border-gray-100">Otros movimientos</p>
-          <div class="divide-y divide-gray-50">
-            @for (mov of savingsMovements; track mov.id) {
-              <div class="px-4 py-3 flex items-center justify-between">
-                <span class="text-sm text-gray-700">{{ mov.date }} &middot; {{ mov.desc }}</span>
-                <span class="text-sm font-medium"
-                  [class.text-income]="mov.inflow"
-                  [class.text-expense]="!mov.inflow">
-                  {{ mov.inflow ? '+' : '-' }}{{ formatRD(mov.amount) }}
-                </span>
-              </div>
-            }
-          </div>
+          <button type="button" (click)="showSavingsMovements = !showSavingsMovements"
+            class="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors">
+            <div class="flex items-center gap-2">
+              <span class="text-sm font-medium text-gray-700">Otros movimientos</span>
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500">
+                {{ savingsMovements.length }}
+              </span>
+            </div>
+            <svg class="w-4 h-4 text-gray-400 transition-transform"
+              [class.rotate-180]="showSavingsMovements"
+              fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/>
+            </svg>
+          </button>
+          @if (showSavingsMovements) {
+            <div class="border-t border-gray-100 divide-y divide-gray-50">
+              @for (mov of savingsMovements; track mov.id) {
+                <div class="px-4 py-3 flex items-center justify-between">
+                  <span class="text-sm text-gray-700">{{ mov.date }} &middot; {{ mov.desc }}</span>
+                  <span class="text-sm font-medium"
+                    [class.text-income]="mov.inflow"
+                    [class.text-expense]="!mov.inflow">
+                    {{ mov.inflow ? '+' : '-' }}{{ formatRD(mov.amount) }}
+                  </span>
+                </div>
+              }
+            </div>
+          }
         </div>
 
         <!-- Confirm -->
@@ -448,8 +482,10 @@ export class UploadStatementComponent {
   parsed              = false;
   confirmed           = false;
   consolidationRate   = 59.00;
-  showCategorized     = false;
-  showExcluded        = false;
+  showCategorized      = false;
+  showExcluded         = false;
+  showSavingsDeposits  = false;
+  showSavingsMovements = false;
 
   readonly categories = CATEGORIES;
 
@@ -579,7 +615,9 @@ export class UploadStatementComponent {
       m.selected     = null;
       m.showDropdown = false;
     });
-    this.showCategorized = false;
-    this.showExcluded    = false;
+    this.showCategorized      = false;
+    this.showExcluded         = false;
+    this.showSavingsDeposits  = false;
+    this.showSavingsMovements = false;
   }
 }

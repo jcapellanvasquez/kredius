@@ -69,9 +69,7 @@ const GIVEN = {
       <div class="flex flex-col gap-1.5">
         <div class="h-2 bg-gray-100 rounded-full overflow-hidden">
           <div
-            class="h-full rounded-full transition-all"
-            [class.bg-brand-500]="loanType === 'received'"
-            [class.bg-income]="loanType === 'given'"
+            class="h-full rounded-full bg-income transition-all"
             [style.width]="progressPercent + '%'"
           ></div>
         </div>
@@ -148,38 +146,55 @@ const GIVEN = {
         @if (showSchedule) {
 
           @if (loanType === 'received') {
-            <div class="border-t border-gray-100 overflow-x-auto">
-              <table class="w-full text-xs">
-                <thead class="bg-gray-50">
-                  <tr>
-                    <th class="text-left px-4 py-2 font-medium text-gray-500">#</th>
-                    <th class="text-right px-4 py-2 font-medium text-gray-500">Interés</th>
-                    <th class="text-right px-4 py-2 font-medium text-gray-500">Capital</th>
-                    <th class="text-right px-4 py-2 font-medium text-gray-500">Saldo</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-50">
-                  @for (row of visibleAmortization; track row.num) {
-                    <tr [class.bg-brand-50]="row.current" [class.font-semibold]="row.current">
-                      <td class="px-4 py-2 text-gray-500">
-                        {{ row.num }}
-                        @if (row.current) { <span class="ml-1 text-brand-500">←</span> }
-                      </td>
-                      <td class="px-4 py-2 text-right text-expense">{{ formatRD(row.interest) }}</td>
-                      <td class="px-4 py-2 text-right text-income">{{ formatRD(row.principal) }}</td>
-                      <td class="px-4 py-2 text-right text-gray-700">{{ formatRD(row.balance) }}</td>
-                    </tr>
+            <div class="border-t border-gray-100 divide-y divide-gray-50">
+              @for (row of visibleAmortization; track row.num) {
+                <div class="flex items-center gap-3 px-4 py-3"
+                  [class.bg-brand-50]="row.current">
+                  <div class="shrink-0">
+                    @if (row.num < currentNum) {
+                      <svg class="w-4 h-4 text-income" viewBox="0 0 24 24" fill="currentColor">
+                        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                        <path d="M17 3.34a10 10 0 1 1 -14.995 8.984l-.005 -.324l.005 -.324a10 10 0 0 1 14.995 -8.336zm-1.293 5.953a1 1 0 0 0 -1.32 -.083l-.094 .083l-3.293 3.292l-1.293 -1.292l-.094 -.083a1 1 0 0 0 -1.403 1.403l.083 .094l2 2l.094 .083a1 1 0 0 0 1.226 0l.094 -.083l4 -4l.083 -.094a1 1 0 0 0 -.083 -1.32z" fill="currentColor" />
+                      </svg>
+                    } @else {
+                      <svg class="w-4 h-4 text-gray-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                        <path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" />
+                      </svg>
+                    }
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-sm text-gray-700">Cuota {{ row.num }}</p>
+                    <p class="text-xs text-gray-400">{{ formatRD(row.interest) }} interés · {{ formatRD(row.principal) }} capital</p>
+                  </div>
+                  <span class="text-sm font-medium shrink-0"
+                    [class.text-income]="row.num < currentNum"
+                    [class.text-gray-400]="row.num > currentNum"
+                    [class.text-gray-900]="row.num === currentNum">
+                    {{ formatRD(row.interest + row.principal) }}
+                  </span>
+                  @if (row.current) {
+                    <button type="button" (click)="registerPayment()"
+                      class="shrink-0 px-2.5 py-1 text-xs font-medium text-white bg-brand-600 rounded-lg hover:bg-brand-700 transition-colors">
+                      Pagar
+                    </button>
                   }
-                </tbody>
-              </table>
-              @if (!showFullSchedule) {
-                <div class="border-t border-gray-100 px-4 py-3 text-center">
-                  <button type="button" (click)="showFullSchedule = true"
-                    class="text-xs font-medium text-brand-600 hover:text-brand-700">
-                    Ver tabla completa ({{ amortization.length }} cuotas)
-                  </button>
                 </div>
               }
+              <div class="px-4 py-3 flex items-center justify-between">
+                @if (!showFullSchedule) {
+                  <button type="button" (click)="showFullSchedule = true"
+                    class="text-xs font-medium text-brand-600 hover:text-brand-700">
+                    Ver todas las cuotas ({{ amortization.length }})
+                  </button>
+                } @else {
+                  <span></span>
+                }
+                <button type="button" (click)="showSchedule = false; showPrincipalPayment = true"
+                  class="text-xs text-gray-400 hover:text-gray-600 transition-colors">
+                  Abono a capital
+                </button>
+              </div>
             </div>
           }
 
@@ -223,20 +238,6 @@ const GIVEN = {
 
         }
       </div>
-
-      <!-- Action buttons -->
-      @if (loanType === 'received' && !showPrincipalPayment) {
-        <div class="flex gap-3">
-          <button type="button"
-            class="flex-1 py-2.5 text-sm font-medium text-white bg-brand-600 rounded-xl hover:bg-brand-700 transition-colors">
-            Registrar cuota
-          </button>
-          <button type="button" (click)="showPrincipalPayment = true"
-            class="flex-1 py-2.5 text-sm font-medium text-brand-800 bg-brand-50 rounded-xl hover:bg-brand-100 transition-colors">
-            Abono a capital
-          </button>
-        </div>
-      }
 
       @if (loanType === 'given') {
         <button type="button"
@@ -352,7 +353,10 @@ export class FinancingComponent implements OnInit {
   ngOnInit(): void {
     const type = this.route.snapshot.queryParamMap.get('type');
     if (type === 'given') this.loanType = 'given';
+    else this.showSchedule = true;
   }
+
+  currentNum           = RECV.currentNum; // mutable — advances with each payment
 
   showSchedule         = false;
   showFullSchedule     = false;
@@ -369,21 +373,26 @@ export class FinancingComponent implements OnInit {
     return this.loanType === 'received' ? '2020 Préstamo carro' : 'Emeli Espinal';
   }
 
+  get currentBalance(): number {
+    if (this.currentNum <= 1) return RECV.P;
+    return this.amortization[this.currentNum - 2]?.balance ?? RECV.P;
+  }
+
   get balanceFormatted(): string {
     return this.loanType === 'received'
-      ? 'RD$' + RECV.balance.toLocaleString()
+      ? 'RD$' + this.currentBalance.toLocaleString()
       : 'RD$' + GIVEN.remaining.toLocaleString();
   }
 
   get progressPercent(): number {
     return this.loanType === 'received'
-      ? Math.round((RECV.currentNum / RECV.n) * 100)
+      ? Math.round((this.currentNum / RECV.n) * 100)
       : Math.round((GIVEN.paidCount / GIVEN.totalRows) * 100);
   }
 
   get progressCaption(): string {
     if (this.loanType === 'received') {
-      return this.progressPercent + '% pagado · ' + RECV.currentNum + ' de ' + RECV.n + ' cuotas';
+      return this.progressPercent + '% pagado · ' + this.currentNum + ' de ' + RECV.n + ' cuotas';
     }
     return this.progressPercent + '% cobrado · ' + GIVEN.paidCount + ' de ' + GIVEN.totalRows + ' cuotas';
   }
@@ -404,9 +413,13 @@ export class FinancingComponent implements OnInit {
       : 'RD$' + GIVEN.installment.toLocaleString();
   }
 
-  get totalPaidFormatted(): string    { return 'RD$' + RECV.totalPaid.toLocaleString(); }
-  get interestPaidFormatted(): string { return 'RD$' + RECV.interestPaid.toLocaleString(); }
-  get principalPaidFormatted(): string { return 'RD$' + RECV.principalPaid.toLocaleString(); }
+  get totalPaid(): number      { return this.amortization.slice(0, this.currentNum - 1).reduce((s, r) => s + r.interest + r.principal, 0); }
+  get interestPaid(): number   { return this.amortization.slice(0, this.currentNum - 1).reduce((s, r) => s + r.interest, 0); }
+  get principalPaid(): number  { return this.amortization.slice(0, this.currentNum - 1).reduce((s, r) => s + r.principal, 0); }
+
+  get totalPaidFormatted(): string     { return 'RD$' + this.totalPaid.toLocaleString(); }
+  get interestPaidFormatted(): string  { return 'RD$' + this.interestPaid.toLocaleString(); }
+  get principalPaidFormatted(): string { return 'RD$' + this.principalPaid.toLocaleString(); }
   get collectedFormatted(): string    { return 'RD$' + GIVEN.collected.toLocaleString(); }
   get remainingFormatted(): string    { return 'RD$' + GIVEN.remaining.toLocaleString(); }
 
@@ -415,10 +428,10 @@ export class FinancingComponent implements OnInit {
   }
 
   // ── Amortization table ──────────────────────────────────────────────
-  readonly amortization: AmortizationRow[] = this.buildAmortization();
+  amortization: AmortizationRow[] = this.buildAmortization();
 
   private buildAmortization(): AmortizationRow[] {
-    const { P, r, n, pmt, currentNum } = RECV;
+    const { P, r, n, pmt } = RECV;
     const rows: AmortizationRow[] = [];
     let balance = P;
 
@@ -426,15 +439,25 @@ export class FinancingComponent implements OnInit {
       const interest  = Math.round(balance * r);
       const principal = Math.round(pmt - interest);
       balance = Math.max(0, Math.round(balance - principal));
-      rows.push({ num: i, interest, principal, balance, current: i === currentNum });
+      rows.push({ num: i, interest, principal, balance, current: i === this.currentNum });
     }
     return rows;
   }
 
   get visibleAmortization(): AmortizationRow[] {
     if (this.showFullSchedule) return this.amortization;
-    const idx = RECV.currentNum - 1;
-    return this.amortization.slice(idx, idx + 3);
+    const start = Math.max(0, this.currentNum - 3);
+    const end   = Math.min(this.amortization.length, this.currentNum + 3);
+    return this.amortization.slice(start, end);
+  }
+
+  registerPayment(): void {
+    if (this.currentNum >= RECV.n) return;
+    const cur = this.amortization.find(r => r.num === this.currentNum);
+    if (cur) cur.current = false;
+    this.currentNum++;
+    const next = this.amortization.find(r => r.num === this.currentNum);
+    if (next) next.current = true;
   }
 
   // ── Given loan schedule ─────────────────────────────────────────────
@@ -473,12 +496,12 @@ export class FinancingComponent implements OnInit {
     this.impactReady = false;
     if (!this.principalAmount || this.principalAmount <= 0) return;
 
-    const newBalance = RECV.balance - this.principalAmount;
+    const newBalance = this.currentBalance - this.principalAmount;
     if (newBalance <= 0) return;
 
     const r   = RECV.r;
     const pmt = RECV.pmt;
-    const remainingInstallments = RECV.n - RECV.currentNum;
+    const remainingInstallments = RECV.n - this.currentNum;
 
     if (this.principalMode === 'reduce-term') {
       const n_new   = Math.ceil(-Math.log(1 - (newBalance * r) / pmt) / Math.log(1 + r));

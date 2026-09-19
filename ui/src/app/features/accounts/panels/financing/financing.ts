@@ -1,6 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { RouterLink, ActivatedRoute } from '@angular/router';
 
 type LoanType     = 'received' | 'given';
 type PrincipalMode = 'reduce-term' | 'reduce-installment';
@@ -335,9 +335,15 @@ const GIVEN = {
     </div>
   `,
 })
-export class FinancingComponent {
-  // Demo: switch between 'received' and 'given' — will come from route data
-  readonly loanType: LoanType = 'received';
+export class FinancingComponent implements OnInit {
+  loanType: LoanType = 'received';
+
+  constructor(private route: ActivatedRoute) {}
+
+  ngOnInit(): void {
+    const type = this.route.snapshot.queryParamMap.get('type');
+    if (type === 'given') this.loanType = 'given';
+  }
 
   showSchedule       = false;
   showFullSchedule   = false;

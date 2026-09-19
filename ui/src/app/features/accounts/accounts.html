@@ -112,6 +112,20 @@
               </div>
             </button>
 
+            <button [routerLink]="['financing']" [queryParams]="{type: 'given'}" class="account-row group">
+              <div class="flex-1 min-w-0 text-left">
+                <p class="text-sm font-medium text-gray-900 truncate">1040 Préstamo Emeli Espinal</p>
+                <p class="text-xs text-gray-400 truncate">22 may · Cuota 4 cobrada</p>
+              </div>
+              <div class="flex items-center gap-2 shrink-0">
+                <div class="text-right">
+                  <p class="text-sm font-medium text-gray-900">RD$24,000</p>
+                  <p class="text-xs text-income">+RD$3,000</p>
+                </div>
+                <svg class="w-3.5 h-3.5 text-gray-300 group-hover:text-gray-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>
+              </div>
+            </button>
+
           </div>
         </div>
 

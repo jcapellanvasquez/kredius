@@ -76,8 +76,8 @@ const CATEGORIES = [
           [class.bg-brand-600]="flow === 'credit-card'"
           [class.text-white]="flow === 'credit-card'"
           [class.border-brand-600]="flow === 'credit-card'"
-          [class.bg-white]="flow !== 'credit-card'"
-          [class.text-gray-600]="flow !== 'credit-card'"
+          [class.bg-brand-50]="flow !== 'credit-card'"
+          [class.text-brand-800]="flow !== 'credit-card'"
           [class.border-gray-300]="flow !== 'credit-card'">
           Tarjeta de crédito
         </button>
@@ -86,8 +86,8 @@ const CATEGORIES = [
           [class.bg-brand-600]="flow === 'savings'"
           [class.text-white]="flow === 'savings'"
           [class.border-brand-600]="flow === 'savings'"
-          [class.bg-white]="flow !== 'savings'"
-          [class.text-gray-600]="flow !== 'savings'"
+          [class.bg-brand-50]="flow !== 'savings'"
+          [class.text-brand-800]="flow !== 'savings'"
           [class.border-gray-300]="flow !== 'savings'">
           Cuenta de ahorros
         </button>

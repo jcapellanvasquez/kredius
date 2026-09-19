@@ -68,8 +68,8 @@ interface HistoryEntry {
                 class="px-3 py-2 text-sm font-medium transition-colors"
                 [class.bg-brand-600]="currency === 'dop'"
                 [class.text-white]="currency === 'dop'"
-                [class.bg-white]="currency !== 'dop'"
-                [class.text-gray-600]="currency !== 'dop'"
+                [class.bg-brand-50]="currency !== 'dop'"
+                [class.text-brand-800]="currency !== 'dop'"
               >RD$</button>
               <button
                 type="button"
@@ -77,8 +77,8 @@ interface HistoryEntry {
                 class="px-3 py-2 text-sm font-medium border-l border-gray-300 transition-colors"
                 [class.bg-brand-600]="currency === 'usd'"
                 [class.text-white]="currency === 'usd'"
-                [class.bg-white]="currency !== 'usd'"
-                [class.text-gray-600]="currency !== 'usd'"
+                [class.bg-brand-50]="currency !== 'usd'"
+                [class.text-brand-800]="currency !== 'usd'"
               >US$</button>
             </div>
           </div>

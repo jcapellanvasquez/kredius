@@ -47,10 +47,9 @@ interface TypeOption {
                 [class.bg-brand-600]="selectedType === opt.value"
                 [class.text-white]="selectedType === opt.value"
                 [class.border-brand-600]="selectedType === opt.value"
-                [class.bg-white]="selectedType !== opt.value"
-                [class.text-gray-600]="selectedType !== opt.value"
-                [class.border-gray-300]="selectedType !== opt.value"
-                [class.hover:bg-brand-50]="selectedType !== opt.value"
+                [class.bg-brand-50]="selectedType !== opt.value"
+                [class.text-brand-800]="selectedType !== opt.value"
+                [class.border-brand-200]="selectedType !== opt.value"
               >
                 {{ opt.label }}
               </button>

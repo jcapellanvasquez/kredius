@@ -3,6 +3,11 @@ spring:
     name: kredius-api
   jackson:
     default-property-inclusion: non_null
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    open-in-view: false
+    show-sql: false
 
 server:
   port: 8080

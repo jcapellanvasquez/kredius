@@ -1,0 +1,6 @@
+package com.kredius.be.repository
+
+import com.kredius.be.entity.MerchantDictionary
+import org.springframework.data.jpa.repository.JpaRepository
+
+interface MerchantDictionaryRepository : JpaRepository<MerchantDictionary, Long>

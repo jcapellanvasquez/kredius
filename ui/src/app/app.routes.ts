@@ -4,7 +4,7 @@ export const routes: Routes = [
   { path: '', redirectTo: 'accounts', pathMatch: 'full' },
   {
     path: 'accounts',
-    loadChildren: () => import('./features/cuentas/cuentas.routes').then((m) => m.cuentasRoutes),
+    loadChildren: () => import('./features/accounts/accounts.routes').then((m) => m.accountsRoutes),
   },
   { path: '**', redirectTo: 'accounts' },
 ];

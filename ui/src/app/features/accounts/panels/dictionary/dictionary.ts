@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
 
 @Component({
-  selector: 'app-diccionario',
+  selector: 'app-dictionary',
   template: `
     <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
       <h1 class="text-lg font-semibold text-gray-900">Diccionario de comercios</h1>
@@ -9,4 +9,4 @@ import { Component } from '@angular/core';
     </div>
   `,
 })
-export class DiccionarioComponent {}
+export class DictionaryComponent {}

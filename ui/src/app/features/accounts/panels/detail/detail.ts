@@ -15,7 +15,7 @@ import {
 Chart.register(LineController, LineElement, PointElement, LinearScale, CategoryScale, Tooltip, Filler);
 
 @Component({
-  selector: 'app-detalle',
+  selector: 'app-detail',
   imports: [FormsModule],
   host: { class: 'block' },
   template: `
@@ -120,7 +120,7 @@ Chart.register(LineController, LineElement, PointElement, LinearScale, CategoryS
     </div>
   `,
 })
-export class DetalleComponent implements AfterViewInit, OnDestroy {
+export class DetailComponent implements AfterViewInit, OnDestroy {
   @ViewChild('trendChart') private canvasRef!: ElementRef<HTMLCanvasElement>;
   private chart?: Chart;
 

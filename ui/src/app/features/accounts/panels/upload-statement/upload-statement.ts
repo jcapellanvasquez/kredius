@@ -72,23 +72,19 @@ const CATEGORIES = [
       <!-- Account type selector -->
       <div class="flex gap-2">
         <button type="button" (click)="flow = 'credit-card'; reset()"
-          class="flex-1 py-2.5 text-sm font-medium rounded-xl border transition-colors"
+          class="flex-1 py-2.5 text-sm font-medium rounded-xl transition-colors"
           [class.bg-brand-600]="flow === 'credit-card'"
           [class.text-white]="flow === 'credit-card'"
-          [class.border-brand-600]="flow === 'credit-card'"
           [class.bg-brand-50]="flow !== 'credit-card'"
-          [class.text-brand-800]="flow !== 'credit-card'"
-          [class.border-gray-300]="flow !== 'credit-card'">
+          [class.text-brand-800]="flow !== 'credit-card'">
           Tarjeta de crédito
         </button>
         <button type="button" (click)="flow = 'savings'; reset()"
-          class="flex-1 py-2.5 text-sm font-medium rounded-xl border transition-colors"
+          class="flex-1 py-2.5 text-sm font-medium rounded-xl transition-colors"
           [class.bg-brand-600]="flow === 'savings'"
           [class.text-white]="flow === 'savings'"
-          [class.border-brand-600]="flow === 'savings'"
           [class.bg-brand-50]="flow !== 'savings'"
-          [class.text-brand-800]="flow !== 'savings'"
-          [class.border-gray-300]="flow !== 'savings'">
+          [class.text-brand-800]="flow !== 'savings'">
           Cuenta de ahorros
         </button>
       </div>
@@ -105,7 +101,7 @@ const CATEGORIES = [
             <p class="text-sm font-medium text-gray-700">Haz clic para seleccionar el archivo</p>
             <p class="text-xs text-gray-400 mt-0.5">PDF o CSV · máx. 10 MB</p>
           </div>
-          <span class="px-4 py-1.5 text-xs font-medium text-brand-600 border border-brand-300 rounded-full">
+          <span class="px-4 py-1.5 text-xs font-medium text-brand-800 bg-brand-50 rounded-full">
             Seleccionar archivo
           </span>
         </div>
@@ -219,7 +215,7 @@ const CATEGORIES = [
                       <p class="text-xs text-gray-400 mt-0.5">{{ usdConversionLabel(line) }}</p>
                     }
                   </div>
-                  <span class="shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-brand-50 text-brand-700 border border-brand-100">
+                  <span class="shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-brand-50 text-brand-800">
                     {{ line.category }}
                   </span>
                   <span class="shrink-0 text-sm font-medium text-expense">{{ formatRD(line.rdEquiv) }}</span>
@@ -258,13 +254,13 @@ const CATEGORIES = [
                     <div class="flex flex-wrap gap-2">
                       @for (sug of m.suggestions; track sug) {
                         <button type="button" (click)="resolveNewMerchant(m.id, sug)"
-                          class="px-3 py-1 text-xs font-medium rounded-full border border-brand-300 text-brand-700 hover:bg-brand-100 transition-colors">
+                          class="px-3 py-1 text-xs font-medium rounded-full bg-brand-50 text-brand-800 hover:bg-brand-100 transition-colors">
                           {{ sug }}
                         </button>
                       }
                       @if (!m.showDropdown) {
                         <button type="button" (click)="m.showDropdown = true"
-                          class="px-3 py-1 text-xs font-medium rounded-full border border-gray-300 text-gray-600 hover:bg-gray-100 transition-colors">
+                          class="px-3 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">
                           Otra categoría ▾
                         </button>
                       } @else {
@@ -329,7 +325,7 @@ const CATEGORIES = [
             <p class="text-base font-semibold text-green-800">Corte registrado</p>
             <p class="text-sm text-green-600 text-center">{{ categorized.length + newMerchants.length }} transacciones importadas · {{ newMerchants.length }} comercios nuevos guardados en el diccionario.</p>
             <button type="button" (click)="reset()"
-              class="mt-2 px-4 py-1.5 text-xs font-medium text-brand-600 border border-brand-300 rounded-full hover:bg-brand-50 transition-colors">
+              class="mt-2 px-4 py-1.5 text-xs font-medium text-brand-800 bg-brand-50 rounded-full hover:bg-brand-100 transition-colors">
               Subir otro corte
             </button>
           </div>
@@ -466,7 +462,7 @@ const CATEGORIES = [
             <p class="text-base font-semibold text-green-800">Movimientos registrados</p>
             <p class="text-sm text-green-600 text-center">{{ savingsDeposits.length + savingsMovements.length }} líneas importadas a tu cuenta de ahorros.</p>
             <button type="button" (click)="reset()"
-              class="mt-2 px-4 py-1.5 text-xs font-medium text-brand-600 border border-brand-300 rounded-full hover:bg-brand-50 transition-colors">
+              class="mt-2 px-4 py-1.5 text-xs font-medium text-brand-800 bg-brand-50 rounded-full hover:bg-brand-100 transition-colors">
               Subir otro corte
             </button>
           </div>

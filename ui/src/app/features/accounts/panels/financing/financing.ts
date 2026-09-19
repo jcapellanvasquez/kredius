@@ -238,7 +238,7 @@ const GIVEN = {
             Registrar cuota
           </button>
           <button type="button" (click)="showPrincipalPayment = true"
-            class="flex-1 py-2.5 text-sm font-medium text-brand-800 bg-brand-50 border border-brand-200 rounded-xl hover:bg-brand-100 transition-colors">
+            class="flex-1 py-2.5 text-sm font-medium text-brand-800 bg-brand-50 rounded-xl hover:bg-brand-100 transition-colors">
             Abono a capital
           </button>
         </div>

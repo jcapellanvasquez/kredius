@@ -43,13 +43,11 @@ interface TypeOption {
               <button
                 type="button"
                 (click)="selectType(opt.value)"
-                class="px-4 py-1.5 rounded-full text-sm font-medium border transition-colors"
+                class="px-4 py-1.5 rounded-full text-sm font-medium transition-colors"
                 [class.bg-brand-600]="selectedType === opt.value"
                 [class.text-white]="selectedType === opt.value"
-                [class.border-brand-600]="selectedType === opt.value"
                 [class.bg-brand-50]="selectedType !== opt.value"
                 [class.text-brand-800]="selectedType !== opt.value"
-                [class.border-brand-200]="selectedType !== opt.value"
               >
                 {{ opt.label }}
               </button>

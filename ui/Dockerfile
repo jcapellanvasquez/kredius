@@ -1,7 +1,7 @@
 FROM node:20-alpine AS build
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci
+RUN NODE_ENV=development npm ci
 COPY . .
 RUN node node_modules/@angular/cli/bin/ng.js build --configuration=production
 

@@ -9,6 +9,7 @@ export type { CreateAccountRequest } from './models/create-account-request';
 export type { CreateLoanRequest } from './models/create-loan-request';
 export type { ErrorResponse } from './models/error-response';
 export type { HealthResponse } from './models/health-response';
+export type { LoanData } from './models/loan-data';
 export type { LoanFrequency } from './models/loan-frequency';
 export type { LoanResponse } from './models/loan-response';
 export type { LoanType } from './models/loan-type';

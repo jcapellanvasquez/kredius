@@ -23,10 +23,12 @@ import {
   Filler,
   type ChartConfiguration,
 } from 'chart.js';
+import { forkJoin, timer } from 'rxjs';
 import { ApiConfiguration } from '../../../../api/api-configuration';
 import { getAccountDetail } from '../../../../api/fn/accounts/get-account-detail';
 import { getAccountTransactions } from '../../../../api/fn/accounts/get-account-transactions';
 import { AccountDetailResponse } from '../../../../api/models/account-detail-response';
+import { LoanData } from '../../../../api/models/loan-data';
 import { TransactionItem } from '../../../../api/models/transaction-item';
 
 Chart.register(LineController, LineElement, PointElement, LinearScale, CategoryScale, Tooltip, Filler);
@@ -54,6 +56,8 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly _detail = signal<AccountDetailResponse | null>(null);
   private readonly _movements = signal<Movement[]>([]);
   private readonly _totalTransactions = signal(0);
+  readonly loading = signal(true);
+  readonly errorCode = signal<number | null>(null);
 
   threshold = 15;
   showInAlerts = false;
@@ -72,6 +76,7 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   get hasLoan(): boolean { return this._detail()?.loanAccount ?? false; }
+  get loanData(): LoanData | null { return this._detail()?.loanData ?? null; }
 
   get typeLabel(): string {
     const labels: Record<LocalAccountType, string> = {
@@ -119,24 +124,33 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
   ngOnInit(): void {
     this.route.queryParamMap.subscribe(params => {
       const id = Number(params.get('id'));
-      if (!id) return;
+      if (!id) { this.loading.set(false); return; }
       this.accountId = id;
       this.currentPage = 0;
       this._movements.set([]);
       this._detail.set(null);
+      this.errorCode.set(null);
+      this.loading.set(true);
       this.loadDetail(id);
     });
   }
 
   private loadDetail(id: number): void {
-    getAccountDetail(this.http, this.rootUrl, { id }).subscribe(res => {
-      const d = res.body!;
-      this._detail.set(d);
-      this._totalTransactions.set(d.totalTransactions ?? 0);
-      this._movements.set((d.transactions ?? []).map(t => this.toMovement(t)));
-      this.threshold = d.thresholdPct ?? 15;
-      this.showInAlerts = d.showInAlerts ?? false;
-      if (this.viewReady) this.buildChart(d);
+    forkJoin([getAccountDetail(this.http, this.rootUrl, { id }), timer(300)]).subscribe({
+      next: ([res]) => {
+        const d = (res as (typeof res)).body!;
+        this._detail.set(d);
+        this._totalTransactions.set(d.totalTransactions ?? 0);
+        this._movements.set((d.transactions ?? []).map(t => this.toMovement(t)));
+        this.threshold = d.thresholdPct ?? 15;
+        this.showInAlerts = d.showInAlerts ?? false;
+        this.loading.set(false);
+        if (this.viewReady) this.buildChart(d);
+      },
+      error: err => {
+        this.errorCode.set(err?.status ?? 0);
+        this.loading.set(false);
+      },
     });
   }
 
@@ -152,9 +166,14 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
       id: this.accountId,
       page: this.currentPage,
       size: 5,
-    }).subscribe(res => {
-      const items = res.body?.items ?? [];
-      this._movements.update(prev => [...prev, ...items.map(t => this.toMovement(t))]);
+    }).subscribe({
+      next: res => {
+        const items = res.body?.items ?? [];
+        this._movements.update(prev => [...prev, ...items.map(t => this.toMovement(t))]);
+      },
+      error: () => {
+        this.currentPage--;
+      },
     });
   }
 

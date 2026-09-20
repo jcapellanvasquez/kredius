@@ -7,4 +7,6 @@ import org.springframework.data.jpa.repository.Query
 interface LoanRepository : JpaRepository<Loan, Long> {
     @Query("SELECT l.account.id FROM Loan l")
     fun findLoanAccountIds(): Set<Long>
+
+    fun findByAccountId(accountId: Long): Loan?
 }

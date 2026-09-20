@@ -1,10 +1,12 @@
 package com.kredius.be.controller
 
 import com.kredius.be.api.AccountsApi
+import com.kredius.be.model.AccountDetailResponse
 import com.kredius.be.model.AccountResponse
 import com.kredius.be.model.AccountSummaryResponse
 import com.kredius.be.model.AccountType
 import com.kredius.be.model.CreateAccountRequest
+import com.kredius.be.model.TransactionPageResponse
 import com.kredius.be.service.AccountService
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -21,4 +23,10 @@ class AccountController(private val accountService: AccountService) : AccountsAp
 
     override fun createAccount(createAccountRequest: CreateAccountRequest): ResponseEntity<AccountResponse> =
         ResponseEntity.status(HttpStatus.CREATED).body(accountService.create(createAccountRequest))
+
+    override fun getAccountDetail(id: Long): ResponseEntity<AccountDetailResponse> =
+        ResponseEntity.ok(accountService.getDetail(id))
+
+    override fun getAccountTransactions(id: Long, page: Int, size: Int): ResponseEntity<TransactionPageResponse> =
+        ResponseEntity.ok(accountService.getTransactions(id, page, size))
 }

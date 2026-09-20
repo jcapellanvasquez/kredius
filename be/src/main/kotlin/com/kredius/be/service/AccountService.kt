@@ -3,16 +3,23 @@ package com.kredius.be.service
 import com.kredius.be.entity.Account
 import com.kredius.be.entity.AccountType
 import com.kredius.be.entity.InstallmentStatus
+import com.kredius.be.exception.ApiException
+import com.kredius.be.model.AccountDetailResponse
 import com.kredius.be.model.AccountResponse
 import com.kredius.be.model.AccountSummaryResponse
 import com.kredius.be.model.CreateAccountRequest
-import com.kredius.be.model.LoanFrequency
+import com.kredius.be.model.MonthlyBalancePoint
+import com.kredius.be.model.TransactionItem
+import com.kredius.be.model.TransactionPageResponse
 import com.kredius.be.repository.AccountRepository
 import com.kredius.be.repository.JournalLineRepository
 import com.kredius.be.repository.LoanRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
+import java.time.LocalDate
+import java.time.format.TextStyle
+import java.util.Locale
 import com.kredius.be.model.AccountType as ApiAccountType
 import com.kredius.be.model.LoanType as ApiLoanType
 
@@ -77,6 +84,90 @@ class AccountService(
                 )
             }
     }
+
+    fun getDetail(id: Long): AccountDetailResponse {
+        val userId  = currentUser.id
+        val account = accountRepo.findByIdAndUserId(id, userId)
+            ?: throw ApiException("NOT_FOUND", "Account not found", org.springframework.http.HttpStatus.NOT_FOUND)
+
+        // Current balance
+        val balances = journalLineRepo.findAccountBalances(userId).associateBy { it.accountId }
+        val bal      = balances[id]
+        val balance  = netBalance(account.type, bal?.totalDebit ?: BigDecimal.ZERO, bal?.totalCredit ?: BigDecimal.ZERO)
+
+        // 6-month trend: base balance + cumulative monthly flow
+        val today       = LocalDate.now()
+        val windowStart = today.withDayOfMonth(1).minusMonths(5)
+        val base        = journalLineRepo.findBalanceBefore(userId, id, windowStart)
+        val baseNet     = (base.totalDebit) - (base.totalCredit)  // net debit before window
+        val flowByMonth = journalLineRepo.findMonthlyFlow(userId, id, windowStart)
+            .associateBy { it.monthStart }
+
+        var runningNet = baseNet
+        val trend = (0L..5L).map { offset ->
+            val monthStart = windowStart.plusMonths(offset)
+            val flow       = flowByMonth[monthStart]
+            runningNet    += (flow?.totalDebit ?: BigDecimal.ZERO) - (flow?.totalCredit ?: BigDecimal.ZERO)
+            MonthlyBalancePoint(
+                month   = monthStart.month.getDisplayName(TextStyle.SHORT, Locale("es")).lowercase().removeSuffix("."),
+                balance = netBalance(account.type, runningNet, BigDecimal.ZERO).toDouble(),
+            )
+        }
+
+        // First page of transactions
+        val txViews = journalLineRepo.findTransactions(userId, id, pageSize = 5, pageOffset = 0)
+        val txTotal = journalLineRepo.countTransactions(userId, id)
+
+        // Loan info
+        val loan = loanRepo.findByAccountId(id)
+
+        return AccountDetailResponse(
+            id                = account.id,
+            code              = account.code,
+            name              = account.name,
+            type              = ApiAccountType.valueOf(account.type.name),
+            balance           = balance.toDouble(),
+            showInAlerts      = account.showInAlerts,
+            thresholdPct      = account.thresholdPct?.toDouble(),
+            loanAccount       = loan != null,
+            loanId            = loan?.id,
+            trend             = trend,
+            transactions      = txViews.map { it.toItem(account.type) },
+            totalTransactions = txTotal,
+        )
+    }
+
+    fun getTransactions(id: Long, page: Int, size: Int): TransactionPageResponse {
+        val userId  = currentUser.id
+        val account = accountRepo.findByIdAndUserId(id, userId)
+            ?: throw ApiException("NOT_FOUND", "Account not found", org.springframework.http.HttpStatus.NOT_FOUND)
+
+        val offset = page * size
+        val items  = journalLineRepo.findTransactions(userId, id, pageSize = size, pageOffset = offset)
+        val total  = journalLineRepo.countTransactions(userId, id)
+
+        return TransactionPageResponse(
+            items      = items.map { it.toItem(account.type) },
+            totalCount = total,
+        )
+    }
+
+    // Net balance in display terms: positive = normal/healthy for account type
+    private fun netBalance(type: AccountType, debit: BigDecimal, credit: BigDecimal): BigDecimal {
+        val netDebit = debit - credit
+        return when (type) {
+            AccountType.ASSET, AccountType.EXPENSE -> netDebit
+            else                                   -> netDebit.negate()
+        }
+    }
+
+    private fun com.kredius.be.repository.TransactionView.toItem(type: AccountType) = TransactionItem(
+        id          = id,
+        date        = entryDate,
+        description = description,
+        amountRd    = amountRd.toDouble(),
+        inflow      = signedTxValue(type, side, amountRd) > 0,
+    )
 
     @Transactional
     fun create(request: CreateAccountRequest): AccountResponse {

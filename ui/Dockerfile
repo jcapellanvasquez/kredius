@@ -1,6 +1,7 @@
 FROM node:20-alpine AS build
 ENV NODE_ENV=development
 WORKDIR /app
+RUN npm install -g npm@12
 COPY . .
 RUN rm -rf node_modules && npm ci
 RUN npm run build -- --configuration=production

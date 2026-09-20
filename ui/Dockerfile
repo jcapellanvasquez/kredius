@@ -1,7 +1,8 @@
 FROM node:20-alpine AS build
+ENV NODE_ENV=development
 WORKDIR /app
 COPY . .
-RUN rm -rf node_modules && npm install --include=dev
+RUN rm -rf node_modules && npm install
 RUN npm run build -- --configuration=production
 
 FROM nginx:alpine

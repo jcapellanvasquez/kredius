@@ -1,0 +1,85 @@
+# DO NOT APPLY until you are ready to switch from embedded to real Postgres.
+#
+# To switch:
+# 1. Apply this file:          kubectl apply -f 10-postgres.yaml
+# 2. Add postgres credentials to 01-secret.yaml (postgres-user, postgres-password)
+#    and re-apply:             kubectl apply -f 01-secret.yaml
+# 3. In 20-backend.yaml, uncomment the SPRING_DATASOURCE_* env vars and re-apply:
+#                              kubectl apply -f 20-backend.yaml
+# 4. The backend pod will restart (Recreate strategy), connect to the postgres
+#    Service, and run Flyway/Liquibase migrations on first boot.
+# NOTE: on first boot with real Postgres the database is empty — DataInitializer
+#       will re-seed the test data automatically since it checks for existing rows.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pvc
+  namespace: kredius
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: kredius
+spec:
+  serviceName: postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: kredius
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: kredius-secret
+                  key: postgres-user
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: kredius-secret
+                  key: postgres-password
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+          resources:
+            requests:
+              memory: 128Mi
+              cpu: 100m
+            limits:
+              memory: 512Mi
+              cpu: 500m
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: postgres-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: kredius
+spec:
+  type: ClusterIP
+  selector:
+    app: postgres
+  ports:
+    - port: 5432
+      targetPort: 5432

@@ -145,7 +145,7 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
         this.threshold = d.thresholdPct ?? 15;
         this.showInAlerts = d.showInAlerts ?? false;
         this.loading.set(false);
-        if (this.viewReady) this.buildChart(d);
+        if (this.viewReady) setTimeout(() => this.buildChart(d));
       },
       error: err => {
         this.errorCode.set(err?.status ?? 0);
@@ -255,7 +255,12 @@ export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
               color: '#9ca3af',
               font: { size: 11, family: 'inherit' },
               stepSize,
-              callback: v => v === 0 ? '0' : ((v as number) / 1000) + 'k',
+              callback: v => {
+                const n = v as number;
+                if (n === 0) return '0';
+                if (n < 1000) return Math.round(n).toLocaleString('es-DO');
+                return Math.round(n / 1000) + 'k';
+              },
             },
           },
         },

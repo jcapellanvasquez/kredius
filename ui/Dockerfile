@@ -2,7 +2,14 @@ FROM node:20-alpine AS build
 ENV NODE_ENV=development
 WORKDIR /app
 COPY . .
+RUN echo "=== NODE_ENV: $NODE_ENV ===" && \
+    echo "=== npm version ===" && npm --version && \
+    echo "=== node version ===" && node --version
 RUN rm -rf node_modules && npm install
+RUN echo "=== @angular/cli installed? ===" && \
+    ls node_modules/@angular/cli/ 2>&1 | head -10 || echo "NOT FOUND" && \
+    echo "=== .bin/ng exists? ===" && \
+    ls -la node_modules/.bin/ng 2>&1 || echo "ng NOT in .bin"
 RUN npm run build -- --configuration=production
 
 FROM nginx:alpine

@@ -4,6 +4,7 @@ import { provideHttpClient, withInterceptors } from '@angular/common/http';
 
 import { routes } from './app.routes';
 import { ApiConfiguration } from './api/api-configuration';
+import { environment } from '../environments/environment';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -11,6 +12,6 @@ export const appConfig: ApplicationConfig = {
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(routes, withComponentInputBinding()),
     provideHttpClient(withInterceptors([])),
-    { provide: ApiConfiguration, useValue: { rootUrl: 'http://localhost:8080' } },
+    { provide: ApiConfiguration, useValue: { rootUrl: environment.apiRootUrl } },
   ],
 };

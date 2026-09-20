@@ -1,11 +1,13 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
+import { AccountApiService } from '../../account-api.service';
+import { AccountType } from '../../../../api/models/account-type';
 
-type AccountType = 'expense' | 'income' | 'asset' | 'liability';
+type LocalAccountType = 'expense' | 'income' | 'asset' | 'liability';
 
 interface TypeOption {
-  value: AccountType;
+  value: LocalAccountType;
   label: string;
 }
 
@@ -163,10 +165,10 @@ interface TypeOption {
         <button
           type="button"
           (click)="createAccount()"
-          [disabled]="!isValid"
+          [disabled]="!isValid || saving"
           class="px-4 py-2 text-sm font-medium text-white bg-brand-600 rounded-lg hover:bg-brand-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
-          Crear cuenta
+          {{ saving ? 'Guardando...' : 'Crear cuenta' }}
         </button>
       </div>
 
@@ -174,11 +176,15 @@ interface TypeOption {
   `,
 })
 export class NewAccountComponent {
+  private readonly accountSvc = inject(AccountApiService);
+  private readonly router = inject(Router);
+
   name = '';
-  selectedType: AccountType | null = null;
+  selectedType: LocalAccountType | null = null;
   openingBalance = 0;
   threshold = 15;
   showInAlerts = true;
+  saving = false;
 
   readonly typeOptions: TypeOption[] = [
     { value: 'expense',   label: 'Gasto'   },
@@ -187,7 +193,7 @@ export class NewAccountComponent {
     { value: 'liability', label: 'Pasivo'   },
   ];
 
-  selectType(type: AccountType): void {
+  selectType(type: LocalAccountType): void {
     this.selectedType = type;
     this.openingBalance = 0;
   }
@@ -222,7 +228,24 @@ export class NewAccountComponent {
   }
 
   createAccount(): void {
-    if (!this.isValid) return;
-    // TODO: wire to API
+    if (!this.isValid || this.saving) return;
+    this.saving = true;
+
+    const typeMap: Record<LocalAccountType, AccountType> = {
+      asset:     'ASSET',
+      liability: 'LIABILITY',
+      income:    'INCOME',
+      expense:   'EXPENSE',
+    };
+
+    this.accountSvc.create({
+      name: this.name.trim(),
+      type: typeMap[this.selectedType!],
+      thresholdPct: this.selectedType === 'expense' ? this.threshold : undefined,
+      showInAlerts: this.selectedType === 'expense' ? this.showInAlerts : false,
+    }).subscribe({
+      next: () => this.router.navigate(['/accounts']),
+      error: () => { this.saving = false; },
+    });
   }
 }

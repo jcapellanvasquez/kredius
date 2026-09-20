@@ -1,9 +1,8 @@
 FROM node:20-alpine AS build
 WORKDIR /app
-COPY package*.json ./
-RUN npm install --include=dev
 COPY . .
-RUN node node_modules/@angular/cli/bin/ng.js build --configuration=production
+RUN rm -rf node_modules && npm install --include=dev
+RUN npm run build -- --configuration=production
 
 FROM nginx:alpine
 RUN addgroup -S kredius && adduser -S kredius -G kredius \

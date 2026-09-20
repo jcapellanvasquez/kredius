@@ -3,7 +3,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY . .
-RUN ./node_modules/.bin/ng build --configuration=production
+RUN node node_modules/@angular/cli/bin/ng.js build --configuration=production
 
 FROM nginx:alpine
 RUN addgroup -S kredius && adduser -S kredius -G kredius \

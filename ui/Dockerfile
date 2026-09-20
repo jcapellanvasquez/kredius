@@ -1,9 +1,9 @@
 FROM node:20-alpine AS build
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci --prefer-offline
+RUN npm ci
 COPY . .
-RUN npm run build -- --configuration=production
+RUN ./node_modules/.bin/ng build --configuration=production
 
 FROM nginx:alpine
 RUN addgroup -S kredius && adduser -S kredius -G kredius \

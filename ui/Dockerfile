@@ -3,7 +3,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci --prefer-offline
 COPY . .
-RUN npx ng build --configuration=production
+RUN npm run build -- --configuration=production
 
 FROM nginx:alpine
 RUN addgroup -S kredius && adduser -S kredius -G kredius \

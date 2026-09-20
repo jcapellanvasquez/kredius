@@ -1,13 +1,13 @@
-import { Component, OnInit, computed, inject } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { RouterLink, RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { DatePipe, DecimalPipe, NgTemplateOutlet } from '@angular/common';
+import { DatePipe, DecimalPipe, NgClass, NgTemplateOutlet } from '@angular/common';
 import { AccountApiService } from './account-api.service';
 import { AccountSummaryResponse } from '../../api/models/account-summary-response';
 
 @Component({
   selector: 'app-accounts',
-  imports: [RouterOutlet, RouterLink, FormsModule, DecimalPipe, DatePipe, NgTemplateOutlet],
+  imports: [RouterOutlet, RouterLink, FormsModule, DecimalPipe, DatePipe, NgClass, NgTemplateOutlet],
   templateUrl: './accounts.html',
   styleUrl: './accounts.css',
 })
@@ -18,6 +18,10 @@ export class AccountsComponent implements OnInit {
   showLoanPicker = false;
   showNavMenu    = false;
 
+  readonly selectedKey = signal<string | null>(null);
+
+  selectAccount(id: number | undefined): void { this.selectedKey.set('a-' + id); }
+
   budgetDrafts: Partial<Record<number, number>> = {};
 
   readonly loading         = this.accountSvc.loading;
@@ -27,6 +31,15 @@ export class AccountsComponent implements OnInit {
   readonly expenseAccounts = computed(() => this.accountSvc.byType('EXPENSE'));
   readonly incomeAccounts  = computed(() => this.accountSvc.byType('INCOME'));
   readonly equityAccounts  = computed(() => this.accountSvc.byType('EQUITY'));
+
+  readonly hasAnyAccounts  = computed(() =>
+    this.assetAccounts().length > 0  ||
+    this.liabilAccounts().length > 0  ||
+    this.equityAccounts().length > 0  ||
+    this.loanAccounts().length > 0    ||
+    this.expenseAccounts().length > 0 ||
+    this.incomeAccounts().length > 0
+  );
 
   ngOnInit() {
     this.accountSvc.load().subscribe();

@@ -86,16 +86,35 @@
         />
       </div>
 
-      <!-- Skeleton while loading -->
+      <!-- Loading spinner -->
       @if (loading()) {
-        <div class="flex-1 px-3 pb-3 space-y-4">
-          @for (_ of [1,2,3]; track $index) {
-            <div class="h-16 bg-gray-200 rounded-xl animate-pulse"></div>
-          }
+        <div class="flex-1 flex flex-col items-center justify-center gap-2 py-16">
+          <div class="w-5 h-5 border-2 border-brand-200 border-t-brand-500 rounded-full animate-spin"></div>
+          <p class="text-xs text-gray-400">Cargando cuentas...</p>
         </div>
       } @else {
 
+      <!-- Empty state -->
+      @if (!hasAnyAccounts()) {
+        <div class="flex-1 flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
+          <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
+            <svg class="w-5 h-5 text-gray-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+              <path d="M3 5m0 3a3 3 0 0 1 3 -3h12a3 3 0 0 1 3 3v8a3 3 0 0 1 -3 3h-12a3 3 0 0 1 -3 -3z" />
+              <path d="M3 10h18" />
+              <path d="M7 15h.01" />
+              <path d="M11 15h2" />
+            </svg>
+          </div>
+          <div>
+            <p class="text-sm font-medium text-gray-500">No tienes cuentas aún</p>
+            <p class="text-xs text-gray-400 mt-1">Usa <span class="font-medium text-gray-500">+ Nueva cuenta</span> para comenzar</p>
+          </div>
+        </div>
+      }
+
       <!-- Account groups -->
+      @if (hasAnyAccounts()) {
       <div class="flex-1 overflow-y-auto px-3 pb-3 space-y-4">
 
         <!-- Asset -->
@@ -172,7 +191,10 @@
           @if (loanAccounts().length > 0) {
             <div class="rounded-xl bg-white border border-gray-200 overflow-hidden divide-y divide-gray-100">
               @for (account of loanAccounts(); track account.id) {
-                <button [routerLink]="['financing']" [queryParams]="{id: account.loanId}" class="w-full px-3 py-2.5 text-left hover:bg-gray-50 transition-colors">
+                <button [routerLink]="['financing']" [queryParams]="{id: account.loanId}"
+                  (click)="selectAccount(account.id)"
+                  class="w-full px-3 py-2.5 text-left transition-colors"
+                  [ngClass]="selectedKey() === 'a-' + account.id ? 'bg-brand-50' : 'hover:bg-gray-50'">
                   <div class="flex items-center justify-between mb-1.5">
                     <div class="min-w-0 pr-2">
                       <p class="text-sm font-medium text-gray-900 truncate">{{ accountLabel(account) }}</p>
@@ -212,7 +234,8 @@
             <div class="rounded-xl bg-white border border-gray-200 overflow-hidden divide-y divide-gray-100">
               @for (account of expenseAccounts(); track account.id) {
                 @if (!showBudgetMode) {
-                  <button [routerLink]="['detail']" class="account-row group">
+                  <button [routerLink]="['detail']" (click)="selectAccount(account.id)"
+                    class="account-row group" [class.is-selected]="selectedKey() === 'a-' + account.id">
                     <div class="flex-1 min-w-0 text-left">
                       <div class="flex items-center justify-between gap-2">
                         <div class="flex items-center gap-1.5 min-w-0">
@@ -235,14 +258,14 @@
                           </p>
                         }
                       </div>
-                      @if (account.lastTransactionDate || account.lastTransactionDescription) {
-                        <div class="mt-0.5">
+                      <div class="mt-0.5 min-h-4">
+                        @if (account.lastTransactionDate || account.lastTransactionDescription) {
                           <p class="text-xs text-gray-400 truncate">
                             @if (account.lastTransactionDate) {{{ account.lastTransactionDate | date:'d MMM' }}}
                             @if (account.lastTransactionDescription) { · {{ account.lastTransactionDescription }}}
                           </p>
-                        </div>
-                      }
+                        }
+                      </div>
                     </div>
                     <svg class="w-3.5 h-3.5 text-gray-300 group-hover:text-gray-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
@@ -253,12 +276,14 @@
                   <div class="account-row">
                     <div class="flex-1 min-w-0 text-left">
                       <p class="text-sm font-medium text-gray-900 truncate">{{ accountLabel(account) }}</p>
-                      @if (account.lastTransactionDate || account.lastTransactionDescription) {
-                        <p class="text-xs text-gray-400 truncate mt-0.5">
-                          @if (account.lastTransactionDate) {{{ account.lastTransactionDate | date:'d MMM' }}}
-                          @if (account.lastTransactionDescription) { · {{ account.lastTransactionDescription }}}
-                        </p>
-                      }
+                      <div class="mt-0.5 min-h-4">
+                        @if (account.lastTransactionDate || account.lastTransactionDescription) {
+                          <p class="text-xs text-gray-400 truncate">
+                            @if (account.lastTransactionDate) {{{ account.lastTransactionDate | date:'d MMM' }}}
+                            @if (account.lastTransactionDescription) { · {{ account.lastTransactionDescription }}}
+                          </p>
+                        }
+                      </div>
                     </div>
                     <div class="text-right shrink-0">
                       <div class="flex items-center gap-1 justify-end">
@@ -290,13 +315,15 @@
         }
 
       </div>
+      } <!-- end @if hasAnyAccounts -->
       } <!-- end @else loading -->
 
     </aside>
 
     <!-- Reusable account row -->
     <ng-template #accountRow let-account let-showAlert="showAlert">
-      <button [routerLink]="['detail']" class="account-row group">
+      <button [routerLink]="['detail']" (click)="selectAccount(account.id)"
+        class="account-row group" [class.is-selected]="selectedKey() === 'a-' + account.id">
         <div class="flex-1 min-w-0 text-left">
           <!-- top: name · balance -->
           <div class="flex items-center justify-between gap-2">
@@ -312,9 +339,9 @@
               </p>
             }
           </div>
-          <!-- bottom: date · description · signed tx amount -->
-          @if (account.lastTransactionDate || account.lastTransactionDescription) {
-            <div class="flex items-center justify-between gap-2 mt-0.5">
+          <!-- bottom: date · description · signed tx amount (always rendered to keep row height uniform) -->
+          <div class="flex items-center justify-between gap-2 mt-0.5 min-h-4">
+            @if (account.lastTransactionDate || account.lastTransactionDescription) {
               <p class="text-xs text-gray-400 truncate">
                 @if (account.lastTransactionDate) {{{ account.lastTransactionDate | date:'d MMM' }}}
                 @if (account.lastTransactionDescription) { · {{ account.lastTransactionDescription }}}
@@ -326,8 +353,8 @@
                   {{ account.lastTransactionValue >= 0 ? '+' : '' }}RD${{ account.lastTransactionValue | number:'1.0-0' }}
                 </p>
               }
-            </div>
-          }
+            }
+          </div>
         </div>
         <svg class="w-3.5 h-3.5 text-gray-300 group-hover:text-gray-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path stroke="none" d="M0 0h24v24H0z" fill="none"/>

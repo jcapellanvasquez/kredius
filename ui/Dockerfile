@@ -2,7 +2,7 @@ FROM node:24-alpine AS build
 ENV NODE_ENV=development
 WORKDIR /app
 COPY . .
-RUN rm -rf node_modules && npm ci
+RUN npm install
 RUN npm run build -- --configuration=production
 
 FROM nginx:alpine

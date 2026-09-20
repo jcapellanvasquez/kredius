@@ -1,10 +1,8 @@
 FROM node:20-alpine AS build
 ENV NODE_ENV=development
 WORKDIR /app
-RUN npm config list
 COPY . .
-RUN rm -rf node_modules && npm install
-RUN ls node_modules/@angular/cli/bin/ng.js && ls -la node_modules/.bin/ng
+RUN rm -rf node_modules && npm ci
 RUN npm run build -- --configuration=production
 
 FROM nginx:alpine

@@ -18,7 +18,8 @@ export class AccountsComponent implements OnInit {
   showLoanPicker = false;
   showNavMenu    = false;
 
-  readonly selectedKey = signal<string | null>(null);
+  readonly selectedKey  = signal<string | null>(null);
+  readonly searchQuery  = signal('');
 
   selectAccount(id: number | undefined): void { this.selectedKey.set('a-' + id); }
 
@@ -32,13 +33,29 @@ export class AccountsComponent implements OnInit {
   readonly incomeAccounts  = computed(() => this.accountSvc.byType('INCOME'));
   readonly equityAccounts  = computed(() => this.accountSvc.byType('EQUITY'));
 
-  readonly hasAnyAccounts  = computed(() =>
+  readonly hasAnyAccounts = computed(() =>
     this.assetAccounts().length > 0  ||
     this.liabilAccounts().length > 0  ||
     this.equityAccounts().length > 0  ||
     this.loanAccounts().length > 0    ||
     this.expenseAccounts().length > 0 ||
     this.incomeAccounts().length > 0
+  );
+
+  readonly filteredAsset   = computed(() => this.filter(this.assetAccounts()));
+  readonly filteredLiabil  = computed(() => this.filter(this.liabilAccounts()));
+  readonly filteredEquity  = computed(() => this.filter(this.equityAccounts()));
+  readonly filteredExpense = computed(() => this.filter(this.expenseAccounts()));
+  readonly filteredIncome  = computed(() => this.filter(this.incomeAccounts()));
+  readonly filteredLoans   = computed(() => this.filterLoans(this.loanAccounts()));
+
+  readonly hasSearchResults = computed(() =>
+    this.filteredAsset().length > 0   ||
+    this.filteredLiabil().length > 0  ||
+    this.filteredEquity().length > 0  ||
+    this.filteredLoans().length > 0   ||
+    this.filteredExpense().length > 0 ||
+    this.filteredIncome().length > 0
   );
 
   ngOnInit() {
@@ -48,6 +65,24 @@ export class AccountsComponent implements OnInit {
   accountLabel(a: AccountSummaryResponse): string {
     const name = a.name ?? '';
     return a.code ? `${a.code} ${name}` : name;
+  }
+
+  private matches(a: AccountSummaryResponse, q: string): boolean {
+    return this.accountLabel(a).toLowerCase().includes(q);
+  }
+
+  private filter(list: AccountSummaryResponse[]): AccountSummaryResponse[] {
+    const q = this.searchQuery().trim().toLowerCase();
+    return q ? list.filter(a => this.matches(a, q)) : list;
+  }
+
+  private filterLoans(list: AccountSummaryResponse[]): AccountSummaryResponse[] {
+    const q = this.searchQuery().trim().toLowerCase();
+    if (!q) return list;
+    return list.filter(a =>
+      this.matches(a, q) ||
+      (a.loanCounterpartyName?.toLowerCase().includes(q) ?? false)
+    );
   }
 
   saveBudget(): void   { this.budgetDrafts = {}; this.showBudgetMode = false; }

@@ -362,6 +362,9 @@ components:
           type: integer
           format: int64
           nullable: true
+        loanData:
+          $ref: '#/components/schemas/LoanData'
+          nullable: true
         trend:
           type: array
           items:
@@ -422,6 +425,38 @@ components:
         timestamp:
           type: string
           format: date-time
+
+    LoanData:
+      type: object
+      properties:
+        type:
+          $ref: '#/components/schemas/LoanType'
+        counterpartyName:
+          type: string
+        principal:
+          type: number
+          format: double
+        rate:
+          type: number
+          format: double
+        frequency:
+          $ref: '#/components/schemas/LoanFrequency'
+        numInstallments:
+          type: integer
+          nullable: true
+        installmentAmount:
+          type: number
+          format: double
+        startDate:
+          type: string
+          format: date
+        paidCount:
+          type: integer
+          description: Number of PAID installments
+        remainingBalance:
+          type: number
+          format: double
+          description: Remaining loan balance (principal not yet paid)
 
     LoanType:
       type: string

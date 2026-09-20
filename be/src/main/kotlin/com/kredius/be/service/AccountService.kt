@@ -8,6 +8,7 @@ import com.kredius.be.model.AccountDetailResponse
 import com.kredius.be.model.AccountResponse
 import com.kredius.be.model.AccountSummaryResponse
 import com.kredius.be.model.CreateAccountRequest
+import com.kredius.be.model.LoanData
 import com.kredius.be.model.MonthlyBalancePoint
 import com.kredius.be.model.TransactionItem
 import com.kredius.be.model.TransactionPageResponse
@@ -20,7 +21,9 @@ import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.format.TextStyle
 import java.util.Locale
+import com.kredius.be.entity.LoanFrequency
 import com.kredius.be.model.AccountType as ApiAccountType
+import com.kredius.be.model.LoanFrequency as ApiLoanFrequency
 import com.kredius.be.model.LoanType as ApiLoanType
 
 @Service
@@ -32,8 +35,9 @@ class AccountService(
     private val currentUser: CurrentUserService,
 ) {
     fun getAll(type: ApiAccountType?): List<AccountResponse> {
-        val loanAccountIds = loanRepo.findLoanAccountIds()
-        return accountRepo.findAll()
+        val userId         = currentUser.id
+        val loanAccountIds = loanRepo.findLoanAccountIds(userId)
+        return accountRepo.findByUserId(userId)
             .filter { it.active }
             .let { if (type != null) it.filter { a -> a.type == AccountType.valueOf(type.value) } else it }
             .map { it.toResponse(loanAccount = it.id in loanAccountIds) }
@@ -41,11 +45,11 @@ class AccountService(
 
     fun getSummary(): List<AccountSummaryResponse> {
         val userId           = currentUser.id
-        val loansByAccountId = loanRepo.findAll().filter { it.active }.associateBy { it.account.id }
+        val loansByAccountId = loanRepo.findByUserId(userId).filter { it.active }.associateBy { it.account.id }
         val balances         = journalLineRepo.findAccountBalances(userId).associateBy { it.accountId }
         val lastTransactions = journalLineRepo.findLastTransactions(userId).associateBy { it.accountId }
 
-        return accountRepo.findAll()
+        return accountRepo.findByUserId(userId)
             .filter { it.active }
             .map { account ->
                 val bal    = balances[account.id]
@@ -119,7 +123,25 @@ class AccountService(
         val txTotal = journalLineRepo.countTransactions(userId, id)
 
         // Loan info
-        val loan = loanRepo.findByAccountId(id)
+        val loan = loanRepo.findByAccountIdAndUserId(id, userId)
+        val loanData = loan?.let {
+            val paidCount = it.installments.count { inst -> inst.status == InstallmentStatus.PAID }
+            val remainingBalance = it.installments
+                .filter { inst -> inst.status == InstallmentStatus.PENDING }
+                .sumOf { inst -> inst.scheduledPrincipal ?: BigDecimal.ZERO }
+            LoanData(
+                type              = ApiLoanType.valueOf(it.type.name),
+                counterpartyName  = it.counterpartyName,
+                principal         = it.principal.toDouble(),
+                rate              = it.rate.toDouble(),
+                frequency         = ApiLoanFrequency.valueOf(it.frequency.name),
+                numInstallments   = it.numInstallments,
+                installmentAmount = it.installmentAmount.toDouble(),
+                startDate         = it.startDate,
+                paidCount         = paidCount,
+                remainingBalance  = remainingBalance.toDouble(),
+            )
+        }
 
         return AccountDetailResponse(
             id                = account.id,
@@ -131,6 +153,7 @@ class AccountService(
             thresholdPct      = account.thresholdPct?.toDouble(),
             loanAccount       = loan != null,
             loanId            = loan?.id,
+            loanData          = loanData,
             trend             = trend,
             transactions      = txViews.map { it.toItem(account.type) },
             totalTransactions = txTotal,

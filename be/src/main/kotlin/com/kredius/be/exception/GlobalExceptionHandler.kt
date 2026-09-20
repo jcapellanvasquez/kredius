@@ -1,6 +1,7 @@
 package com.kredius.be.exception
 
 import com.kredius.be.model.ErrorResponse
+import org.slf4j.LoggerFactory
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.http.HttpStatusCode
@@ -13,6 +14,8 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 
 @RestControllerAdvice
 class GlobalExceptionHandler : ResponseEntityExceptionHandler() {
+
+    private val log = LoggerFactory.getLogger(GlobalExceptionHandler::class.java)
 
     @ExceptionHandler(ApiException::class)
     fun handleApiException(ex: ApiException): ResponseEntity<ErrorResponse> {
@@ -44,6 +47,7 @@ class GlobalExceptionHandler : ResponseEntityExceptionHandler() {
     // are handled by the parent class with correct status codes before reaching here
     @ExceptionHandler(Exception::class)
     fun handleGenericException(ex: Exception): ResponseEntity<ErrorResponse> {
+        log.error("Unhandled exception", ex)
         val error = ErrorResponse(
             code = "INTERNAL_ERROR",
             message = "An unexpected error occurred"

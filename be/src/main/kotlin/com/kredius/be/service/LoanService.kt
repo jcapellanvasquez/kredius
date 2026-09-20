@@ -1,37 +1,49 @@
 package com.kredius.be.service
 
-import com.kredius.be.exception.ApiException
-import com.kredius.be.model.CreateLoanRequest
+import com.kredius.be.entity.InstallmentStatus
+import com.kredius.be.entity.Loan
+import com.kredius.be.entity.LoanType
+import com.kredius.be.model.LoanFrequency
 import com.kredius.be.model.LoanResponse
-import com.kredius.be.model.LoanStatus
-import org.springframework.http.HttpStatus
+import com.kredius.be.model.LoanType as ApiLoanType
+import com.kredius.be.repository.LoanRepository
 import org.springframework.stereotype.Service
-import java.time.OffsetDateTime
-import java.util.UUID
+import org.springframework.transaction.annotation.Transactional
+import java.math.BigDecimal
 
 @Service
-class LoanService {
+@Transactional(readOnly = true)
+class LoanService(private val loanRepo: LoanRepository) {
 
-    // In-memory store — replace with a JPA repository when persistence is added
-    private val loans = mutableListOf<LoanResponse>()
+    fun getAll(type: ApiLoanType?): List<LoanResponse> =
+        loanRepo.findAll()
+            .filter { it.active }
+            .let { if (type != null) it.filter { l -> l.type == LoanType.valueOf(type.value) } else it }
+            .map { it.toResponse() }
 
-    fun getAll(status: LoanStatus?): List<LoanResponse> =
-        if (status != null) loans.filter { it.status == status } else loans.toList()
+    private fun Loan.toResponse(): LoanResponse {
+        val pending = installments.filter { it.status == InstallmentStatus.PENDING }
+        val paid    = installments.filter { it.status == InstallmentStatus.PAID }
 
-    fun getById(loanId: UUID): LoanResponse =
-        loans.find { it.id == loanId }
-            ?: throw ApiException("LOAN_NOT_FOUND", "Loan not found: $loanId", HttpStatus.NOT_FOUND)
+        val remainingBalance = pending.fold(BigDecimal.ZERO) { acc, i -> acc + i.scheduledAmount }
+        val totalAmount      = installments.fold(BigDecimal.ZERO) { acc, i -> acc + i.scheduledAmount }
+        val nextDate         = pending.minByOrNull { it.scheduledDate }?.scheduledDate
 
-    fun create(request: CreateLoanRequest): LoanResponse {
-        val loan = LoanResponse(
-            id = UUID.randomUUID(),
-            amount = request.amount,
-            term = request.term,
-            interestRate = 5.5,
-            status = LoanStatus.PENDING,
-            createdAt = OffsetDateTime.now()
+        return LoanResponse(
+            id                 = id,
+            type               = ApiLoanType.valueOf(type.name),
+            counterpartyName   = counterpartyName,
+            accountCode        = account.code,
+            accountName        = account.name,
+            principal          = principal.toDouble(),
+            installmentAmount  = installmentAmount.toDouble(),
+            frequency          = LoanFrequency.valueOf(frequency.name),
+            totalInstallments  = numInstallments,
+            paidInstallments   = paid.size,
+            nextInstallmentDate = nextDate,
+            remainingBalance   = remainingBalance.toDouble(),
+            totalAmount        = totalAmount.toDouble(),
+            active             = active,
         )
-        loans.add(loan)
-        return loan
     }
 }

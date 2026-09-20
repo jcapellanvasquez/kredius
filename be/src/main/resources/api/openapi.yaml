@@ -28,8 +28,10 @@ servers:
 tags:
   - name: Health
     description: Health and readiness checks
+  - name: Accounts
+    description: Chart of accounts management
   - name: Loans
-    description: Loan application management
+    description: Loan management
 
 paths:
 
@@ -47,36 +49,82 @@ paths:
               schema:
                 $ref: '#/components/schemas/HealthResponse'
 
+  /api/v1/accounts/summary:
+    get:
+      tags: [Accounts]
+      summary: Account summary list
+      description: Returns active accounts with current balance and last transaction for the current user
+      operationId: getAccountsSummary
+      responses:
+        '200':
+          description: Account summaries retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AccountSummaryResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/accounts:
+    get:
+      tags: [Accounts]
+      summary: List active accounts
+      description: Returns all active accounts for the current user, optionally filtered by type
+      operationId: getAccounts
+      parameters:
+        - name: type
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/AccountType'
+      responses:
+        '200':
+          description: Accounts retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AccountResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      tags: [Accounts]
+      summary: Create an account
+      operationId: createAccount
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAccountRequest'
+      responses:
+        '201':
+          description: Account created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
   /api/v1/loans:
     get:
       tags: [Loans]
       summary: List loans
-      description: Returns all loans, optionally filtered by status
+      description: Returns all active loans for the current user, optionally filtered by type
       operationId: getLoans
       parameters:
-        - name: status
+        - name: type
           in: query
-          description: Filter by loan status
           required: false
           schema:
-            $ref: '#/components/schemas/LoanStatus'
-        - name: page
-          in: query
-          description: Page number (0-based)
-          required: false
-          schema:
-            type: integer
-            default: 0
-            minimum: 0
-        - name: size
-          in: query
-          description: Page size
-          required: false
-          schema:
-            type: integer
-            default: 20
-            minimum: 1
-            maximum: 100
+            $ref: '#/components/schemas/LoanType'
       responses:
         '200':
           description: Loans retrieved successfully
@@ -89,55 +137,140 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
-    post:
-      tags: [Loans]
-      summary: Create a loan application
-      description: Submits a new loan application
-      operationId: createLoan
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CreateLoanRequest'
-      responses:
-        '201':
-          description: Loan created successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/LoanResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-
-  /api/v1/loans/{loanId}:
-    get:
-      tags: [Loans]
-      summary: Get loan by ID
-      operationId: getLoanById
-      parameters:
-        - name: loanId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: Loan retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/LoanResponse'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-
 components:
   schemas:
+
+    AccountSummaryResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          readOnly: true
+        code:
+          type: string
+          nullable: true
+        name:
+          type: string
+        type:
+          $ref: '#/components/schemas/AccountType'
+        showInAlerts:
+          type: boolean
+        loanAccount:
+          type: boolean
+        balance:
+          type: number
+          format: double
+          description: Signed balance in RD$ (positive = normal balance for account type)
+        lastTransactionDate:
+          type: string
+          format: date
+          nullable: true
+        lastTransactionDescription:
+          type: string
+          nullable: true
+        lastTransactionValue:
+          type: number
+          format: double
+          nullable: true
+          description: RD$ amount of the last journal line for this account
+        thresholdPct:
+          type: number
+          format: double
+          nullable: true
+          description: Budget threshold as a percentage of income (e.g. 20 = 20%)
+        loanId:
+          type: integer
+          format: int64
+          nullable: true
+          description: Present only when loanAccount is true
+        loanType:
+          $ref: '#/components/schemas/LoanType'
+          nullable: true
+        loanCounterpartyName:
+          type: string
+          nullable: true
+        loanInstallmentAmount:
+          type: number
+          format: double
+          nullable: true
+        loanNextInstallmentDate:
+          type: string
+          format: date
+          nullable: true
+        loanRemainingBalance:
+          type: number
+          format: double
+          nullable: true
+        loanTotalAmount:
+          type: number
+          format: double
+          nullable: true
+
+    AccountType:
+      type: string
+      enum:
+        - ASSET
+        - LIABILITY
+        - EQUITY
+        - INCOME
+        - EXPENSE
+
+    AccountResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          readOnly: true
+        code:
+          type: string
+          example: '1020'
+          nullable: true
+        name:
+          type: string
+          example: Cuenta Ahorros BHD
+        type:
+          $ref: '#/components/schemas/AccountType'
+        thresholdPct:
+          type: number
+          format: double
+          nullable: true
+          example: 20.00
+        showInAlerts:
+          type: boolean
+        active:
+          type: boolean
+        loanAccount:
+          type: boolean
+          description: True when this account is managed by a Loan record — shown in the Loans section, not the regular account list
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+
+    CreateAccountRequest:
+      type: object
+      required:
+        - name
+        - type
+      properties:
+        code:
+          type: string
+          maxLength: 10
+          nullable: true
+        name:
+          type: string
+          maxLength: 120
+        type:
+          $ref: '#/components/schemas/AccountType'
+        thresholdPct:
+          type: number
+          format: double
+          nullable: true
+        showInAlerts:
+          type: boolean
+          default: false
 
     HealthResponse:
       type: object
@@ -149,40 +282,55 @@ components:
           type: string
           format: date-time
 
-    LoanStatus:
+    LoanType:
       type: string
-      enum:
-        - PENDING
-        - APPROVED
-        - REJECTED
-        - ACTIVE
-        - CLOSED
+      enum: [GIVEN, RECEIVED]
+
+    LoanFrequency:
+      type: string
+      enum: [WEEKLY, MONTHLY]
 
     LoanResponse:
       type: object
       properties:
         id:
-          type: string
-          format: uuid
-          readOnly: true
-        amount:
-          type: number
-          format: double
-          example: 10000.00
-        term:
           type: integer
-          description: Loan term in months
-          example: 12
-        interestRate:
+          format: int64
+          readOnly: true
+        type:
+          $ref: '#/components/schemas/LoanType'
+        counterpartyName:
+          type: string
+        accountCode:
+          type: string
+          nullable: true
+        accountName:
+          type: string
+        principal:
           type: number
           format: double
-          example: 5.5
-        status:
-          $ref: '#/components/schemas/LoanStatus'
-        createdAt:
+        installmentAmount:
+          type: number
+          format: double
+        frequency:
+          $ref: '#/components/schemas/LoanFrequency'
+        totalInstallments:
+          type: integer
+          nullable: true
+        paidInstallments:
+          type: integer
+        nextInstallmentDate:
           type: string
-          format: date-time
-          readOnly: true
+          format: date
+          nullable: true
+        remainingBalance:
+          type: number
+          format: double
+        totalAmount:
+          type: number
+          format: double
+        active:
+          type: boolean
 
     CreateLoanRequest:
       type: object

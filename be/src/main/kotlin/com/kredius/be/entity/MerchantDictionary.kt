@@ -6,9 +6,9 @@ import java.time.OffsetDateTime
 
 @Filter(name = "userFilter", condition = "user_id = :userId")
 @Entity
-@Table(name = "merchant_dictionary")
+@Table(name = "merchant_dictionary", uniqueConstraints = [UniqueConstraint(columnNames = ["text_pattern", "user_id"])])
 class MerchantDictionary(
-    @Column(name = "text_pattern", nullable = false, length = 150, unique = true)
+    @Column(name = "text_pattern", nullable = false, length = 150)
     var textPattern: String = "",
 
     @ManyToOne(fetch = FetchType.LAZY)

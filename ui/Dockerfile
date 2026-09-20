@@ -2,8 +2,7 @@ FROM node:24-alpine AS build
 ENV NODE_ENV=development
 WORKDIR /app
 COPY . .
-RUN sed -i 's|https://artifactory.corp.ebay.com/artifactory/api/npm/npm-corp/|https://registry.npmjs.org/|g' package-lock.json && \
-    rm -rf node_modules && npm ci
+RUN rm -rf node_modules && npm ci
 RUN npm run build -- --configuration=production
 
 FROM nginx:alpine

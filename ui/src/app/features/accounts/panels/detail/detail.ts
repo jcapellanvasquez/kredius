@@ -1,6 +1,17 @@
-import { Component, ElementRef, ViewChild, AfterViewInit, OnDestroy } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  ViewChild,
+  AfterViewInit,
+  OnDestroy,
+  OnInit,
+  inject,
+  signal,
+} from '@angular/core';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { DecimalPipe } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
 import {
   Chart,
   LineController,
@@ -12,207 +23,78 @@ import {
   Filler,
   type ChartConfiguration,
 } from 'chart.js';
+import { ApiConfiguration } from '../../../../api/api-configuration';
+import { getAccountDetail } from '../../../../api/fn/accounts/get-account-detail';
+import { getAccountTransactions } from '../../../../api/fn/accounts/get-account-transactions';
+import { AccountDetailResponse } from '../../../../api/models/account-detail-response';
+import { TransactionItem } from '../../../../api/models/transaction-item';
 
 Chart.register(LineController, LineElement, PointElement, LinearScale, CategoryScale, Tooltip, Filler);
 
-type AccountType = 'asset' | 'liability' | 'expense' | 'income';
+type LocalAccountType = 'asset' | 'liability' | 'expense' | 'income' | 'equity';
+interface Movement { id: number; date: string; description: string; amount: string; inflow: boolean }
 
 @Component({
   selector: 'app-detail',
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, DecimalPipe],
   host: { class: 'block' },
-  template: `
-    <div class="flex flex-col gap-5">
-
-      <!-- Header -->
-      @if (isMultiCurrency) {
-        <div>
-          <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide">{{ typeLabel }}</p>
-          <h1 class="text-2xl font-bold text-gray-900 mt-0.5">{{ accountName }}</h1>
-          <div class="flex gap-3 mt-3">
-            <div class="flex-1 rounded-xl border border-gray-200 bg-white px-4 py-3">
-              <p class="text-xs text-gray-400 mb-1">Balance en pesos</p>
-              <p class="text-xl font-bold text-gray-900">RD$60,000</p>
-            </div>
-            <div class="flex-1 rounded-xl border border-gray-200 bg-white px-4 py-3">
-              <p class="text-xs text-gray-400 mb-1">Balance en dólares</p>
-              <p class="text-xl font-bold text-gray-900">US$1,200</p>
-            </div>
-          </div>
-          <p class="text-xs text-gray-400 mt-2">
-            &asymp; RD$127,200 estimado (tasa: 59.00) &mdash; cada balance solo se mueve con transacciones en su propia moneda.
-          </p>
-        </div>
-      } @else {
-        <div class="flex items-start justify-between">
-          <div>
-            <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide">{{ typeLabel }}</p>
-            <h1 class="text-2xl font-bold text-gray-900 mt-0.5">{{ accountName }}</h1>
-          </div>
-          <span class="text-3xl font-bold text-gray-900">RD$60,000</span>
-        </div>
-      }
-
-      <!-- Trend chart (single-currency accounts only) -->
-      @if (!isMultiCurrency) {
-        <div class="rounded-xl border border-gray-200 bg-white p-4">
-          <div class="flex items-center justify-between mb-3">
-            <h2 class="text-sm font-semibold text-gray-700">Tendencia (6 meses)</h2>
-            <span class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium"
-              [class.bg-red-50]="isNegativeTrend()"
-              [class.text-expense]="isNegativeTrend()"
-              [class.bg-green-50]="!isNegativeTrend()"
-              [class.text-income]="!isNegativeTrend()"
-            >
-              @if (isNegativeTrend()) {
-                <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                  <path d="M3 17l4 -4l4 4l4 -4l6 6" />
-                  <path d="M14 9l7 0l0 7" />
-                </svg>
-              } @else {
-                <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                  <path d="M3 7l4 4l4 -4l4 4l6 -6" />
-                  <path d="M21 15l0 -7l-7 0" />
-                </svg>
-              }
-              {{ trendBadgeText }}
-            </span>
-          </div>
-
-          <div class="h-40">
-            <canvas #trendChart></canvas>
-          </div>
-
-          <p class="text-xs text-gray-400 mt-2 leading-relaxed">{{ trendCaption }}</p>
-        </div>
-      }
-
-      <!-- Alerts / Concentration (Expense accounts only) -->
-      @if (accountType === 'expense') {
-        <div class="rounded-xl border border-gray-200 bg-white p-4">
-          <div class="flex items-center gap-1.5 mb-4">
-            <h2 class="text-sm font-semibold text-gray-800">Alertas de concentraci&oacute;n</h2>
-            <button type="button" class="text-gray-400 hover:text-gray-500"
-              title="El porcentaje siempre se calcula. Este switch solo controla si la cuenta aparece resaltada en el panel de alertas cuando supera el umbral.">
-              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                <path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0" />
-                <path d="M12 9h.01" />
-                <path d="M11 12h1v4h1" />
-              </svg>
-            </button>
-          </div>
-
-          <div class="flex items-center justify-between py-3 border-t border-gray-100">
-            <div>
-              <span class="text-sm text-gray-600">Umbral del ingreso mensual</span>
-              <p class="text-xs text-gray-400 mt-0.5">{{ thresholdHint }}</p>
-            </div>
-            <div class="flex items-center gap-1">
-              <input
-                type="number"
-                [(ngModel)]="threshold"
-                min="1"
-                max="100"
-                class="w-16 rounded-md border border-gray-300 px-2 py-1 text-sm text-right text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
-              />
-              <span class="text-sm text-gray-400">%</span>
-            </div>
-          </div>
-
-          <div class="flex items-center justify-between py-3 border-t border-gray-100">
-            <span class="text-sm text-gray-600">Mostrar en alertas</span>
-            <label class="relative inline-flex items-center cursor-pointer">
-              <input type="checkbox" class="sr-only peer" [(ngModel)]="showInAlerts" />
-              <div class="w-11 h-6 bg-gray-200 rounded-full peer
-                          peer-checked:bg-brand-600
-                          after:content-[''] after:absolute after:top-0.5 after:left-0.5
-                          after:bg-white after:rounded-full after:h-5 after:w-5
-                          after:transition-all peer-checked:after:translate-x-5">
-              </div>
-            </label>
-          </div>
-        </div>
-      }
-
-      <!-- Financing entry point (loan accounts only) -->
-      @if (hasLoan) {
-        <a [routerLink]="['../financing']"
-          class="flex items-center justify-between px-4 py-3 rounded-xl border border-brand-200 bg-brand-50 hover:bg-brand-100 transition-colors cursor-pointer">
-          <div class="flex items-center gap-3">
-            <div class="w-8 h-8 rounded-lg bg-brand-100 flex items-center justify-center shrink-0">
-              <svg class="w-4 h-4 text-brand-600" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 0 1-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 0 0 3 15h-.75M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm3 0h.008v.008H18V10.5Zm-12 0h.008v.008H6V10.5Z" />
-              </svg>
-            </div>
-            <div>
-              <p class="text-sm font-medium text-brand-700">Ver amortizaci&oacute;n y realizar pagos</p>
-              <p class="text-xs text-brand-500">Tabla de cuotas, abonos a capital y m&aacute;s</p>
-            </div>
-          </div>
-          <svg class="w-4 h-4 text-brand-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-            <path d="M9 6l6 6l-6 6" />
-          </svg>
-        </a>
-      }
-
-      <!-- Movements -->
-      <div>
-        <h2 class="text-sm font-semibold text-gray-800 mb-2">Movimientos</h2>
-        <div class="rounded-xl border border-gray-200 bg-white overflow-hidden divide-y divide-gray-100">
-
-          @for (mov of visibleMovements; track mov.id) {
-            <div class="flex items-center justify-between px-4 py-3">
-              <span class="text-sm text-gray-600">{{ mov.date }} &middot; {{ mov.description }}</span>
-              <span class="text-sm font-medium" [class.text-income]="mov.inflow" [class.text-expense]="!mov.inflow">
-                {{ mov.amount }}
-              </span>
-            </div>
-          }
-
-          <div class="px-4 py-3 text-center">
-            @if (hasMore) {
-              <button type="button" class="text-sm font-medium text-brand-600 hover:text-brand-700" (click)="loadMore()">
-                Ver m&aacute;s movimientos
-              </button>
-            } @else {
-              <p class="text-xs text-gray-400">No hay m&aacute;s movimientos</p>
-            }
-          </div>
-        </div>
-      </div>
-
-    </div>
-  `,
+  templateUrl: './detail.html',
 })
-export class DetailComponent implements AfterViewInit, OnDestroy {
+export class DetailComponent implements OnInit, AfterViewInit, OnDestroy {
+  private readonly route = inject(ActivatedRoute);
+  private readonly http = inject(HttpClient);
+  private readonly rootUrl = inject(ApiConfiguration).rootUrl;
+
   @ViewChild('trendChart') private canvasRef!: ElementRef<HTMLCanvasElement>;
   private chart?: Chart;
+  private viewReady = false;
+  private accountId = 0;
+  private currentPage = 0;
 
-  readonly accountType: AccountType = 'liability';
-  readonly accountName = '2010 Tarjeta de crédito';
-  readonly isMultiCurrency = false;
-  readonly hasLoan = true;
+  private readonly _detail = signal<AccountDetailResponse | null>(null);
+  private readonly _movements = signal<Movement[]>([]);
+  private readonly _totalTransactions = signal(0);
 
   threshold = 15;
-  showInAlerts = true;
+  showInAlerts = false;
+  readonly isMultiCurrency = false;
+
+  get balance(): number { return this._detail()?.balance ?? 0; }
+
+  get accountType(): LocalAccountType {
+    return ((this._detail()?.type ?? 'ASSET').toLowerCase()) as LocalAccountType;
+  }
+
+  get accountName(): string {
+    const d = this._detail();
+    if (!d) return '';
+    return d.code ? d.code + ' ' + (d.name ?? '') : (d.name ?? '');
+  }
+
+  get hasLoan(): boolean { return this._detail()?.loanAccount ?? false; }
 
   get typeLabel(): string {
-    const labels: Record<AccountType, string> = {
-      asset: 'Activo', liability: 'Pasivo', expense: 'Gasto', income: 'Ingreso',
+    const labels: Record<LocalAccountType, string> = {
+      asset: 'Activo', liability: 'Pasivo', expense: 'Gasto', income: 'Ingreso', equity: 'Patrimonio',
     };
     return labels[this.accountType];
   }
 
   isNegativeTrend(): boolean {
-    return this.accountType === 'liability' || this.accountType === 'expense';
+    const trend = this._detail()?.trend ?? [];
+    if (trend.length < 2) return this.accountType === 'liability' || this.accountType === 'expense';
+    const wentUp = (trend[trend.length - 1].balance ?? 0) > (trend[0].balance ?? 0);
+    return (this.accountType === 'liability' || this.accountType === 'expense') ? wentUp : !wentUp;
   }
 
   get trendBadgeText(): string {
-    return this.isNegativeTrend() ? 'Deuda subió' : 'Ahorros subieron';
+    const trend = this._detail()?.trend ?? [];
+    const wentUp = trend.length >= 2 && (trend[trend.length - 1].balance ?? 0) > (trend[0].balance ?? 0);
+    const type = this.accountType;
+    if (type === 'liability') return wentUp ? 'Deuda subió' : 'Deuda bajó';
+    if (type === 'expense')   return wentUp ? 'Gasto subió' : 'Gasto bajó';
+    if (type === 'income')    return wentUp ? 'Ingreso subió' : 'Ingreso bajó';
+    return wentUp ? 'Saldo subió' : 'Saldo bajó';
   }
 
   get trendCaption(): string {
@@ -230,56 +112,80 @@ export class DetailComponent implements AfterViewInit, OnDestroy {
     return '≈ RD$' + amount + ' (basado en ingresos de oct: RD$85,000)';
   }
 
-  private readonly allMovements = [
-    { id:  1, date: '14 oct', description: 'Ocho santos - brugal',   amount: '-RD$795',   inflow: false },
-    { id:  2, date: '13 oct', description: 'Comida y limpieza',       amount: '-RD$1,762', inflow: false },
-    { id:  3, date: '10 oct', description: 'Plaza Valerio',           amount: '-RD$346',   inflow: false },
-    { id:  4, date: '9 oct',  description: 'Gasolina Texaco',         amount: '-RD$2,100', inflow: false },
-    { id:  5, date: '8 oct',  description: 'Netflix',                 amount: '-RD$599',   inflow: false },
-    { id:  6, date: '7 oct',  description: 'Supermercado Nacional',   amount: '-RD$3,480', inflow: false },
-    { id:  7, date: '6 oct',  description: 'Farmacia Carol',          amount: '-RD$890',   inflow: false },
-    { id:  8, date: '5 oct',  description: 'Restaurante El Mesón',    amount: '-RD$1,240', inflow: false },
-    { id:  9, date: '4 oct',  description: 'Agua y luz',              amount: '-RD$4,200', inflow: false },
-    { id: 10, date: '3 oct',  description: 'Uber Eats',               amount: '-RD$680',   inflow: false },
-    { id: 11, date: '2 oct',  description: 'Tienda Giga',             amount: '-RD$5,300', inflow: false },
-    { id: 12, date: '1 oct',  description: 'Spotify',                 amount: '-RD$349',   inflow: false },
-    { id: 13, date: '30 sep', description: 'La Sirena',               amount: '-RD$2,875', inflow: false },
-    { id: 14, date: '29 sep', description: 'Claro móvil',             amount: '-RD$1,500', inflow: false },
-    { id: 15, date: '28 sep', description: 'Gasolina Sunix',          amount: '-RD$1,950', inflow: false },
-    { id: 16, date: '27 sep', description: 'Colmado Don Ramón',       amount: '-RD$430',   inflow: false },
-    { id: 17, date: '26 sep', description: 'Amazon',                  amount: '-RD$3,120', inflow: false },
-    { id: 18, date: '25 sep', description: 'Peluquería Moderna',      amount: '-RD$600',   inflow: false },
-  ];
+  get visibleMovements(): Movement[] { return this._movements(); }
 
-  private visibleCount = 5;
-  private readonly loadMoreSize = 10;
+  get hasMore(): boolean { return this._movements().length < this._totalTransactions(); }
 
-  get visibleMovements() {
-    return this.allMovements.slice(0, this.visibleCount);
+  ngOnInit(): void {
+    this.route.queryParamMap.subscribe(params => {
+      const id = Number(params.get('id'));
+      if (!id) return;
+      this.accountId = id;
+      this.currentPage = 0;
+      this._movements.set([]);
+      this._detail.set(null);
+      this.loadDetail(id);
+    });
   }
 
-  get hasMore(): boolean {
-    return this.visibleCount < this.allMovements.length;
-  }
-
-  loadMore(): void {
-    this.visibleCount = Math.min(this.visibleCount + this.loadMoreSize, this.allMovements.length);
+  private loadDetail(id: number): void {
+    getAccountDetail(this.http, this.rootUrl, { id }).subscribe(res => {
+      const d = res.body!;
+      this._detail.set(d);
+      this._totalTransactions.set(d.totalTransactions ?? 0);
+      this._movements.set((d.transactions ?? []).map(t => this.toMovement(t)));
+      this.threshold = d.thresholdPct ?? 15;
+      this.showInAlerts = d.showInAlerts ?? false;
+      if (this.viewReady) this.buildChart(d);
+    });
   }
 
   ngAfterViewInit(): void {
-    if (this.isMultiCurrency || !this.canvasRef) return;
+    this.viewReady = true;
+    const d = this._detail();
+    if (d && !this.isMultiCurrency) this.buildChart(d);
+  }
 
-    const labels  = ['abr', 'may', 'jun', 'jul', 'ago', 'sep'];
-    const values  = [40000, 42000, 47000, 45000, 43000, 60000];
+  loadMore(): void {
+    this.currentPage++;
+    getAccountTransactions(this.http, this.rootUrl, {
+      id: this.accountId,
+      page: this.currentPage,
+      size: 5,
+    }).subscribe(res => {
+      const items = res.body?.items ?? [];
+      this._movements.update(prev => [...prev, ...items.map(t => this.toMovement(t))]);
+    });
+  }
+
+  private buildChart(d: AccountDetailResponse): void {
+    this.chart?.destroy();
+    if (!this.canvasRef) return;
+
+    const trend = d.trend ?? [];
+    const labels = trend.map(t => t.month ?? '');
+    const values = trend.map(t => t.balance ?? 0);
     const lastIdx = values.length - 1;
 
+    const dataMin = Math.min(...values, 0);
+    const dataMax = Math.max(...values);
+    const range = dataMax - dataMin || 1;
+    const padding = range * 0.2;
+    const yMin = Math.max(0, Math.floor((dataMin - padding) / 1000) * 1000);
+    const yMax = Math.ceil((dataMax + padding) / 1000) * 1000;
+    const stepSize = Math.max(1000, Math.ceil((yMax - yMin) / 3 / 1000) * 1000);
+
+    const isNeg = this.isNegativeTrend();
+    const lastColor = isNeg ? '#ef4444' : '#22c55e';
+
     const monthNames: Record<string, string> = {
-      abr: 'Abril', may: 'Mayo', jun: 'Junio',
-      jul: 'Julio', ago: 'Agosto', sep: 'Septiembre',
+      ene: 'Enero', feb: 'Febrero', mar: 'Marzo', abr: 'Abril',
+      may: 'Mayo', jun: 'Junio', jul: 'Julio', ago: 'Agosto',
+      sep: 'Septiembre', sept: 'Septiembre', oct: 'Octubre', nov: 'Noviembre', dic: 'Diciembre',
     };
 
-    const pointBg     = values.map((_, i) => i === lastIdx ? '#ef4444' : '#ffffff');
-    const pointBorder = values.map((_, i) => i === lastIdx ? '#ef4444' : '#9ca3af');
+    const pointBg     = values.map((_, i) => i === lastIdx ? lastColor : '#ffffff');
+    const pointBorder = values.map((_, i) => i === lastIdx ? lastColor : '#9ca3af');
     const pointRadius = values.map((_, i) => i === lastIdx ? 5 : 4);
 
     const config: ChartConfiguration<'line'> = {
@@ -322,14 +228,14 @@ export class DetailComponent implements AfterViewInit, OnDestroy {
             ticks: { color: '#9ca3af', font: { size: 11, family: 'inherit' } },
           },
           y: {
-            min: 0,
-            max: 60000,
+            min: yMin,
+            max: yMax,
             grid: { color: '#e5e7eb' },
             border: { display: false },
             ticks: {
               color: '#9ca3af',
               font: { size: 11, family: 'inherit' },
-              stepSize: 20000,
+              stepSize,
               callback: v => v === 0 ? '0' : ((v as number) / 1000) + 'k',
             },
           },
@@ -340,7 +246,21 @@ export class DetailComponent implements AfterViewInit, OnDestroy {
     this.chart = new Chart(this.canvasRef.nativeElement, config);
   }
 
-  ngOnDestroy(): void {
-    this.chart?.destroy();
+  private toMovement(t: TransactionItem): Movement {
+    return {
+      id: t.id ?? 0,
+      date: this.formatDate(t.date ?? ''),
+      description: t.description ?? '',
+      amount: (t.inflow ? '+' : '-') + 'RD$' + Math.abs(t.amountRd ?? 0).toLocaleString('es-DO', { maximumFractionDigits: 0 }),
+      inflow: t.inflow ?? false,
+    };
   }
+
+  private formatDate(dateStr: string): string {
+    if (!dateStr) return '';
+    const d = new Date(dateStr + 'T00:00:00');
+    return d.toLocaleDateString('es-DO', { day: 'numeric', month: 'short' }).replace('.', '');
+  }
+
+  ngOnDestroy(): void { this.chart?.destroy(); }
 }

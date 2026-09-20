@@ -9,5 +9,9 @@ export type { GetAccounts$Params as GetAccounts$Params } from './fn/accounts/get
 export { getAccounts as getAccounts } from './fn/accounts/get-accounts';
 export type { CreateAccount$Params as CreateAccount$Params } from './fn/accounts/create-account';
 export { createAccount as createAccount } from './fn/accounts/create-account';
+export type { GetAccountDetail$Params as GetAccountDetail$Params } from './fn/accounts/get-account-detail';
+export { getAccountDetail as getAccountDetail } from './fn/accounts/get-account-detail';
+export type { GetAccountTransactions$Params as GetAccountTransactions$Params } from './fn/accounts/get-account-transactions';
+export { getAccountTransactions as getAccountTransactions } from './fn/accounts/get-account-transactions';
 export type { GetLoans$Params as GetLoans$Params } from './fn/loans/get-loans';
 export { getLoans as getLoans } from './fn/loans/get-loans';

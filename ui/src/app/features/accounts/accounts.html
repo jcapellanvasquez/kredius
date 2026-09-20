@@ -246,7 +246,7 @@
             <div class="rounded-xl bg-white border border-gray-200 overflow-hidden divide-y divide-gray-100">
               @for (account of filteredExpense(); track account.id) {
                 @if (!showBudgetMode) {
-                  <button [routerLink]="['detail']" (click)="selectAccount(account.id)"
+                  <button [routerLink]="['detail']" [queryParams]="{ id: account.id }" (click)="selectAccount(account.id)"
                     class="account-row group" [class.is-selected]="selectedKey() === 'a-' + account.id">
                     <div class="flex-1 min-w-0 text-left">
                       <div class="flex items-center justify-between gap-2">
@@ -334,7 +334,7 @@
 
     <!-- Reusable account row -->
     <ng-template #accountRow let-account let-showAlert="showAlert">
-      <button [routerLink]="['detail']" (click)="selectAccount(account.id)"
+      <button [routerLink]="['detail']" [queryParams]="{ id: account.id }" (click)="selectAccount(account.id)"
         class="account-row group" [class.is-selected]="selectedKey() === 'a-' + account.id">
         <div class="flex-1 min-w-0 text-left">
           <!-- top: name · balance -->

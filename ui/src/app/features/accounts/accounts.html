@@ -72,10 +72,12 @@
   </header>
 
   <!-- Body -->
-  <div class="flex flex-1 overflow-hidden">
+  <div class="flex flex-col md:flex-row flex-1 overflow-hidden">
 
     <!-- Sidebar: account list -->
-    <aside class="w-96 bg-gray-50 border-r border-gray-200 flex flex-col shrink-0">
+    <aside [class]="panelOpen()
+      ? 'hidden md:flex md:flex-col md:w-96 md:shrink-0 bg-gray-50 border-r border-gray-200'
+      : 'flex flex-col w-full md:w-96 md:shrink-0 bg-gray-50 border-r border-gray-200'">
 
       <!-- Search -->
       <div class="px-3 pt-3 pb-2 shrink-0 mb-3">
@@ -376,8 +378,21 @@
     </ng-template>
 
     <!-- Panel -->
-    <main class="flex-1 overflow-y-auto bg-gray-50 p-6">
-      <div class="max-w-2xl mx-auto">
+    <main [class]="panelOpen()
+      ? 'fixed inset-0 z-10 overflow-y-auto bg-gray-50 md:static md:inset-auto md:z-auto md:flex-1'
+      : 'hidden md:block md:flex-1 overflow-y-auto bg-gray-50'">
+      <!-- Mobile nav bar (sticky, replaces desktop header while panel covers full screen) -->
+      <div class="md:hidden sticky top-0 z-20 flex items-center h-14 px-2 bg-white border-b border-gray-200 shrink-0">
+        <button (click)="panelOpen.set(false)"
+          class="flex items-center gap-1 px-2 py-2 text-sm font-medium text-brand-600 rounded-lg hover:bg-brand-50 transition-colors">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+            <path d="M15 6l-6 6l6 6" />
+          </svg>
+          Cuentas
+        </button>
+      </div>
+      <div class="max-w-2xl mx-auto p-6 md:pt-6">
         <router-outlet #outlet="outlet" />
         @if (!outlet.isActivated) {
           <div class="flex flex-col items-center justify-center gap-2 text-center py-24">

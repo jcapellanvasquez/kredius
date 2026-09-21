@@ -20,8 +20,12 @@ export class AccountsComponent implements OnInit {
 
   readonly selectedKey  = signal<string | null>(null);
   readonly searchQuery  = signal('');
+  readonly panelOpen    = signal(false);
 
-  selectAccount(id: number | undefined): void { this.selectedKey.set('a-' + id); }
+  selectAccount(id: number | undefined): void {
+    this.selectedKey.set('a-' + id);
+    this.panelOpen.set(true);
+  }
 
   budgetDrafts: Partial<Record<number, number>> = {};
 

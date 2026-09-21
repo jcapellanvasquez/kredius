@@ -196,7 +196,7 @@ class AccountService(
     fun create(request: CreateAccountRequest): AccountResponse {
         val account = Account(
             user = currentUser.user,
-            code = request.code,
+            code = generateNextAccountCode(AccountType.valueOf(request.type.value)),
             name = request.name,
             type = AccountType.valueOf(request.type.value),
             thresholdPct = request.thresholdPct?.let { BigDecimal.valueOf(it) },
@@ -230,4 +230,15 @@ class AccountService(
         loanAccount = loanAccount,
         createdAt = createdAt,
     )
+
+    private fun generateNextAccountCode(type: AccountType): Int {
+        val existingCodes = accountRepo
+            .findByCodeBetween(type.codeRange.first, type.codeRange.last)
+            .map { it.code }
+        return if (existingCodes.isEmpty()) {
+            type.codeRange.first
+        } else {
+            existingCodes.last()?.plus(1) ?: type.codeRange.first
+        }
+    }
 }

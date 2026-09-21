@@ -29,31 +29,31 @@ class DataInitializer(
         val jcapellanTest = userRepo.save(User(name = "jcapellan-test", email = "jcapellan-test@kredius.local"))
 
         // ── Accounts ───────────────────────────────────────────────────
-        val savings = accountRepo.save(Account(user = jcapellan, code = "1020", name = "Cuenta Ahorros BHD", type = AccountType.ASSET))
-        val checking = accountRepo.save(Account(user = jcapellan, code = "1030", name = "Cuenta Corriente BHD", type = AccountType.ASSET))
-        val creditCard = accountRepo.save(Account(user = jcapellan, code = "2010", name = "Tarjeta de Crédito BHD", type = AccountType.LIABILITY))
-        val loanGivenAccount = accountRepo.save(Account(user = jcapellan, code = "3010", name = "Préstamo Dado – Pedro Gómez", type = AccountType.ASSET))
-        val loanReceivedAccount = accountRepo.save(Account(user = jcapellan, code = "3020", name = "Préstamo Recibido – Banco Popular", type = AccountType.LIABILITY))
-        val equityAccount = accountRepo.save(Account(user = jcapellan, code = "3000", name = "Capital Inicial", type = AccountType.EQUITY))
-        val salaryAccount = accountRepo.save(Account(user = jcapellan, code = "4010", name = "Salario", type = AccountType.INCOME))
+        val savings = accountRepo.save(Account(user = jcapellan, code = 1001, name = "Cuenta Ahorros BHD", type = AccountType.ASSET))
+        val checking = accountRepo.save(Account(user = jcapellan, code = 1002, name = "Cuenta Corriente BHD", type = AccountType.ASSET))
+        val loanGivenAccount = accountRepo.save(Account(user = jcapellan, code = 1003, name = "Préstamo Dado – Pedro Gómez", type = AccountType.ASSET))
+        val creditCard = accountRepo.save(Account(user = jcapellan, code = 2010, name = "Tarjeta de Crédito BHD", type = AccountType.LIABILITY))
+        val equityAccount = accountRepo.save(Account(user = jcapellan, code = 3001, name = "Capital Inicial", type = AccountType.EQUITY))
+        val loanReceivedAccount = accountRepo.save(Account(user = jcapellan, code = 3002, name = "Préstamo Recibido – Banco Popular", type = AccountType.LIABILITY))
+        val salaryAccount = accountRepo.save(Account(user = jcapellan, code = 4001, name = "Salario", type = AccountType.INCOME))
         val superAccount = accountRepo.save(Account(
-            user = jcapellan, code = "5010", name = "Supermercado", type = AccountType.EXPENSE,
+            user = jcapellan, code = 5010, name = "Supermercado", type = AccountType.EXPENSE,
             thresholdPct = BigDecimal("20.00"), showInAlerts = true,
         ))
         val gasAccount = accountRepo.save(Account(
-            user = jcapellan, code = "5020", name = "Gasolina", type = AccountType.EXPENSE,
+            user = jcapellan, code = 5020, name = "Gasolina", type = AccountType.EXPENSE,
             thresholdPct = BigDecimal("10.00"), showInAlerts = true,
         ))
         val restaurantAccount = accountRepo.save(Account(
-            user = jcapellan, code = "5030", name = "Restaurantes", type = AccountType.EXPENSE,
+            user = jcapellan, code = 5030, name = "Restaurantes", type = AccountType.EXPENSE,
             thresholdPct = BigDecimal("15.00"), showInAlerts = true,
         ))
         val servicesAccount = accountRepo.save(Account(
-            user = jcapellan, code = "5040", name = "Servicios", type = AccountType.EXPENSE,
+            user = jcapellan, code = 5040, name = "Servicios", type = AccountType.EXPENSE,
             thresholdPct = BigDecimal("10.00"), showInAlerts = false,
         ))
         val financialExpenseAccount = accountRepo.save(Account(
-            user = jcapellan, code = "5050", name = "Gastos Financieros", type = AccountType.EXPENSE,
+            user = jcapellan, code = 5050, name = "Gastos Financieros", type = AccountType.EXPENSE,
         ))
 
         // ── Exchange rates ─────────────────────────────────────────────
@@ -260,18 +260,18 @@ class DataInitializer(
         // ══════════════════════════════════════════════════════════════════
 
         // ── Accounts ───────────────────────────────────────────────────
-        val tSavings        = accountRepo.save(Account(user = jcapellanTest, code = "1020", name = "Cuenta Ahorros BHD", type = AccountType.ASSET))
-        val tChecking       = accountRepo.save(Account(user = jcapellanTest, code = "1030", name = "Cuenta Corriente BHD", type = AccountType.ASSET))
-        val tCreditCard     = accountRepo.save(Account(user = jcapellanTest, code = "2010", name = "Tarjeta de Crédito BHD", type = AccountType.LIABILITY))
-        val tLoanGivenAcc   = accountRepo.save(Account(user = jcapellanTest, code = "3010", name = "Préstamo Dado – Juan Pérez", type = AccountType.ASSET))
-        val tLoanRecvAcc    = accountRepo.save(Account(user = jcapellanTest, code = "3020", name = "Préstamo Recibido – BHD", type = AccountType.LIABILITY))
-        val tEquity         = accountRepo.save(Account(user = jcapellanTest, code = "3000", name = "Capital Inicial", type = AccountType.EQUITY))
-        val tSalary         = accountRepo.save(Account(user = jcapellanTest, code = "4010", name = "Salario", type = AccountType.INCOME))
-        val tSuper          = accountRepo.save(Account(user = jcapellanTest, code = "5010", name = "Supermercado", type = AccountType.EXPENSE, thresholdPct = bd("20.00"), showInAlerts = true))
-        val tGas            = accountRepo.save(Account(user = jcapellanTest, code = "5020", name = "Gasolina", type = AccountType.EXPENSE, thresholdPct = bd("10.00"), showInAlerts = true))
-        val tRestaurant     = accountRepo.save(Account(user = jcapellanTest, code = "5030", name = "Restaurantes", type = AccountType.EXPENSE, thresholdPct = bd("15.00"), showInAlerts = true))
-        val tServices       = accountRepo.save(Account(user = jcapellanTest, code = "5040", name = "Servicios", type = AccountType.EXPENSE, showInAlerts = false))
-        val tFinancialExp   = accountRepo.save(Account(user = jcapellanTest, code = "5050", name = "Gastos Financieros", type = AccountType.EXPENSE))
+        val tSavings        = accountRepo.save(Account(user = jcapellanTest, code = 1020, name = "Cuenta Ahorros BHD", type = AccountType.ASSET))
+        val tChecking       = accountRepo.save(Account(user = jcapellanTest, code = 1030, name = "Cuenta Corriente BHD", type = AccountType.ASSET))
+        val tCreditCard     = accountRepo.save(Account(user = jcapellanTest, code = 2010, name = "Tarjeta de Crédito BHD", type = AccountType.LIABILITY))
+        val tLoanGivenAcc   = accountRepo.save(Account(user = jcapellanTest, code = 3010, name = "Préstamo Dado – Juan Pérez", type = AccountType.ASSET))
+        val tLoanRecvAcc    = accountRepo.save(Account(user = jcapellanTest, code = 3020, name = "Préstamo Recibido – BHD", type = AccountType.LIABILITY))
+        val tEquity         = accountRepo.save(Account(user = jcapellanTest, code = 3000, name = "Capital Inicial", type = AccountType.EQUITY))
+        val tSalary         = accountRepo.save(Account(user = jcapellanTest, code = 4010, name = "Salario", type = AccountType.INCOME))
+        val tSuper          = accountRepo.save(Account(user = jcapellanTest, code = 5010, name = "Supermercado", type = AccountType.EXPENSE, thresholdPct = bd("20.00"), showInAlerts = true))
+        val tGas            = accountRepo.save(Account(user = jcapellanTest, code = 5020, name = "Gasolina", type = AccountType.EXPENSE, thresholdPct = bd("10.00"), showInAlerts = true))
+        val tRestaurant     = accountRepo.save(Account(user = jcapellanTest, code = 5030, name = "Restaurantes", type = AccountType.EXPENSE, thresholdPct = bd("15.00"), showInAlerts = true))
+        val tServices       = accountRepo.save(Account(user = jcapellanTest, code = 5040, name = "Servicios", type = AccountType.EXPENSE, showInAlerts = false))
+        val tFinancialExp   = accountRepo.save(Account(user = jcapellanTest, code = 5050, name = "Gastos Financieros", type = AccountType.EXPENSE))
 
         // ── Opening balance ────────────────────────────────────────────
         val tOpenEntry = journalEntryRepo.save(JournalEntry(

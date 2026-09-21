@@ -1,6 +1,9 @@
 package com.kredius.be.entity
 
-enum class AccountType { ASSET, LIABILITY, EQUITY, INCOME, EXPENSE }
+enum class AccountType(val group: Int) {
+    ASSET(1000), LIABILITY(2000), EQUITY(3000), INCOME(4000), EXPENSE(5000);
+    val codeRange: IntRange get() = (group + 1)..(group + 999)
+}
 
 enum class EntrySide { DEBIT, CREDIT }
 

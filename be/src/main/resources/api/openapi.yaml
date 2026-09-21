@@ -210,7 +210,7 @@ components:
           format: int64
           readOnly: true
         code:
-          type: string
+          type: integer
           nullable: true
         name:
           type: string
@@ -271,6 +271,9 @@ components:
 
     AccountType:
       type: string
+      description: |
+        Account type. The first digit of the account code is derived from it:
+        ASSET=1000, LIABILITY=2000, EQUITY=3000, INCOME=4000, EXPENSE=5000.
       enum:
         - ASSET
         - LIABILITY
@@ -286,8 +289,8 @@ components:
           format: int64
           readOnly: true
         code:
-          type: string
-          example: '1020'
+          type: integer
+          example: 1020
           nullable: true
         name:
           type: string
@@ -318,8 +321,7 @@ components:
         - type
       properties:
         code:
-          type: string
-          maxLength: 10
+          type: integer
           nullable: true
         name:
           type: string
@@ -341,7 +343,7 @@ components:
           type: integer
           format: int64
         code:
-          type: string
+          type: integer
           nullable: true
         name:
           type: string
@@ -478,7 +480,7 @@ components:
         counterpartyName:
           type: string
         accountCode:
-          type: string
+          type: integer
           nullable: true
         accountName:
           type: string

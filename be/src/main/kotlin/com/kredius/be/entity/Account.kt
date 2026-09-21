@@ -16,8 +16,8 @@ class Account(
     @JoinColumn(name = "user_id", nullable = false)
     var user: User = User(),
 
-    @Column(length = 10)
-    var code: String? = null,
+    @Column
+    var code: Int? = null,
 
     @Column(nullable = false, length = 120)
     var name: String = "",

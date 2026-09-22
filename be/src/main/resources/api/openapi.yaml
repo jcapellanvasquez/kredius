@@ -257,6 +257,35 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
+  /api/v1/loans/{id}:
+    get:
+      tags: [Loans]
+      summary: Get loan detail
+      description: Returns a single loan with its full installment schedule
+      operationId: getLoan
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Loan detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoanDetailResponse'
+        '404':
+          description: Loan not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
   /api/v1/statement-imports:
     get:
       tags: [Statements]
@@ -1071,8 +1100,37 @@ components:
         totalAmount:
           type: number
           format: double
+        startDate:
+          type: string
+          format: date
+          nullable: true
         active:
           type: boolean
+
+    LoanInstallmentDto:
+      type: object
+      properties:
+        number:
+          type: integer
+        scheduledDate:
+          type: string
+          format: date
+        scheduledAmount:
+          type: number
+          format: double
+        status:
+          type: string
+          enum: [PENDING, PAID, OVERDUE]
+
+    LoanDetailResponse:
+      allOf:
+        - $ref: '#/components/schemas/LoanResponse'
+        - type: object
+          properties:
+            installments:
+              type: array
+              items:
+                $ref: '#/components/schemas/LoanInstallmentDto'
 
     CreateLoanRequest:
       type: object

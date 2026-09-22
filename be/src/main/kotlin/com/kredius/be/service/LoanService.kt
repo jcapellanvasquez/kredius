@@ -2,11 +2,15 @@ package com.kredius.be.service
 
 import com.kredius.be.entity.*
 import com.kredius.be.entity.LoanFrequency as EntityLoanFrequency
+import com.kredius.be.exception.ApiException
 import com.kredius.be.model.CreateGivenLoanRequest
 import com.kredius.be.model.CreateReceivedLoanRequest
+import com.kredius.be.model.LoanDetailResponse
 import com.kredius.be.model.LoanFrequency
+import com.kredius.be.model.LoanInstallmentDto
 import com.kredius.be.model.LoanResponse
 import com.kredius.be.model.LoanType as ApiLoanType
+import org.springframework.http.HttpStatus
 import com.kredius.be.repository.*
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -24,6 +28,12 @@ class LoanService(
     private val journalLineRepo:  JournalLineRepository,
     private val currentUser:      CurrentUserService,
 ) {
+    fun getOne(id: Long): LoanDetailResponse {
+        val loan = loanRepo.findByIdAndUserId(id, currentUser.id)
+            ?: throw ApiException("NOT_FOUND", "Loan not found", HttpStatus.NOT_FOUND)
+        return loan.toDetailResponse()
+    }
+
     fun getAll(type: ApiLoanType?): List<LoanResponse> =
         loanRepo.findByUserId(currentUser.id)
             .filter { it.active }
@@ -174,20 +184,53 @@ class LoanService(
         val nextDate         = pending.minByOrNull { it.scheduledDate }?.scheduledDate
 
         return LoanResponse(
-            id                 = id,
-            type               = ApiLoanType.valueOf(type.name),
-            counterpartyName   = counterpartyName,
-            accountCode        = account.code,
-            accountName        = account.name,
-            principal          = principal.toDouble(),
-            installmentAmount  = installmentAmount.toDouble(),
-            frequency          = LoanFrequency.valueOf(frequency.name),
-            totalInstallments  = numInstallments,
-            paidInstallments   = paid.size,
+            id                  = id,
+            type                = ApiLoanType.valueOf(type.name),
+            counterpartyName    = counterpartyName,
+            accountCode         = account.code,
+            accountName         = account.name,
+            principal           = principal.toDouble(),
+            installmentAmount   = installmentAmount.toDouble(),
+            frequency           = LoanFrequency.valueOf(frequency.name),
+            totalInstallments   = numInstallments,
+            paidInstallments    = paid.size,
             nextInstallmentDate = nextDate,
-            remainingBalance   = remainingBalance.toDouble(),
-            totalAmount        = totalAmount.toDouble(),
-            active             = active,
+            remainingBalance    = remainingBalance.toDouble(),
+            totalAmount         = totalAmount.toDouble(),
+            startDate           = startDate,
+            active              = active,
+        )
+    }
+
+    private fun Loan.toDetailResponse(): LoanDetailResponse {
+        val base = toResponse()
+        val installmentDtos = installments
+            .sortedBy { it.number }
+            .map { inst ->
+                LoanInstallmentDto(
+                    number          = inst.number,
+                    scheduledDate   = inst.scheduledDate,
+                    scheduledAmount = inst.scheduledAmount.toDouble(),
+                    status          = LoanInstallmentDto.Status.valueOf(inst.status.name),
+                )
+            }
+        return LoanDetailResponse(
+            id                  = base.id,
+            type                = base.type,
+            counterpartyName    = base.counterpartyName,
+            accountCode         = base.accountCode,
+            accountName         = base.accountName,
+            principal           = base.principal,
+            installmentAmount   = base.installmentAmount,
+            frequency           = base.frequency,
+            totalInstallments   = base.totalInstallments,
+            paidInstallments    = base.paidInstallments,
+            nextInstallmentDate = base.nextInstallmentDate,
+            remainingBalance    = base.remainingBalance,
+            totalAmount         = base.totalAmount,
+            startDate           = base.startDate,
+            active              = base.active,
+            installments        = installmentDtos,
         )
     }
 }

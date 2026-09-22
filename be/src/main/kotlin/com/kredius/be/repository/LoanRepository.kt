@@ -11,4 +11,6 @@ interface LoanRepository : JpaRepository<Loan, Long> {
     fun findByUserId(userId: Long): List<Loan>
 
     fun findByAccountIdAndUserId(accountId: Long, userId: Long): Loan?
+
+    fun findByIdAndUserId(id: Long, userId: Long): Loan?
 }

@@ -32,6 +32,8 @@ tags:
     description: Chart of accounts management
   - name: Loans
     description: Loan management
+  - name: Statements
+    description: Bank statement upload, parsing, and categorization
 
 paths:
 
@@ -196,6 +198,168 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/LoanResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/statement-imports:
+    post:
+      tags: [Statements]
+      summary: Upload and parse a bank statement
+      description: |
+        Accepts a PDF file, parses it synchronously, matches merchant dictionary,
+        and returns the import with categorized lines ready for review.
+        Returns 409 if a confirmed import already exists for this account + date.
+      operationId: uploadStatement
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, accountId, type, statementDate]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                accountId:
+                  type: integer
+                  format: int64
+                type:
+                  $ref: '#/components/schemas/StatementType'
+                statementDate:
+                  type: string
+                  format: date
+      responses:
+        '200':
+          description: Statement parsed — lines ready for review
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatementImportResponse'
+        '409':
+          description: A confirmed import already exists for this account + date
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DuplicateImportError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/statement-imports/{id}:
+    get:
+      tags: [Statements]
+      summary: Get a statement import with all lines
+      operationId: getStatementImport
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Statement import retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatementImportResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/statement-lines/{id}:
+    patch:
+      tags: [Statements]
+      summary: Update a single statement line (category or exclusion)
+      operationId: patchStatementLine
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchStatementLineRequest'
+      responses:
+        '200':
+          description: Line updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatementLineDto'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/statement-imports/{id}/confirm:
+    post:
+      tags: [Statements]
+      summary: Confirm import — posts double-entry journal entries
+      operationId: confirmStatementImport
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Import confirmed and journal entries posted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfirmImportResponse'
+        '409':
+          description: Duplicate confirmed import (race condition)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DuplicateImportError'
+        '422':
+          description: Some lines still unresolved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnresolvedLinesError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/statement-imports/{id}/reverse:
+    post:
+      tags: [Statements]
+      summary: Reverse a confirmed import — creates mirrored journal entries
+      operationId: reverseStatementImport
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Import reversed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatementImportResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Import is not in CONFIRMED status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '500':
           $ref: '#/components/responses/InternalServerError'
 
@@ -529,6 +693,104 @@ components:
           maximum: 360
           description: Loan term in months
           example: 12
+
+    StatementType:
+      type: string
+      enum: [CREDIT_CARD, SAVINGS]
+
+    StatementImportStatus:
+      type: string
+      enum: [UPLOADED, PROCESSING, PENDING_REVIEW, CONFIRMED, FAILED, REVERSED]
+
+    StatementLineDto:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        lineDate:
+          type: string
+          format: date
+        description:
+          type: string
+        currency:
+          type: string
+          enum: [RD, USD]
+        amount:
+          type: number
+          format: double
+        isExcluded:
+          type: boolean
+        isPayment:
+          type: boolean
+          description: Auto-excluded payment row (e.g. PAGO DEBITO A CUENTA)
+        categoryAccountId:
+          type: integer
+          format: int64
+          nullable: true
+        categoryAccountName:
+          type: string
+          nullable: true
+
+    StatementImportResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        status:
+          $ref: '#/components/schemas/StatementImportStatus'
+        errorMessage:
+          type: string
+          nullable: true
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/StatementLineDto'
+
+    DuplicateImportError:
+      type: object
+      properties:
+        error:
+          type: string
+          example: duplicate_confirmed_import
+        existingImportId:
+          type: integer
+          format: int64
+
+    PatchStatementLineRequest:
+      type: object
+      properties:
+        categoryAccountId:
+          type: integer
+          format: int64
+          nullable: true
+        isExcluded:
+          type: boolean
+          nullable: true
+
+    ConfirmImportResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        status:
+          $ref: '#/components/schemas/StatementImportStatus'
+        postedEntries:
+          type: integer
+
+    UnresolvedLinesError:
+      type: object
+      properties:
+        error:
+          type: string
+          example: unresolved_lines
+        lineIds:
+          type: array
+          items:
+            type: integer
+            format: int64
 
     ErrorResponse:
       type: object

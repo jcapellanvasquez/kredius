@@ -1,5 +1,6 @@
 import { Component, inject, OnInit, ElementRef, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { NgClass } from '@angular/common';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { timeout, TimeoutError } from 'rxjs';
 import { AccountApiService } from '../../account-api.service';
@@ -8,6 +9,16 @@ import { AccountSummaryResponse } from '../../../../api/models/account-summary-r
 
 type AccountFlow = 'credit-card' | 'savings';
 type NewMerchantStatus = 'pending' | 'resolved';
+type ImportStatus = 'PENDING_REVIEW' | 'CONFIRMED' | 'REVERSED' | 'FAILED';
+
+interface ImportSummary {
+  id:             number;
+  accountName:    string;
+  statementDate:  string;   // 'YYYY-MM'
+  status:         ImportStatus;
+  unresolvedCount: number;
+  lineCount:      number;
+}
 
 interface CategorizedLine {
   id:          number;
@@ -75,7 +86,7 @@ const MIN_MERCHANT_SAVE_MS   = 600;
 
 @Component({
   selector: 'app-upload-statement',
-  imports: [FormsModule],
+  imports: [FormsModule, NgClass],
   host: { class: 'block' },
   template: `
     <div class="flex flex-col gap-5">
@@ -109,18 +120,61 @@ const MIN_MERCHANT_SAVE_MS   = 600;
       <!-- ────────────────── UPLOAD ZONE ────────────────── -->
       @if (!parsed && !uploading) {
 
-        <!-- Account + date (required before uploading) -->
-        <div class="flex flex-col gap-3">
-          <select [(ngModel)]="selectedAccountId"
-            class="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-300">
-            <option [ngValue]="null" disabled>Selecciona una cuenta...</option>
-            @for (acc of accountOptions; track acc.id) {
-              <option [ngValue]="acc.id">{{ acc.name }}</option>
-            }
-          </select>
-          <input type="date" [(ngModel)]="statementDate"
-            class="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-300"/>
+        <!-- Account cards -->
+        <div class="grid gap-2.5" [class.grid-cols-2]="accountOptions.length > 1" [class.grid-cols-1]="accountOptions.length <= 1">
+          @for (acc of accountOptions; track acc.id) {
+            <button type="button" (click)="selectedAccountId = acc.id ?? null"
+              class="relative flex flex-col gap-2.5 rounded-xl border-2 p-3.5 text-left transition-all"
+              [ngClass]="selectedAccountId === acc.id
+                ? 'border-brand-500 bg-brand-50'
+                : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'">
+
+              @if (selectedAccountId === acc.id) {
+                <span class="absolute top-2.5 right-2.5 w-4 h-4 rounded-full bg-brand-500 flex items-center justify-center">
+                  <svg class="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/>
+                  </svg>
+                </span>
+              }
+
+              <div class="w-8 h-8 rounded-lg flex items-center justify-center"
+                [class.bg-brand-100]="selectedAccountId === acc.id"
+                [class.bg-gray-100]="selectedAccountId !== acc.id">
+                @if (flow === 'credit-card') {
+                  <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"
+                    [class.text-brand-600]="selectedAccountId === acc.id"
+                    [class.text-gray-400]="selectedAccountId !== acc.id">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Z"/>
+                  </svg>
+                } @else {
+                  <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"
+                    [class.text-brand-600]="selectedAccountId === acc.id"
+                    [class.text-gray-400]="selectedAccountId !== acc.id">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 21v-8.25M15.75 21v-8.25M8.25 21v-8.25M3 9l9-6 9 6m-1.5 12V10.332A48.36 48.36 0 0 0 12 10a48.36 48.36 0 0 0-9.5.332V21L3 21"/>
+                  </svg>
+                }
+              </div>
+
+              <div class="pr-5">
+                <p class="text-sm font-semibold leading-snug"
+                  [class.text-brand-800]="selectedAccountId === acc.id"
+                  [class.text-gray-800]="selectedAccountId !== acc.id">{{ acc.name }}</p>
+                <p class="text-xs mt-0.5"
+                  [class.text-brand-500]="selectedAccountId === acc.id"
+                  [class.text-gray-400]="selectedAccountId !== acc.id">#{{ acc.code }}</p>
+              </div>
+            </button>
+          }
+          @if (accountOptions.length === 0) {
+            <div class="rounded-xl border border-dashed border-gray-200 px-4 py-6 text-center">
+              <p class="text-sm text-gray-400">No hay cuentas para este tipo.</p>
+            </div>
+          }
         </div>
+
+        <!-- Date picker -->
+        <input type="date" [(ngModel)]="statementDate"
+          class="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-300"/>
 
         <!-- Upload error -->
         @if (uploadError) {
@@ -155,6 +209,72 @@ const MIN_MERCHANT_SAVE_MS   = 600;
           </span>
         </div>
         <input #fileInput type="file" accept=".pdf" class="hidden" (change)="onFileSelected($event)"/>
+
+        <!-- ── En proceso ──────────────────────────────────────────── -->
+        @if (pendingImports.length > 0) {
+          <div class="flex flex-col gap-2">
+            <p class="text-xs font-semibold text-gray-400 uppercase tracking-widest px-0.5">En proceso</p>
+            @for (imp of pendingImports; track imp.id) {
+              <div class="rounded-xl border border-amber-200 bg-white px-4 py-3 flex items-center gap-3">
+                <span class="w-2 h-2 rounded-full bg-amber-400 shrink-0"></span>
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-medium text-gray-800 truncate">{{ imp.accountName }}</p>
+                  <p class="text-xs text-gray-400 mt-0.5">
+                    {{ formatImportDate(imp.statementDate) }}
+                    <span class="mx-1">·</span>
+                    <span class="text-amber-600 font-medium">{{ imp.unresolvedCount }} sin categorizar</span>
+                    <span class="text-gray-300 mx-1">/</span>
+                    {{ imp.lineCount }} líneas
+                  </p>
+                </div>
+                <button type="button" (click)="resumeImport(imp)"
+                  class="shrink-0 flex items-center gap-1 text-xs font-semibold text-brand-700 hover:text-brand-900 transition-colors">
+                  Reanudar
+                  <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/>
+                  </svg>
+                </button>
+              </div>
+            }
+          </div>
+        }
+
+        <!-- ── Historial ─────────────────────────────────────────── -->
+        @if (historyImports.length > 0) {
+          <div class="rounded-xl border border-gray-200 bg-white overflow-hidden">
+            <button type="button" (click)="showHistory = !showHistory"
+              class="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors">
+              <div class="flex items-center gap-2">
+                <span class="text-sm font-medium text-gray-600">Historial</span>
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500">
+                  {{ historyImports.length }}
+                </span>
+              </div>
+              <svg class="w-4 h-4 text-gray-400 transition-transform duration-200"
+                [class.rotate-180]="showHistory"
+                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                <path d="M6 9l6 6l6 -6" />
+              </svg>
+            </button>
+            @if (showHistory) {
+              <div class="border-t border-gray-100 divide-y divide-gray-50">
+                @for (imp of historyImports; track imp.id) {
+                  <div class="px-4 py-2.5 flex items-center gap-3">
+                    <div class="flex-1 min-w-0">
+                      <p class="text-sm text-gray-700">{{ formatImportDate(imp.statementDate) }}</p>
+                      <p class="text-xs text-gray-400 truncate mt-0.5">{{ imp.accountName }}</p>
+                    </div>
+                    <span class="shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
+                      [ngClass]="statusChipClass(imp.status)">
+                      {{ statusLabel(imp.status) }}
+                    </span>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        }
       }
 
       <!-- Uploading spinner -->
@@ -584,6 +704,21 @@ export class UploadStatementComponent implements OnInit {
   showExcluded         = false;
   showSavingsDeposits  = false;
   showSavingsMovements = false;
+  showHistory          = false;
+
+  // ── Mock import history (replaced by real API call later) ──────────
+  pendingImports: ImportSummary[] = [
+    { id: 1, accountName: 'Tarjeta de Crédito BHD', statementDate: '2026-08', status: 'PENDING_REVIEW', unresolvedCount: 12, lineCount: 34 },
+    { id: 2, accountName: 'Tarjeta de Crédito BHD', statementDate: '2026-07', status: 'PENDING_REVIEW', unresolvedCount:  3, lineCount: 28 },
+  ];
+
+  historyImports: ImportSummary[] = [
+    { id: 3, accountName: 'Tarjeta de Crédito BHD', statementDate: '2026-06', status: 'CONFIRMED',  unresolvedCount: 0, lineCount: 31 },
+    { id: 4, accountName: 'Tarjeta de Crédito BHD', statementDate: '2026-05', status: 'CONFIRMED',  unresolvedCount: 0, lineCount: 27 },
+    { id: 5, accountName: 'Tarjeta de Crédito BHD', statementDate: '2026-04', status: 'REVERSED',   unresolvedCount: 0, lineCount: 22 },
+    { id: 6, accountName: 'Tarjeta de Crédito BHD', statementDate: '2026-03', status: 'CONFIRMED',  unresolvedCount: 0, lineCount: 29 },
+    { id: 7, accountName: 'Tarjeta de Crédito BHD', statementDate: '2026-02', status: 'FAILED',     unresolvedCount: 0, lineCount:  0 },
+  ];
 
   selectedAccountId: number | null = null;
   statementDate                    = '';
@@ -913,6 +1048,36 @@ export class UploadStatementComponent implements OnInit {
       });
   }
 
+  // ── History helpers ─────────────────────────────────────────────────
+  formatImportDate(yearMonth: string): string {
+    const [y, m] = yearMonth.split('-');
+    return `${MONTHS_ES[+m - 1]} ${y}`;
+  }
+
+  statusLabel(status: ImportStatus): string {
+    const labels: Record<ImportStatus, string> = {
+      PENDING_REVIEW: 'En proceso',
+      CONFIRMED:      'Confirmado',
+      REVERSED:       'Revertido',
+      FAILED:         'Fallido',
+    };
+    return labels[status];
+  }
+
+  statusChipClass(status: ImportStatus): string {
+    const classes: Record<ImportStatus, string> = {
+      PENDING_REVIEW: 'bg-amber-100 text-amber-700',
+      CONFIRMED:      'bg-green-100 text-income',
+      REVERSED:       'bg-gray-100 text-gray-500',
+      FAILED:         'bg-red-100 text-red-600',
+    };
+    return classes[status];
+  }
+
+  resumeImport(_imp: ImportSummary): void {
+    // placeholder — will call GET /api/v1/statement-imports/{id} in real implementation
+  }
+
   // ── Shared ──────────────────────────────────────────────────────────
   formatRD(v: number): string { return 'RD$' + v.toLocaleString(); }
 
@@ -940,5 +1105,6 @@ export class UploadStatementComponent implements OnInit {
     this.showExcluded         = false;
     this.showSavingsDeposits  = false;
     this.showSavingsMovements = false;
+    this.showHistory          = false;
   }
 }

@@ -23,6 +23,7 @@ import com.kredius.be.parser.BhdPdfParser
 import com.kredius.be.repository.AccountRepository
 import com.kredius.be.repository.ExchangeRateRepository
 import com.kredius.be.repository.JournalEntryRepository
+import com.kredius.be.repository.JournalLineRepository
 import com.kredius.be.repository.MerchantDictionaryRepository
 import com.kredius.be.repository.StatementImportRepository
 import com.kredius.be.repository.StatementLineRepository
@@ -43,6 +44,7 @@ class StatementService(
     private val lineRepo: StatementLineRepository,
     private val merchantRepo: MerchantDictionaryRepository,
     private val journalEntryRepo: JournalEntryRepository,
+    private val journalLineRepo: JournalLineRepository,
     private val exchangeRateRepo: ExchangeRateRepository,
     private val parser: BhdPdfParser,
 ) {
@@ -69,7 +71,7 @@ class StatementService(
             import.status = StatementImportStatus.PROCESSING
             importRepo.save(import)
 
-            val parsed   = parser.parse(file.inputStream)
+            val parsed    = parser.parse(file.inputStream)
             val merchants = merchantRepo.findByUserId(userId)
                 .associateBy { it.textPattern.uppercase() }
 
@@ -145,35 +147,38 @@ class StatementService(
             val amountRd = if (line.currency == CurrencyType.RD) line.amount
                           else line.amount.multiply(usdRate?.value ?: BigDecimal.ONE)
 
-            val entry = journalEntryRepo.save(JournalEntry(
+            // Save entry first, then save each JournalLine explicitly and use the returned
+            // managed instance. With id: Long = 0 (non-nullable), Spring Data JPA calls
+            // em.merge() which returns a NEW managed object — the original local variable
+            // stays transient. Explicit saves ensure we hold the managed reference before
+            // assigning it to StatementLine.journalLine.
+            val savedEntry = journalEntryRepo.save(JournalEntry(
                 entryDate   = line.lineDate,
                 description = line.description,
                 source      = source,
                 referenceId = import.id,
                 user        = currentUser.user,
             ))
-            val debitLine = JournalLine(
-                journalEntry   = entry,
+            val managedDebitLine = journalLineRepo.save(JournalLine(
+                journalEntry   = savedEntry,
                 account        = line.categoryAccount!!,
                 side           = EntrySide.DEBIT,
                 currency       = line.currency,
                 originalAmount = line.amount,
                 exchangeRate   = if (line.currency == CurrencyType.USD) usdRate else null,
                 amountRd       = amountRd,
-            )
-            val creditLine = JournalLine(
-                journalEntry   = entry,
+            ))
+            journalLineRepo.save(JournalLine(
+                journalEntry   = savedEntry,
                 account        = import.account,
                 side           = EntrySide.CREDIT,
                 currency       = line.currency,
                 originalAmount = line.amount,
                 exchangeRate   = if (line.currency == CurrencyType.USD) usdRate else null,
                 amountRd       = amountRd,
-            )
-            entry.lines.addAll(listOf(debitLine, creditLine))
-            journalEntryRepo.save(entry)
+            ))
 
-            line.journalLine = debitLine
+            line.journalLine = managedDebitLine
             postedCount++
         }
 

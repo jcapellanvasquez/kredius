@@ -20,10 +20,10 @@ data class ParsedStatementLine(
 @Component
 class BhdPdfParser {
 
-    private val dateRegex       = Regex("""\d{2}/\d{2}/\d{4}""")
-    private val amountRegex     = Regex("""\d{1,3}(?:,\d{3})*\.\d{2}""")
-    private val card4Regex      = Regex("""^\d{4}$""")
-    private val dateFormatter   = DateTimeFormatter.ofPattern("dd/MM/yyyy")
+    private val dateRegex     = Regex("""\d{2}/\d{2}/\d{4}""")
+    private val amountRegex   = Regex("""\d{1,3}(?:,\d{3})*\.\d{2}""")
+    private val card4Regex    = Regex("""^\d{4}$""")
+    private val dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
 
     private val skipPatterns = listOf(
         "TRANSACCIONES EN", "TOTAL DE TRANSACCIONES",
@@ -45,16 +45,20 @@ class BhdPdfParser {
         val rawLines = text.lines().map { it.trim() }.filter { it.isNotBlank() }
         val result   = mutableListOf<ParsedStatementLine>()
 
-        var currentCurrency = CurrencyType.RD
+        var currentCurrency      = CurrencyType.RD
+        var inTransactionSection = false
 
         for (line in rawLines) {
             val upper = line.uppercase()
 
-            // Currency section markers
             when {
-                "TRANSACCIONES EN RD" in upper      -> { currentCurrency = CurrencyType.RD;  continue }
-                "TRANSACCIONES EN DOLARES" in upper -> { currentCurrency = CurrencyType.USD; continue }
+                "TRANSACCIONES EN RD" in upper      -> { currentCurrency = CurrencyType.RD;  inTransactionSection = true;  continue }
+                "TRANSACCIONES EN DOLARES" in upper -> { currentCurrency = CurrencyType.USD; inTransactionSection = true;  continue }
+                "TOTAL DE TRANSACCIONES" in upper   -> { inTransactionSection = false; continue }
             }
+
+            // Only process rows while inside a transaction section
+            if (!inTransactionSection) continue
             if (skipPatterns.any { upper.contains(it) }) continue
 
             val parsed = tryParseRow(line, currentCurrency) ?: continue

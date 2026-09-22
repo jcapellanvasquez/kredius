@@ -32,10 +32,10 @@ class StatementController(private val statementService: StatementService) : Stat
     ): ResponseEntity<StatementLineDto> =
         ResponseEntity.ok(statementService.patchLine(id, patchStatementLineRequest))
 
-    // Phase 4 — implemented in next phase
+    @Suppress("UNCHECKED_CAST")
     override fun confirmStatementImport(id: Long): ResponseEntity<ConfirmImportResponse> =
-        super.confirmStatementImport(id)
+        statementService.confirm(id) as ResponseEntity<ConfirmImportResponse>
 
     override fun reverseStatementImport(id: Long): ResponseEntity<StatementImportResponse> =
-        super.reverseStatementImport(id)
+        ResponseEntity.ok(statementService.reverse(id))
 }

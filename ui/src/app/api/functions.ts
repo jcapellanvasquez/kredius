@@ -31,3 +31,7 @@ export type { GetBudgetReport$Params as GetBudgetReport$Params } from './fn/repo
 export { getBudgetReport as getBudgetReport } from './fn/reports/get-budget-report';
 export type { BatchUpdateBudgets$Params as BatchUpdateBudgets$Params } from './fn/reports/batch-update-budgets';
 export { batchUpdateBudgets as batchUpdateBudgets } from './fn/reports/batch-update-budgets';
+export type { ListIncomeEntries$Params as ListIncomeEntries$Params } from './fn/income/list-income-entries';
+export { listIncomeEntries as listIncomeEntries } from './fn/income/list-income-entries';
+export type { CreateIncomeEntry$Params as CreateIncomeEntry$Params } from './fn/income/create-income-entry';
+export { createIncomeEntry as createIncomeEntry } from './fn/income/create-income-entry';

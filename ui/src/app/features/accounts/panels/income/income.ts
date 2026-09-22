@@ -1,5 +1,14 @@
-import { Component } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
+import { combineLatest, timer } from 'rxjs';
+import { map } from 'rxjs/operators';
+import { ApiConfiguration } from '../../../../api/api-configuration';
+import { listIncomeEntries } from '../../../../api/fn/income/list-income-entries';
+import { createIncomeEntry } from '../../../../api/fn/income/create-income-entry';
+import { IncomeEntryResponse } from '../../../../api/models/income-entry-response';
+
+const MIN_SPINNER_MS = 700;
 
 type Currency = 'dop' | 'usd';
 type Source   = 'payroll' | 'other';
@@ -190,7 +199,7 @@ interface HistoryEntry {
         <h2 class="text-sm font-semibold text-gray-800 mb-2">Historial</h2>
         <div class="rounded-xl border border-gray-200 bg-white overflow-hidden divide-y divide-gray-100">
 
-          @for (entry of history; track entry.id) {
+          @for (entry of history(); track entry.id) {
             <!-- Collapsed row -->
             <button
               type="button"
@@ -224,7 +233,7 @@ interface HistoryEntry {
             </button>
           }
 
-          @if (history.length === 0) {
+          @if (history().length === 0) {
             <p class="text-xs text-gray-400 text-center px-4 py-6">No hay ingresos registrados aun.</p>
           }
 
@@ -234,7 +243,10 @@ interface HistoryEntry {
     </div>
   `,
 })
-export class IncomeComponent {
+export class IncomeComponent implements OnInit {
+  private readonly http    = inject(HttpClient);
+  private readonly rootUrl = inject(ApiConfiguration).rootUrl;
+
   source: Source   = 'payroll';
   currency: Currency = 'dop';
   amount  = 0;
@@ -242,6 +254,15 @@ export class IncomeComponent {
   rate    = 59.00;
   fee     = 0;
   rateIsAuto = true;
+
+  readonly saving  = signal(false);
+  readonly history = signal<HistoryEntry[]>([]);
+
+  ngOnInit(): void {
+    listIncomeEntries(this.http, this.rootUrl).pipe(
+      map(r => r.body!.map(e => this.toHistoryEntry(e))),
+    ).subscribe({ next: rows => this.history.set(rows) });
+  }
 
   setCurrency(c: Currency): void {
     this.currency = c;
@@ -268,7 +289,7 @@ export class IncomeComponent {
   }
 
   get isValid(): boolean {
-    return this.amount > 0 && this.date.length > 0;
+    return this.amount > 0 && this.date.length > 0 && !this.saving();
   }
 
   sourceLabel(s: Source): string {
@@ -276,11 +297,11 @@ export class IncomeComponent {
   }
 
   entryNetFormatted(entry: HistoryEntry): string {
-    return 'RD$' + entry.net.toLocaleString();
+    return 'RD$' + Math.round(entry.net).toLocaleString('en-US');
   }
 
   feeFormatted(entry: HistoryEntry): string {
-    return 'RD$' + entry.fee.toLocaleString();
+    return 'RD$' + Math.round(entry.fee).toLocaleString('en-US');
   }
 
   rateLabel(entry: HistoryEntry): string {
@@ -288,27 +309,52 @@ export class IncomeComponent {
   }
 
   toggleEntry(id: number): void {
-    const entry = this.history.find(e => e.id === id);
-    if (entry) entry.expanded = !entry.expanded;
+    this.history.update(rows =>
+      rows.map(e => e.id === id ? { ...e, expanded: !e.expanded } : e),
+    );
   }
 
   register(): void {
     if (!this.isValid) return;
-    // TODO: wire to API
+    this.saving.set(true);
+
+    const body = {
+      source:    this.source as 'payroll' | 'other',
+      currency:  this.currency === 'usd' ? 'USD' as const : 'RD' as const,
+      amount:    this.amount,
+      entryDate: this.date,
+      rate:      this.currency === 'usd' ? this.rate : undefined,
+      bankFee:   this.fee > 0 ? this.fee : undefined,
+    };
+
+    combineLatest([
+      createIncomeEntry(this.http, this.rootUrl, { body }).pipe(map(r => r.body!)),
+      timer(MIN_SPINNER_MS),
+    ]).subscribe({
+      next: ([entry]) => {
+        this.history.update(rows => [this.toHistoryEntry(entry), ...rows]);
+        this.amount = 0;
+        this.fee    = 0;
+        this.date   = new Date().toISOString().substring(0, 10);
+        this.saving.set(false);
+      },
+      error: () => { this.saving.set(false); },
+    });
   }
 
-  history: HistoryEntry[] = [
-    {
-      id: 1, date: '1 oct 2026', source: 'payroll', currency: 'usd',
-      amount: 1500, rate: 58.50, fee: 350, net: 87400, expanded: false,
-    },
-    {
-      id: 2, date: '1 sep 2026', source: 'payroll', currency: 'usd',
-      amount: 1500, rate: 58.20, fee: 350, net: 86950, expanded: false,
-    },
-    {
-      id: 3, date: '15 ago 2026', source: 'other', currency: 'dop',
-      amount: 12000, rate: null, fee: 0, net: 12000, expanded: false,
-    },
-  ];
+  private toHistoryEntry(e: IncomeEntryResponse): HistoryEntry {
+    const d = e.entryDate ? new Date(e.entryDate + 'T00:00:00') : new Date();
+    const dateLabel = d.toLocaleDateString('es-DO', { day: 'numeric', month: 'short', year: 'numeric' });
+    return {
+      id:       e.id ?? 0,
+      date:     dateLabel,
+      source:   (e.source ?? 'other') as Source,
+      currency: e.currency === 'USD' ? 'usd' : 'dop',
+      amount:   e.originalAmount ?? 0,
+      rate:     e.rate ?? null,
+      fee:      e.bankFee ?? 0,
+      net:      e.netAmountRd ?? 0,
+      expanded: false,
+    };
+  }
 }

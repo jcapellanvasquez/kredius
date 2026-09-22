@@ -67,7 +67,7 @@ const TIMEOUT_MS = 15_000;
         <!-- Account selector -->
         <div class="flex flex-col gap-1.5">
           <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Cuenta</label>
-          <select [(ngModel)]="selectedAccountId"
+          <select [ngModel]="selectedAccountId()" (ngModelChange)="selectedAccountId.set($event)"
             class="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-300">
             <option [ngValue]="null" disabled>Selecciona una cuenta...</option>
             @for (acc of accountOptions(); track acc.id) {
@@ -79,7 +79,7 @@ const TIMEOUT_MS = 15_000;
         <!-- Statement date -->
         <div class="flex flex-col gap-1.5">
           <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Fecha del corte</label>
-          <input type="date" [(ngModel)]="statementDate"
+          <input type="date" [ngModel]="statementDate()" (ngModelChange)="statementDate.set($event)"
             class="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-300"/>
         </div>
 
@@ -335,8 +335,8 @@ export class UploadStatementComponent implements OnInit {
   readonly postedEntries = signal(0);
   readonly selectedFileName = signal('');
 
-  selectedAccountId: number | null = null;
-  statementDate = '';
+  readonly selectedAccountId = signal<number | null>(null);
+  readonly statementDate     = signal('');
 
   private importId: number | null = null;
   private readonly _lines = signal<LineVm[]>([]);
@@ -364,7 +364,7 @@ export class UploadStatementComponent implements OnInit {
   );
 
   readonly canUpload = computed(() =>
-    this.selectedAccountId !== null && this.statementDate !== ''
+    this.selectedAccountId() !== null && this.statementDate() !== ''
   );
 
   // ── Lifecycle ──────────────────────────────────────────────────────
@@ -377,7 +377,7 @@ export class UploadStatementComponent implements OnInit {
   // ── Actions ────────────────────────────────────────────────────────
   setFlow(flow: FlowType): void {
     this.flow.set(flow);
-    this.selectedAccountId = null;
+    this.selectedAccountId.set(null);
   }
 
   triggerFileInput(): void {
@@ -385,17 +385,19 @@ export class UploadStatementComponent implements OnInit {
   }
 
   onFileSelected(event: Event): void {
-    const file = (event.target as HTMLInputElement).files?.[0];
-    if (!file || !this.selectedAccountId || !this.statementDate) return;
+    const file      = (event.target as HTMLInputElement).files?.[0];
+    const accountId = this.selectedAccountId();
+    const date      = this.statementDate();
+    if (!file || !accountId || !date) return;
 
     this.selectedFileName.set(file.name);
     this.uploadState.set('uploading');
 
     const form = new FormData();
     form.append('file', file);
-    form.append('accountId', String(this.selectedAccountId));
+    form.append('accountId', String(accountId));
     form.append('type', this.flow() === 'credit-card' ? 'CREDIT_CARD' : 'SAVINGS');
-    form.append('statementDate', this.statementDate);
+    form.append('statementDate', date);
 
     this.http.post<{ id: number; status: string; errorMessage?: string; lines: any[] }>(
       `${this.rootUrl}/api/v1/statement-imports`, form
@@ -487,6 +489,8 @@ export class UploadStatementComponent implements OnInit {
     this.postedEntries.set(0);
     this.showCategorized.set(false);
     this.showExcluded.set(false);
+    this.selectedAccountId.set(null);
+    this.statementDate.set('');
     if (this.fileInputRef) this.fileInputRef.nativeElement.value = '';
   }
 }

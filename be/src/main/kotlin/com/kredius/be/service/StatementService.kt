@@ -75,7 +75,7 @@ class StatementService(
             importRepo.save(import)
 
             val parsed    = parser.parse(file.inputStream)
-            val merchants = merchantRepo.findByUserId(userId)
+            val merchants = merchantRepo.findByUserIdOrderByTextPatternAsc(userId)
                 .associateBy { it.textPattern.uppercase() }
 
             for (row in parsed) {

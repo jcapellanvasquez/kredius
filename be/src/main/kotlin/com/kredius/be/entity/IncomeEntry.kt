@@ -29,6 +29,9 @@ class IncomeEntry(
     @Column(name = "bank_fee", nullable = false, precision = 14, scale = 2)
     var bankFee: BigDecimal = BigDecimal.ZERO,
 
+    @Column(name = "net_amount_rd", nullable = false, precision = 14, scale = 2)
+    var netAmountRd: BigDecimal = BigDecimal.ZERO,
+
     @Column(name = "entry_date", nullable = false)
     var entryDate: LocalDate = LocalDate.now(),
 

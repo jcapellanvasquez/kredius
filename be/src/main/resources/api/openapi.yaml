@@ -34,6 +34,8 @@ tags:
     description: Loan management
   - name: Statements
     description: Bank statement upload, parsing, and categorization
+  - name: Reports
+    description: Budget reports and budget configuration
 
 paths:
 
@@ -378,8 +380,150 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
+  /api/v1/reports/budget:
+    get:
+      tags: [Reports]
+      summary: Budget report for a period
+      description: Returns all expense accounts with budgeted and actual amounts, salary percentages, and the last payroll reference
+      operationId: getBudgetReport
+      parameters:
+        - name: period
+          in: query
+          required: true
+          description: First day of the report month (e.g. 2026-10-01)
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Report retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BudgetReportResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/budgets/batch-update:
+    post:
+      tags: [Reports]
+      summary: Batch update budgeted amounts
+      description: Upserts budget rows and writes budget_history for each changed account. Only send rows the user actually changed.
+      operationId: batchUpdateBudgets
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchBudgetUpdateRequest'
+      responses:
+        '200':
+          description: Budgets updated — returns the refreshed report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BudgetReportResponse'
+        '422':
+          description: Negative amount or non-expense account
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
 components:
   schemas:
+
+    BudgetReportResponse:
+      type: object
+      properties:
+        period:
+          type: string
+          format: date
+        income:
+          type: number
+          format: double
+        expenses:
+          type: number
+          format: double
+        netProfit:
+          type: number
+          format: double
+        lastPayrollAmount:
+          type: number
+          format: double
+          nullable: true
+        lastPayrollDate:
+          type: string
+          format: date
+          nullable: true
+        accounts:
+          type: array
+          items:
+            $ref: '#/components/schemas/BudgetReportAccountRow'
+
+    BudgetReportAccountRow:
+      type: object
+      properties:
+        accountId:
+          type: integer
+          format: int64
+        name:
+          type: string
+        budgetedAmount:
+          type: number
+          format: double
+          nullable: true
+        budgetOrigin:
+          type: string
+          nullable: true
+          enum: [manual, auto_suggested]
+        actualAmount:
+          type: number
+          format: double
+        budgetedPct:
+          type: integer
+          nullable: true
+        actualPct:
+          type: integer
+          nullable: true
+        showInAlerts:
+          type: boolean
+        thresholdPct:
+          type: number
+          format: double
+          nullable: true
+        isOverThreshold:
+          type: boolean
+
+    BatchBudgetUpdateRequest:
+      type: object
+      required:
+        - period
+        - updates
+      properties:
+        period:
+          type: string
+          format: date
+        updates:
+          type: array
+          items:
+            $ref: '#/components/schemas/BudgetUpdateItem'
+
+    BudgetUpdateItem:
+      type: object
+      required:
+        - accountId
+        - amount
+      properties:
+        accountId:
+          type: integer
+          format: int64
+        amount:
+          type: number
+          format: double
+          minimum: 0
 
     AccountSummaryResponse:
       type: object

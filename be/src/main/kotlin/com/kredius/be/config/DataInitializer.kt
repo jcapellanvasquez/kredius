@@ -101,6 +101,7 @@ class DataInitializer(
             originalAmount = bd("1500"),
             exchangeRate = payrollRate,
             bankFee = bd("0"),
+            netAmountRd = payrollAmount,  // US$1,500 × 60.50 − 0 = RD$90,750
             entryDate = LocalDate.of(2026, 9, 15),
             journalEntry = payrollEntry,
         ))
@@ -297,6 +298,7 @@ class DataInitializer(
         incomeEntryRepo.save(IncomeEntry(
             destinationAccount = tSavings, source = "payroll", currency = CurrencyType.USD,
             originalAmount = bd("500"), exchangeRate = payrollRate, bankFee = bd("0"),
+            netAmountRd = tPayrollAmt,  // US$500 × 60.50 − 0 = RD$30,250
             entryDate = LocalDate.of(2026, 9, 15), journalEntry = tPayrollEntry,
         ))
 

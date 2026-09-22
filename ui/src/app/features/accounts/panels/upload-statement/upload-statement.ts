@@ -6,6 +6,7 @@ import { timeout, TimeoutError } from 'rxjs';
 import { AccountApiService } from '../../account-api.service';
 import { ApiConfiguration } from '../../../../api/api-configuration';
 import { AccountSummaryResponse } from '../../../../api/models/account-summary-response';
+import { StatementImportSummaryResponse } from '../../../../api/models/statement-import-summary-response';
 
 type AccountFlow = 'credit-card' | 'savings';
 type NewMerchantStatus = 'pending' | 'resolved';
@@ -706,19 +707,8 @@ export class UploadStatementComponent implements OnInit {
   showSavingsMovements = false;
   showHistory          = false;
 
-  // ── Mock import history (replaced by real API call later) ──────────
-  pendingImports: ImportSummary[] = [
-    { id: 1, accountName: 'Tarjeta de Crédito BHD', statementDate: '2026-08', status: 'PENDING_REVIEW', unresolvedCount: 12, lineCount: 34 },
-    { id: 2, accountName: 'Tarjeta de Crédito BHD', statementDate: '2026-07', status: 'PENDING_REVIEW', unresolvedCount:  3, lineCount: 28 },
-  ];
-
-  historyImports: ImportSummary[] = [
-    { id: 3, accountName: 'Tarjeta de Crédito BHD', statementDate: '2026-06', status: 'CONFIRMED',  unresolvedCount: 0, lineCount: 31 },
-    { id: 4, accountName: 'Tarjeta de Crédito BHD', statementDate: '2026-05', status: 'CONFIRMED',  unresolvedCount: 0, lineCount: 27 },
-    { id: 5, accountName: 'Tarjeta de Crédito BHD', statementDate: '2026-04', status: 'REVERSED',   unresolvedCount: 0, lineCount: 22 },
-    { id: 6, accountName: 'Tarjeta de Crédito BHD', statementDate: '2026-03', status: 'CONFIRMED',  unresolvedCount: 0, lineCount: 29 },
-    { id: 7, accountName: 'Tarjeta de Crédito BHD', statementDate: '2026-02', status: 'FAILED',     unresolvedCount: 0, lineCount:  0 },
-  ];
+  pendingImports: ImportSummary[] = [];
+  historyImports: ImportSummary[] = [];
 
   selectedAccountId: number | null = null;
   statementDate                    = '';
@@ -866,6 +856,30 @@ export class UploadStatementComponent implements OnInit {
     if (this.acctSvc.accounts().length === 0) {
       this.acctSvc.load().subscribe();
     }
+    this.loadHistory();
+  }
+
+  private loadHistory(): void {
+    this.http.get<StatementImportSummaryResponse[]>(`${this.rootUrl}/api/v1/statement-imports`)
+      .pipe(timeout(TIMEOUT_MS))
+      .subscribe({
+        next: list => {
+          const toSummary = (i: StatementImportSummaryResponse): ImportSummary => ({
+            id:              i.id!,
+            accountName:     i.accountName ?? '',
+            statementDate:   i.statementDate ?? '',
+            status:          i.status as ImportStatus,
+            unresolvedCount: i.unresolvedCount ?? 0,
+            lineCount:       i.lineCount ?? 0,
+          });
+          this.pendingImports = list
+            .filter(i => i.status === 'PENDING_REVIEW')
+            .map(toSummary);
+          this.historyImports = list
+            .filter(i => i.status === 'CONFIRMED' || i.status === 'REVERSED' || i.status === 'FAILED')
+            .map(toSummary);
+        },
+      });
   }
 
   // ── Actions ─────────────────────────────────────────────────────────
@@ -896,10 +910,12 @@ export class UploadStatementComponent implements OnInit {
             this.importId = res.id;
             if (res.status === 'FAILED') {
               this.uploadError = res.errorMessage ?? 'No se pudo procesar el archivo.';
+              this.loadHistory();
             } else {
               this._rawLines = res.lines ?? [];
               this._populateLists();
               this.parsed = true;
+              this.loadHistory();
             }
           });
         },
@@ -1027,9 +1043,10 @@ export class UploadStatementComponent implements OnInit {
       .pipe(timeout(TIMEOUT_MS))
       .subscribe({
         next: res => {
-          this.confirming   = false;
+          this.confirming    = false;
           this.postedEntries = res.postedEntries ?? 0;
-          this.confirmed    = true;
+          this.confirmed     = true;
+          this.loadHistory();
         },
         error: (err: HttpErrorResponse | TimeoutError) => {
           this.confirming = false;
@@ -1074,8 +1091,31 @@ export class UploadStatementComponent implements OnInit {
     return classes[status];
   }
 
-  resumeImport(_imp: ImportSummary): void {
-    // placeholder — will call GET /api/v1/statement-imports/{id} in real implementation
+  resumeImport(imp: ImportSummary): void {
+    this.uploading = true;
+    this.uploadError = '';
+    this._uploadStart = Date.now();
+
+    this.http.get<any>(`${this.rootUrl}/api/v1/statement-imports/${imp.id}`)
+      .pipe(timeout(TIMEOUT_MS))
+      .subscribe({
+        next: res => {
+          this._afterMinSpinner(() => {
+            this.flow             = res.type === 'CREDIT_CARD' ? 'credit-card' : 'savings';
+            this.importId         = res.id;
+            this.statementDate    = res.statementDate ?? '';
+            this.selectedAccountId = res.accountId ?? null;
+            this._rawLines        = res.lines ?? [];
+            this._populateLists();
+            this.parsed = true;
+          });
+        },
+        error: () => {
+          this._afterMinSpinner(() => {
+            this.uploadError = 'No se pudo cargar el corte. Intenta de nuevo.';
+          });
+        },
+      });
   }
 
   // ── Shared ──────────────────────────────────────────────────────────

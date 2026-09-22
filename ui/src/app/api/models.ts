@@ -19,6 +19,7 @@ export type { MonthlyBalancePoint } from './models/monthly-balance-point';
 export type { PatchStatementLineRequest } from './models/patch-statement-line-request';
 export type { StatementImportResponse } from './models/statement-import-response';
 export type { StatementImportStatus } from './models/statement-import-status';
+export type { StatementImportSummaryResponse } from './models/statement-import-summary-response';
 export type { StatementLineDto } from './models/statement-line-dto';
 export type { StatementType } from './models/statement-type';
 export type { TransactionItem } from './models/transaction-item';

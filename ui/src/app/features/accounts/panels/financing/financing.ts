@@ -339,11 +339,16 @@ export class FinancingComponent implements OnInit {
   impactReduceInstallmentText = '';
 
   ngOnInit(): void {
-    const id = this.route.snapshot.queryParamMap.get('id');
-    if (id) {
-      this.accountId = +id;
-      this.loadLoan();
-    }
+    this.route.queryParamMap.subscribe(params => {
+      const id = params.get('id');
+      if (id) {
+        this.accountId = +id;
+        this.loan = null;
+        this.showSchedule = false;
+        this.showScheduleDoc = false;
+        this.loadLoan();
+      }
+    });
   }
 
   private loadLoan(): void {

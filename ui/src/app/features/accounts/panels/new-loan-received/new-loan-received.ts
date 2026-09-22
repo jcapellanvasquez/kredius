@@ -5,6 +5,7 @@ import { HttpClient } from '@angular/common/http';
 import { combineLatest, map, timer } from 'rxjs';
 import { ApiConfiguration } from '../../../../api/api-configuration';
 import { createReceivedLoan } from '../../../../api/fn/loans/create-received-loan';
+import { AccountApiService } from '../../account-api.service';
 
 const MIN_SPINNER_MS = 700;
 
@@ -169,13 +170,14 @@ interface PreviewRow {
   `,
 })
 export class NewLoanReceivedComponent {
-  private readonly http    = inject(HttpClient);
-  private readonly rootUrl = inject(ApiConfiguration).rootUrl;
+  private readonly http       = inject(HttpClient);
+  private readonly rootUrl    = inject(ApiConfiguration).rootUrl;
+  private readonly accountSvc = inject(AccountApiService);
 
   lender      = '';
-  principal   = 350_000;
-  monthlyRate = 3;
-  n           = 24;
+  principal   = 0;
+  monthlyRate = 0;
+  n           = 0;
   startDate   = new Date().toISOString().substring(0, 10);
 
   readonly saving  = signal(false);
@@ -243,7 +245,7 @@ export class NewLoanReceivedComponent {
       }).pipe(map(r => r.body!)),
       timer(MIN_SPINNER_MS),
     ]).subscribe({
-      next:  () => { this.saving.set(false); this.created.set(true); },
+      next:  () => { this.saving.set(false); this.created.set(true); this.accountSvc.load().subscribe(); },
       error: () => { this.saving.set(false); },
     });
   }

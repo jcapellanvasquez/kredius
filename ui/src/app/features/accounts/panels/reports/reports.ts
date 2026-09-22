@@ -265,8 +265,8 @@ export class ReportsComponent implements OnInit {
 
   isEditMode  = false;
   pdfExported = false;
-  budgetDrafts:    Record<number, number> = {};
-  originalValues:  Record<number, number> = {};
+  budgetDrafts:    Partial<Record<number, number>> = {};
+  originalValues:  Partial<Record<number, number>> = {};
 
   ngOnInit(): void {
     this.loadReport();

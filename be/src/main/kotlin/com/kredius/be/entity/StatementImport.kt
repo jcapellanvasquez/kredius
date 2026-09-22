@@ -23,8 +23,12 @@ class StatementImport(
     @Column(name = "file_name", length = 200)
     var fileName: String? = null,
 
-    @Column(nullable = false)
-    var confirmed: Boolean = false,
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    var status: StatementImportStatus = StatementImportStatus.UPLOADED,
+
+    @Column(name = "error_message", length = 500)
+    var errorMessage: String? = null,
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)

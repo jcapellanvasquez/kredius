@@ -26,6 +26,10 @@ class JournalEntry(
     @JoinColumn(name = "user_id", nullable = false)
     var user: User = User(),
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "reverses_entry_id")
+    var reversesEntry: JournalEntry? = null,
+
     @OneToMany(mappedBy = "journalEntry", cascade = [CascadeType.ALL], orphanRemoval = true)
     val lines: MutableList<JournalLine> = mutableListOf(),
 

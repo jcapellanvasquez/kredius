@@ -340,20 +340,17 @@ export class FinancingComponent implements OnInit {
 
   ngOnInit(): void {
     const id = this.route.snapshot.queryParamMap.get('id');
-    const type = this.route.snapshot.queryParamMap.get('type');
-    if (id && type !== 'received') {
-      this.isGiven = true;
+    if (id) {
       this.accountId = +id;
       this.loadLoan();
-    } else {
-      this.isGiven = false;
-      this.showSchedule = true;
     }
   }
 
   private loadLoan(): void {
     getLoan(this.http, this.rootUrl, { accountId: this.accountId }).pipe(map(r => r.body!)).subscribe(loan => {
       this.loan = loan;
+      this.isGiven = loan.type === 'GIVEN';
+      if (!this.isGiven) this.showSchedule = true;
     });
   }
 

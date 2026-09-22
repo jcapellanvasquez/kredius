@@ -1,7 +1,10 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
+import { combineLatest, timer } from 'rxjs';
 import { map } from 'rxjs/operators';
+
+const MIN_SPINNER_MS = 700;
 import { ApiConfiguration } from '../../../../api/api-configuration';
 import { getBudgetReport } from '../../../../api/fn/reports/get-budget-report';
 import { batchUpdateBudgets } from '../../../../api/fn/reports/batch-update-budgets';
@@ -335,10 +338,11 @@ export class ReportsComponent implements OnInit {
     if (updates.length === 0) { this.cancelEdit(); return; }
 
     this.saving.set(true);
-    batchUpdateBudgets(this.http, this.rootUrl, {
-      body: { period: this.period(), updates },
-    }).pipe(map(r => r.body!)).subscribe({
-      next: r => {
+    combineLatest([
+      batchUpdateBudgets(this.http, this.rootUrl, { body: { period: this.period(), updates } }).pipe(map(r => r.body!)),
+      timer(MIN_SPINNER_MS),
+    ]).subscribe({
+      next: ([r]) => {
         this.report.set(r);
         this.budgetDrafts   = {};
         this.originalValues = {};

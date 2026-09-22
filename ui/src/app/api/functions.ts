@@ -31,6 +31,14 @@ export type { GetBudgetReport$Params as GetBudgetReport$Params } from './fn/repo
 export { getBudgetReport as getBudgetReport } from './fn/reports/get-budget-report';
 export type { BatchUpdateBudgets$Params as BatchUpdateBudgets$Params } from './fn/reports/batch-update-budgets';
 export { batchUpdateBudgets as batchUpdateBudgets } from './fn/reports/batch-update-budgets';
+export type { ListMerchantMappings$Params as ListMerchantMappings$Params } from './fn/dictionary/list-merchant-mappings';
+export { listMerchantMappings as listMerchantMappings } from './fn/dictionary/list-merchant-mappings';
+export type { CreateMerchantMapping$Params as CreateMerchantMapping$Params } from './fn/dictionary/create-merchant-mapping';
+export { createMerchantMapping as createMerchantMapping } from './fn/dictionary/create-merchant-mapping';
+export type { DeleteMerchantMapping$Params as DeleteMerchantMapping$Params } from './fn/dictionary/delete-merchant-mapping';
+export { deleteMerchantMapping as deleteMerchantMapping } from './fn/dictionary/delete-merchant-mapping';
+export type { UpdateMerchantMapping$Params as UpdateMerchantMapping$Params } from './fn/dictionary/update-merchant-mapping';
+export { updateMerchantMapping as updateMerchantMapping } from './fn/dictionary/update-merchant-mapping';
 export type { ListIncomeEntries$Params as ListIncomeEntries$Params } from './fn/income/list-income-entries';
 export { listIncomeEntries as listIncomeEntries } from './fn/income/list-income-entries';
 export type { CreateIncomeEntry$Params as CreateIncomeEntry$Params } from './fn/income/create-income-entry';

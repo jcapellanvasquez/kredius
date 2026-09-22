@@ -1,26 +1,21 @@
-import { Component } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
+import { combineLatest, map } from 'rxjs';
+import { ApiConfiguration } from '../../../../api/api-configuration';
+import { getAccounts } from '../../../../api/fn/accounts/get-accounts';
+import { listMerchantMappings } from '../../../../api/fn/dictionary/list-merchant-mappings';
+import { createMerchantMapping } from '../../../../api/fn/dictionary/create-merchant-mapping';
+import { updateMerchantMapping } from '../../../../api/fn/dictionary/update-merchant-mapping';
+import { deleteMerchantMapping } from '../../../../api/fn/dictionary/delete-merchant-mapping';
+import { MerchantMappingResponse } from '../../../../api/models/merchant-mapping-response';
 
 interface Merchant {
-  id:       number;
-  pattern:  string;
-  category: string;
+  id:        number;
+  pattern:   string;
+  category:  string;
+  accountId: number;
 }
-
-const CATEGORIES = [
-  'Alimentación',
-  'Transporte',
-  'Entretenimiento',
-  'Salud',
-  'Servicios del hogar',
-  'Ropa y calzado',
-  'Tecnología',
-  'Educación',
-  'Gasolina',
-  'Farmacia',
-  'Restaurantes',
-  'Otro',
-];
 
 @Component({
   selector: 'app-dictionary',
@@ -139,6 +134,7 @@ const CATEGORIES = [
             <!-- Category dropdown (inline edit) -->
             <select
               [(ngModel)]="merchant.category"
+              (change)="updateCategory(merchant)"
               class="text-sm border border-gray-200 rounded-md px-2 py-1 text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-brand-300 focus:border-brand-400 transition-colors"
             >
               @for (cat of categories; track cat) {
@@ -171,64 +167,90 @@ const CATEGORIES = [
     </div>
   `,
 })
-export class DictionaryComponent {
+export class DictionaryComponent implements OnInit {
+  private readonly http    = inject(HttpClient);
+  private readonly rootUrl = inject(ApiConfiguration).rootUrl;
+
   searchQuery  = '';
   showAddForm  = false;
   newPattern   = '';
-  newCategory  = CATEGORIES[0];
+  newCategory  = '';
 
-  readonly categories = CATEGORIES;
+  categories:  string[] = [];
+  private categoryMap: Record<string, number> = {};
 
-  merchants: Merchant[] = [
-    { id:  1, pattern: 'NETFLIX',              category: 'Entretenimiento'     },
-    { id:  2, pattern: 'SUPERMERCADO NACIONAL', category: 'Alimentación'       },
-    { id:  3, pattern: 'UBER',                 category: 'Transporte'          },
-    { id:  4, pattern: 'LA SIRENA',            category: 'Alimentación'        },
-    { id:  5, pattern: 'CLARO',                category: 'Servicios del hogar' },
-    { id:  6, pattern: 'SPOTIFY',              category: 'Entretenimiento'     },
-    { id:  7, pattern: 'TEXACO',               category: 'Gasolina'            },
-    { id:  8, pattern: 'FARMACIA CAROL',        category: 'Farmacia'            },
-    { id:  9, pattern: 'AMAZON',               category: 'Tecnología'          },
-    { id: 10, pattern: 'UBER EATS',            category: 'Restaurantes'        },
-    { id: 11, pattern: 'PLAZA VALERIO',        category: 'Entretenimiento'     },
-    { id: 12, pattern: 'COLMADO DON RAMON',    category: 'Alimentación'        },
-  ];
+  private readonly merchantsSignal = signal<Merchant[]>([]);
+
+  ngOnInit(): void {
+    combineLatest([
+      getAccounts(this.http, this.rootUrl, { type: 'EXPENSE' }).pipe(map(r => r.body!)),
+      listMerchantMappings(this.http, this.rootUrl).pipe(map(r => r.body!)),
+    ]).subscribe(([accounts, mappings]) => {
+      this.categories  = accounts.map(a => a.name ?? '').filter(Boolean);
+      this.categoryMap = Object.fromEntries(accounts.map(a => [a.name ?? '', a.id ?? 0]));
+      this.newCategory = this.categories[0] ?? '';
+      this.merchantsSignal.set(mappings.map(m => this.toMerchant(m)));
+    });
+  }
 
   get filteredMerchants(): Merchant[] {
-    if (!this.searchQuery.trim()) return this.merchants;
+    const all = this.merchantsSignal();
+    if (!this.searchQuery.trim()) return all;
     const q = this.searchQuery.toLowerCase();
-    return this.merchants.filter(m => m.pattern.toLowerCase().includes(q));
+    return all.filter(m => m.pattern.toLowerCase().includes(q));
   }
 
   get countLabel(): string {
-    return this.merchants.length + ' comercios aprendidos';
+    return this.merchantsSignal().length + ' comercios aprendidos';
   }
 
   toggleAddForm(): void {
     this.showAddForm = !this.showAddForm;
-    if (!this.showAddForm) {
-      this.newPattern  = '';
-      this.newCategory = CATEGORIES[0];
-    }
+    if (!this.showAddForm) { this.newPattern = ''; this.newCategory = this.categories[0] ?? ''; }
   }
 
   cancelAdd(): void {
     this.showAddForm = false;
     this.newPattern  = '';
-    this.newCategory = CATEGORIES[0];
+    this.newCategory = this.categories[0] ?? '';
   }
 
   addMerchant(): void {
-    const pattern = this.newPattern.trim().toUpperCase();
-    if (!pattern) return;
-    const nextId = this.merchants.length
-      ? Math.max(...this.merchants.map(m => m.id)) + 1
-      : 1;
-    this.merchants.unshift({ id: nextId, pattern, category: this.newCategory });
-    this.cancelAdd();
+    const pattern   = this.newPattern.trim();
+    const accountId = this.categoryMap[this.newCategory];
+    if (!pattern || !accountId) return;
+
+    createMerchantMapping(this.http, this.rootUrl, {
+      body: { pattern, accountId },
+    }).pipe(map(r => r.body!)).subscribe(m => {
+      this.merchantsSignal.update(list => [this.toMerchant(m), ...list]);
+      this.cancelAdd();
+    });
+  }
+
+  updateCategory(merchant: Merchant): void {
+    const accountId = this.categoryMap[merchant.category];
+    if (!accountId || accountId === merchant.accountId) return;
+
+    updateMerchantMapping(this.http, this.rootUrl, {
+      id: merchant.id, body: { accountId },
+    }).pipe(map(r => r.body!)).subscribe(m => {
+      merchant.accountId = m.accountId ?? merchant.accountId;
+    });
   }
 
   deleteMerchant(id: number): void {
-    this.merchants = this.merchants.filter(m => m.id !== id);
+    deleteMerchantMapping(this.http, this.rootUrl, { id }).subscribe(() => {
+      this.merchantsSignal.update(list => list.filter(m => m.id !== id));
+    });
+  }
+
+  private toMerchant(m: MerchantMappingResponse): Merchant {
+    return {
+      id:        m.id        ?? 0,
+      pattern:   m.pattern   ?? '',
+      category:  m.accountName ?? '',
+      accountId: m.accountId ?? 0,
+    };
   }
 }

@@ -15,6 +15,8 @@ export type { GetAccountTransactions$Params as GetAccountTransactions$Params } f
 export { getAccountTransactions as getAccountTransactions } from './fn/accounts/get-account-transactions';
 export type { GetLoans$Params as GetLoans$Params } from './fn/loans/get-loans';
 export { getLoans as getLoans } from './fn/loans/get-loans';
+export type { ListStatementImports$Params as ListStatementImports$Params } from './fn/statements/list-statement-imports';
+export { listStatementImports as listStatementImports } from './fn/statements/list-statement-imports';
 export type { UploadStatement$Params as UploadStatement$Params } from './fn/statements/upload-statement';
 export { uploadStatement as uploadStatement } from './fn/statements/upload-statement';
 export type { GetStatementImport$Params as GetStatementImport$Params } from './fn/statements/get-statement-import';
@@ -25,3 +27,7 @@ export type { ConfirmStatementImport$Params as ConfirmStatementImport$Params } f
 export { confirmStatementImport as confirmStatementImport } from './fn/statements/confirm-statement-import';
 export type { ReverseStatementImport$Params as ReverseStatementImport$Params } from './fn/statements/reverse-statement-import';
 export { reverseStatementImport as reverseStatementImport } from './fn/statements/reverse-statement-import';
+export type { GetBudgetReport$Params as GetBudgetReport$Params } from './fn/reports/get-budget-report';
+export { getBudgetReport as getBudgetReport } from './fn/reports/get-budget-report';
+export type { BatchUpdateBudgets$Params as BatchUpdateBudgets$Params } from './fn/reports/batch-update-budgets';
+export { batchUpdateBudgets as batchUpdateBudgets } from './fn/reports/batch-update-budgets';

@@ -14,7 +14,6 @@ import { AccountSummaryResponse } from '../../api/models/account-summary-respons
 export class AccountsComponent implements OnInit {
   readonly accountSvc = inject(AccountApiService);
 
-  showBudgetMode = false;
   showLoanPicker = false;
   showNavMenu    = false;
 
@@ -26,8 +25,6 @@ export class AccountsComponent implements OnInit {
     this.selectedKey.set('a-' + id);
     this.panelOpen.set(true);
   }
-
-  budgetDrafts: Partial<Record<number, number>> = {};
 
   readonly loading         = this.accountSvc.loading;
   readonly loanAccounts    = computed(() => this.accountSvc.loanAccounts());
@@ -89,6 +86,4 @@ export class AccountsComponent implements OnInit {
     );
   }
 
-  saveBudget(): void   { this.budgetDrafts = {}; this.showBudgetMode = false; }
-  cancelBudget(): void { this.budgetDrafts = {}; this.showBudgetMode = false; }
 }

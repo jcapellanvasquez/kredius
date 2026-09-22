@@ -197,7 +197,7 @@ interface JournalLineRepository : JpaRepository<JournalLine, Long> {
         value = """
             SELECT m.month_start AS monthStart, COALESCE(a.total_sum, 0) AS total
             FROM (
-                SELECT generate_series(:m3Start::date, :m1Start::date, interval '1 month')::date AS month_start
+                SELECT generate_series(CAST(:m3Start AS date), CAST(:m1Start AS date), interval '1 month')::date AS month_start
             ) m
             LEFT JOIN (
                 SELECT DATE_TRUNC('month', je.entry_date)::date AS month_start,

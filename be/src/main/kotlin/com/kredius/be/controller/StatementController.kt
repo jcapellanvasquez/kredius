@@ -4,6 +4,7 @@ import com.kredius.be.api.StatementsApi
 import com.kredius.be.model.ConfirmImportResponse
 import com.kredius.be.model.PatchStatementLineRequest
 import com.kredius.be.model.StatementImportResponse
+import com.kredius.be.model.StatementImportSummaryResponse
 import com.kredius.be.model.StatementLineDto
 import com.kredius.be.model.StatementType
 import com.kredius.be.service.StatementService
@@ -14,6 +15,9 @@ import java.time.LocalDate
 
 @RestController
 class StatementController(private val statementService: StatementService) : StatementsApi {
+
+    override fun listStatementImports(): ResponseEntity<List<StatementImportSummaryResponse>> =
+        ResponseEntity.ok(statementService.list())
 
     override fun uploadStatement(
         file: MultipartFile,

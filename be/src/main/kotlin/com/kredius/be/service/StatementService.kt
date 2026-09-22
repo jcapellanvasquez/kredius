@@ -16,8 +16,10 @@ import com.kredius.be.model.ConfirmImportResponse
 import com.kredius.be.model.PatchStatementLineRequest
 import com.kredius.be.model.StatementImportResponse
 import com.kredius.be.model.StatementImportStatus as ApiStatus
+import com.kredius.be.model.StatementImportSummaryResponse
 import com.kredius.be.model.StatementLineDto
 import com.kredius.be.model.StatementType
+import com.kredius.be.model.StatementType as ApiStatementType
 import com.kredius.be.model.UnresolvedLinesError
 import com.kredius.be.parser.BhdPdfParser
 import com.kredius.be.repository.AccountRepository
@@ -258,17 +260,36 @@ class StatementService(
     }
 
     @Transactional(readOnly = true)
+    fun list(): List<StatementImportSummaryResponse> =
+        importRepo.findByUserIdOrderByStatementDateDesc(currentUser.id).map { it.toSummary() }
+
+    @Transactional(readOnly = true)
     fun get(id: Long): StatementImportResponse {
         val import = importRepo.findByIdAndUserId(id, currentUser.id)
             ?: throw ApiException("NOT_FOUND", "Statement import not found", HttpStatus.NOT_FOUND)
         return import.toResponse()
     }
 
+    private fun StatementImport.toSummary() = StatementImportSummaryResponse(
+        id              = id,
+        status          = ApiStatus.valueOf(status.name),
+        type            = ApiStatementType.valueOf(type.name),
+        statementDate   = statementDate,
+        accountId       = account.id,
+        accountName     = account.name,
+        lineCount       = lines.size,
+        unresolvedCount = lines.count { !it.isExcluded && it.categoryAccount == null },
+    )
+
     private fun StatementImport.toResponse() = StatementImportResponse(
-        id           = id,
-        status       = ApiStatus.valueOf(status.name),
-        errorMessage = errorMessage,
-        lines        = lines.map { it.toDto() },
+        id            = id,
+        status        = ApiStatus.valueOf(status.name),
+        type          = ApiStatementType.valueOf(type.name),
+        statementDate = statementDate,
+        accountId     = account.id,
+        accountName   = account.name,
+        errorMessage  = errorMessage,
+        lines         = lines.map { it.toDto() },
     )
 
     private fun StatementLine.toDto() = StatementLineDto(

@@ -202,6 +202,21 @@ paths:
           $ref: '#/components/responses/InternalServerError'
 
   /api/v1/statement-imports:
+    get:
+      tags: [Statements]
+      summary: List all statement imports for the current user
+      operationId: listStatementImports
+      responses:
+        '200':
+          description: List of imports ordered by statement date descending
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StatementImportSummaryResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
     post:
       tags: [Statements]
       summary: Upload and parse a bank statement
@@ -732,6 +747,29 @@ components:
           type: string
           nullable: true
 
+    StatementImportSummaryResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        status:
+          $ref: '#/components/schemas/StatementImportStatus'
+        type:
+          $ref: '#/components/schemas/StatementType'
+        statementDate:
+          type: string
+          format: date
+        accountId:
+          type: integer
+          format: int64
+        accountName:
+          type: string
+        lineCount:
+          type: integer
+        unresolvedCount:
+          type: integer
+
     StatementImportResponse:
       type: object
       properties:
@@ -740,6 +778,16 @@ components:
           format: int64
         status:
           $ref: '#/components/schemas/StatementImportStatus'
+        type:
+          $ref: '#/components/schemas/StatementType'
+        statementDate:
+          type: string
+          format: date
+        accountId:
+          type: integer
+          format: int64
+        accountName:
+          type: string
         errorMessage:
           type: string
           nullable: true

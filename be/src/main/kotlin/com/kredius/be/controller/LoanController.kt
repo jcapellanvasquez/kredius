@@ -14,8 +14,11 @@ import org.springframework.web.bind.annotation.RestController
 @RestController
 class LoanController(private val loanService: LoanService) : LoansApi {
 
-    override fun getLoan(id: Long): ResponseEntity<LoanDetailResponse> =
-        ResponseEntity.ok(loanService.getOne(id))
+    override fun getLoan(accountId: Long): ResponseEntity<LoanDetailResponse> =
+        ResponseEntity.ok(loanService.getOne(accountId))
+
+    override fun collectInstallment(accountId: Long, num: Int): ResponseEntity<LoanDetailResponse> =
+        ResponseEntity.ok(loanService.collectInstallment(accountId, num))
 
     override fun getLoans(type: LoanType?): ResponseEntity<List<LoanResponse>> =
         ResponseEntity.ok(loanService.getAll(type))

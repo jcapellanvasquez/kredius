@@ -257,14 +257,14 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
-  /api/v1/loans/{id}:
+  /api/v1/loans/account/{accountId}:
     get:
       tags: [Loans]
-      summary: Get loan detail
-      description: Returns a single loan with its full installment schedule
+      summary: Get loan detail by account
+      description: Returns the loan associated with the given account, including its full installment schedule
       operationId: getLoan
       parameters:
-        - name: id
+        - name: accountId
           in: path
           required: true
           schema:
@@ -279,6 +279,46 @@ paths:
                 $ref: '#/components/schemas/LoanDetailResponse'
         '404':
           description: Loan not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/loans/account/{accountId}/installments/{num}/collect:
+    post:
+      tags: [Loans]
+      summary: Collect an installment
+      description: Marks a given-loan installment as PAID and posts the collection journal entry
+      operationId: collectInstallment
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: num
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Updated loan detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoanDetailResponse'
+        '404':
+          description: Loan or installment not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Installment already paid
           content:
             application/json:
               schema:

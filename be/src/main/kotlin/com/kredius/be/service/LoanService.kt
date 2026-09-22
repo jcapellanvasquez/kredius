@@ -22,16 +22,51 @@ import java.time.LocalDate
 @Service
 @Transactional(readOnly = true)
 class LoanService(
-    private val loanRepo:         LoanRepository,
-    private val accountRepo:      AccountRepository,
-    private val journalEntryRepo: JournalEntryRepository,
-    private val journalLineRepo:  JournalLineRepository,
-    private val currentUser:      CurrentUserService,
+    private val loanRepo:             LoanRepository,
+    private val loanInstallmentRepo:  LoanInstallmentRepository,
+    private val accountRepo:          AccountRepository,
+    private val journalEntryRepo:     JournalEntryRepository,
+    private val journalLineRepo:      JournalLineRepository,
+    private val currentUser:          CurrentUserService,
 ) {
-    fun getOne(id: Long): LoanDetailResponse {
-        val loan = loanRepo.findByIdAndUserId(id, currentUser.id)
+    fun getOne(accountId: Long): LoanDetailResponse {
+        val loan = loanRepo.findByAccountIdAndUserId(accountId, currentUser.id)
             ?: throw ApiException("NOT_FOUND", "Loan not found", HttpStatus.NOT_FOUND)
         return loan.toDetailResponse()
+    }
+
+    @Transactional
+    fun collectInstallment(accountId: Long, num: Int): LoanDetailResponse {
+        val loan = loanRepo.findByAccountIdAndUserId(accountId, currentUser.id)
+            ?: throw ApiException("NOT_FOUND", "Loan not found", HttpStatus.NOT_FOUND)
+        val installment = loan.installments.find { it.number == num }
+            ?: throw ApiException("NOT_FOUND", "Installment $num not found", HttpStatus.NOT_FOUND)
+        if (installment.status == InstallmentStatus.PAID)
+            throw ApiException("CONFLICT", "Installment $num already paid", HttpStatus.CONFLICT)
+
+        val userId  = currentUser.id
+        val savings = accountRepo.findByUserIdAndType(userId, AccountType.ASSET)
+            .filter { !it.name.startsWith("Préstamo") }
+            .firstOrNull()
+            ?: error("No savings account for user")
+
+        val entry = journalEntryRepo.save(JournalEntry(
+            entryDate   = LocalDate.now(),
+            description = "Cobro cuota ${installment.number} – ${loan.counterpartyName}",
+            source      = JournalSource.LOAN,
+            user        = currentUser.user,
+        ))
+        journalLineRepo.saveAll(listOf(
+            JournalLine(journalEntry = entry, account = savings,       side = EntrySide.DEBIT,  currency = CurrencyType.RD, originalAmount = installment.scheduledAmount, amountRd = installment.scheduledAmount),
+            JournalLine(journalEntry = entry, account = loan.account,  side = EntrySide.CREDIT, currency = CurrencyType.RD, originalAmount = installment.scheduledAmount, amountRd = installment.scheduledAmount),
+        ))
+
+        installment.status = InstallmentStatus.PAID
+        installment.actualPaymentDate = LocalDate.now()
+        installment.journalEntry = entry
+        loanInstallmentRepo.save(installment)
+
+        return loanRepo.findByAccountIdAndUserId(accountId, userId)!!.toDetailResponse()
     }
 
     fun getAll(type: ApiLoanType?): List<LoanResponse> =

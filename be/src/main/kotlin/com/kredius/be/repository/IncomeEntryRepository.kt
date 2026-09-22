@@ -14,4 +14,11 @@ interface IncomeEntryRepository : JpaRepository<IncomeEntry, Long> {
         ORDER BY ie.entryDate DESC, ie.id DESC
     """)
     fun findPayrollsByUserId(@Param("userId") userId: Long, pageable: Pageable): List<IncomeEntry>
+
+    @Query("""
+        SELECT ie FROM IncomeEntry ie
+        WHERE ie.destinationAccount.user.id = :userId
+        ORDER BY ie.entryDate DESC, ie.id DESC
+    """)
+    fun findAllByUserId(@Param("userId") userId: Long): List<IncomeEntry>
 }

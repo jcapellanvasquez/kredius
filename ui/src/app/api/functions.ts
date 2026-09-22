@@ -19,6 +19,8 @@ export type { CreateGivenLoan$Params as CreateGivenLoan$Params } from './fn/loan
 export { createGivenLoan as createGivenLoan } from './fn/loans/create-given-loan';
 export type { CreateReceivedLoan$Params as CreateReceivedLoan$Params } from './fn/loans/create-received-loan';
 export { createReceivedLoan as createReceivedLoan } from './fn/loans/create-received-loan';
+export type { GetLoan$Params as GetLoan$Params } from './fn/loans/get-loan';
+export { getLoan as getLoan } from './fn/loans/get-loan';
 export type { ListStatementImports$Params as ListStatementImports$Params } from './fn/statements/list-statement-imports';
 export { listStatementImports as listStatementImports } from './fn/statements/list-statement-imports';
 export type { UploadStatement$Params as UploadStatement$Params } from './fn/statements/upload-statement';

@@ -15,6 +15,7 @@ export interface LoanResponse {
   paidInstallments?: number;
   principal?: number;
   remainingBalance?: number;
+  startDate?: string | null;
   totalAmount?: number;
   totalInstallments?: number | null;
   type?: LoanType;

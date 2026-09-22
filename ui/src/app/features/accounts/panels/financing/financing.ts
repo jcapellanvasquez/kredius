@@ -1,9 +1,13 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
-import { LoanScheduleDocComponent } from './loan-schedule-doc';
+import { HttpClient } from '@angular/common/http';
+import { map } from 'rxjs';
+import { ApiConfiguration } from '../../../../api/api-configuration';
+import { getLoan } from '../../../../api/fn/loans/get-loan';
+import { LoanDetailResponse } from '../../../../api/models/loan-detail-response';
+import { LoanScheduleDocComponent, ScheduleDocRow } from './loan-schedule-doc';
 
-type LoanType     = 'received' | 'given';
 type PrincipalMode = 'reduce-term' | 'reduce-installment';
 
 interface AmortizationRow {
@@ -14,37 +18,13 @@ interface AmortizationRow {
   current:  boolean;
 }
 
-interface ScheduleRow {
-  num:    number;
-  date:   string;
-  amount: number;
-  paid:   boolean;
-  next:   boolean;
-}
-
-// Loan parameters (received — "2020 Préstamo carro")
+// Received loan mock data ("2020 Préstamo carro")
 const RECV = {
   P:          350_000,
   r:          0.03,
   n:          24,
   pmt:        20_667,
   currentNum: 9,
-  balance:    246_727,
-  totalPaid:  186_003,
-  interestPaid: 82_730,
-  principalPaid: 103_273,
-};
-
-// Loan parameters (given — "Emeli Espinal")
-const GIVEN = {
-  principal:    30_000,
-  rate:         20,
-  total:        36_000,
-  installment:  3_000,
-  totalRows:    12,
-  paidCount:    4,
-  collected:    12_000,
-  remaining:    24_000,
 };
 
 @Component({
@@ -58,7 +38,7 @@ const GIVEN = {
       <div class="flex items-start justify-between gap-4">
         <div>
           <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide">
-            {{ loanType === 'received' ? 'Pasivo · Préstamo' : 'Activo · Préstamo otorgado' }}
+            {{ isGiven ? 'Activo · Préstamo otorgado' : 'Pasivo · Préstamo' }}
           </p>
           <h1 class="text-2xl font-bold text-gray-900 mt-0.5">{{ accountName }}</h1>
         </div>
@@ -68,10 +48,7 @@ const GIVEN = {
       <!-- Progress bar -->
       <div class="flex flex-col gap-1.5">
         <div class="h-2 bg-gray-100 rounded-full overflow-hidden">
-          <div
-            class="h-full rounded-full bg-income transition-all"
-            [style.width]="progressPercent + '%'"
-          ></div>
+          <div class="h-full rounded-full bg-income transition-all" [style.width]="progressPercent + '%'"></div>
         </div>
         <p class="text-xs text-gray-500">{{ progressCaption }}</p>
       </div>
@@ -83,17 +60,17 @@ const GIVEN = {
           <p class="text-sm font-semibold text-gray-900">{{ principalFormatted }}</p>
         </div>
         <div class="rounded-xl border border-gray-200 bg-white px-3 py-3 flex flex-col gap-0.5">
-          <p class="text-xs text-gray-400">{{ loanType === 'received' ? 'Tasa mensual' : 'Tasa' }}</p>
+          <p class="text-xs text-gray-400">{{ isGiven ? 'Tasa' : 'Tasa mensual' }}</p>
           <p class="text-sm font-semibold text-gray-900">{{ rateLabel }}</p>
         </div>
         <div class="rounded-xl border border-gray-200 bg-white px-3 py-3 flex flex-col gap-0.5">
-          <p class="text-xs text-gray-400">{{ loanType === 'received' ? 'Cuota mensual' : 'Cuota semanal' }}</p>
+          <p class="text-xs text-gray-400">{{ isGiven ? 'Cuota semanal' : 'Cuota mensual' }}</p>
           <p class="text-sm font-semibold text-gray-900">{{ installmentFormatted }}</p>
         </div>
       </div>
 
       <!-- Received: payment stats -->
-      @if (loanType === 'received') {
+      @if (!isGiven) {
         <div class="rounded-xl border border-gray-200 bg-white px-4 py-4 flex flex-col gap-3">
           <div class="flex items-center justify-between">
             <span class="text-sm text-gray-600">Total pagado</span>
@@ -114,7 +91,7 @@ const GIVEN = {
       }
 
       <!-- Given: collected stats -->
-      @if (loanType === 'given') {
+      @if (isGiven && loan) {
         <div class="rounded-xl border border-gray-200 bg-white px-4 py-4 flex gap-4">
           <div class="flex-1">
             <p class="text-xs text-gray-400 mb-0.5">Cobrado a la fecha</p>
@@ -133,10 +110,9 @@ const GIVEN = {
         <button type="button" (click)="showSchedule = !showSchedule"
           class="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors">
           <span class="text-sm font-medium text-gray-700">
-            {{ loanType === 'received' ? 'Tabla de amortización' : 'Cronograma de cuotas' }}
+            {{ isGiven ? 'Cronograma de cuotas' : 'Tabla de amortización' }}
           </span>
-          <svg class="w-4 h-4 text-gray-400 transition-transform"
-            [class.rotate-180]="showSchedule"
+          <svg class="w-4 h-4 text-gray-400 transition-transform" [class.rotate-180]="showSchedule"
             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
             <path d="M6 9l6 6l6 -6" />
@@ -145,11 +121,10 @@ const GIVEN = {
 
         @if (showSchedule) {
 
-          @if (loanType === 'received') {
+          @if (!isGiven) {
             <div class="border-t border-gray-100 divide-y divide-gray-50">
               @for (row of visibleAmortization; track row.num) {
-                <div class="flex items-center gap-3 px-4 py-3"
-                  [class.bg-brand-50]="row.current">
+                <div class="flex items-center gap-3 px-4 py-3" [class.bg-brand-50]="row.current">
                   <div class="shrink-0">
                     @if (row.num < currentNum) {
                       <svg class="w-4 h-4 text-income" viewBox="0 0 24 24" fill="currentColor">
@@ -198,11 +173,10 @@ const GIVEN = {
             </div>
           }
 
-          @if (loanType === 'given') {
+          @if (isGiven) {
             <div class="border-t border-gray-100 divide-y divide-gray-50">
-              @for (row of schedule; track row.num) {
-                <div class="flex items-center gap-3 px-4 py-3"
-                  [class.bg-brand-50]="row.next">
+              @for (row of scheduleRows; track row.num) {
+                <div class="flex items-center gap-3 px-4 py-3" [class.bg-brand-50]="row.next">
                   <div class="shrink-0">
                     @if (row.paid) {
                       <svg class="w-4 h-4 text-income" viewBox="0 0 24 24" fill="currentColor">
@@ -225,12 +199,6 @@ const GIVEN = {
                     [class.text-gray-900]="row.next">
                     {{ formatRD(row.amount) }}
                   </span>
-                  @if (row.next) {
-                    <button type="button" (click)="markCollected(row.num)"
-                      class="shrink-0 px-2.5 py-1 text-xs font-medium text-white bg-income rounded-lg hover:opacity-90 transition-opacity">
-                      Cobrar
-                    </button>
-                  }
                 </div>
               }
             </div>
@@ -239,7 +207,7 @@ const GIVEN = {
         }
       </div>
 
-      @if (loanType === 'given') {
+      @if (isGiven && loan) {
         <button type="button"
           class="w-full py-2.5 text-sm font-medium text-white rounded-xl transition-colors flex items-center justify-center gap-2 hover:opacity-90"
           style="background-color: #25D366;"
@@ -252,18 +220,18 @@ const GIVEN = {
       }
 
       <!-- Loan schedule doc (given loan) -->
-      @if (loanType === 'given' && showScheduleDoc) {
+      @if (isGiven && showScheduleDoc && loan) {
         <app-loan-schedule-doc
-          [borrowerName]="accountName"
-          [principal]="30000"
-          [total]="36000"
-          [rows]="schedule"
+          [borrowerName]="loan.counterpartyName ?? ''"
+          [principal]="loan.principal ?? 0"
+          [total]="loan.totalAmount ?? 0"
+          [rows]="scheduleDocRows"
           (close)="showScheduleDoc = false"
         />
       }
 
       <!-- Principal payment sub-step (received only) -->
-      @if (loanType === 'received' && showPrincipalPayment) {
+      @if (!isGiven && showPrincipalPayment) {
         <div class="rounded-xl border border-gray-200 bg-white p-5 flex flex-col gap-4">
 
           <div class="flex items-center justify-between">
@@ -272,7 +240,6 @@ const GIVEN = {
               class="text-sm text-gray-400 hover:text-gray-600">Cancelar</button>
           </div>
 
-          <!-- Amount -->
           <div class="flex flex-col gap-1.5">
             <label class="text-sm font-medium text-gray-700">Monto del abono</label>
             <div class="relative">
@@ -284,14 +251,12 @@ const GIVEN = {
             </div>
           </div>
 
-          <!-- Date -->
           <div class="flex flex-col gap-1.5">
             <label class="text-sm font-medium text-gray-700">Fecha</label>
             <input type="date" [(ngModel)]="principalDate"
               class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-300 focus:border-brand-400"/>
           </div>
 
-          <!-- Radio: reduce term vs reduce installment -->
           <div class="flex flex-col gap-2">
             <label class="text-sm font-medium text-gray-700">Efecto del abono</label>
             <label class="flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors"
@@ -320,7 +285,6 @@ const GIVEN = {
             </label>
           </div>
 
-          <!-- Impact preview -->
           @if (principalAmount > 0 && impactReady) {
             <div class="rounded-lg bg-gray-50 border border-gray-100 px-4 py-3">
               <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Impacto estimado</p>
@@ -332,7 +296,6 @@ const GIVEN = {
             </div>
           }
 
-          <!-- Confirm -->
           <button type="button" (click)="confirmPrincipalPayment()"
             [disabled]="principalAmount <= 0"
             class="w-full py-2.5 text-sm font-medium text-white bg-brand-600 rounded-xl hover:bg-brand-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
@@ -346,18 +309,15 @@ const GIVEN = {
   `,
 })
 export class FinancingComponent implements OnInit {
-  loanType: LoanType = 'received';
+  private readonly http    = inject(HttpClient);
+  private readonly rootUrl = inject(ApiConfiguration).rootUrl;
 
   constructor(private route: ActivatedRoute) {}
 
-  ngOnInit(): void {
-    const type = this.route.snapshot.queryParamMap.get('type');
-    if (type === 'given') this.loanType = 'given';
-    else this.showSchedule = true;
-  }
+  loan: LoanDetailResponse | null = null;
+  isGiven = false;
 
-  currentNum           = RECV.currentNum; // mutable — advances with each payment
-
+  currentNum           = RECV.currentNum;
   showSchedule         = false;
   showFullSchedule     = false;
   showPrincipalPayment = false;
@@ -367,74 +327,112 @@ export class FinancingComponent implements OnInit {
   principalDate:  string  = new Date().toISOString().substring(0, 10);
   principalMode: PrincipalMode = 'reduce-term';
   impactReady = false;
+  impactReduceTermText        = '';
+  impactReduceInstallmentText = '';
 
-  // ── Received loan data ──────────────────────────────────────────────
-  get accountName(): string {
-    return this.loanType === 'received' ? '2020 Préstamo carro' : 'Emeli Espinal';
+  ngOnInit(): void {
+    const loanId = this.route.snapshot.queryParamMap.get('loanId');
+    if (loanId) {
+      this.isGiven = true;
+      getLoan(this.http, this.rootUrl, { id: +loanId }).pipe(map(r => r.body!)).subscribe(loan => {
+        this.loan = loan;
+      });
+    } else {
+      this.isGiven = false;
+      this.showSchedule = true;
+    }
   }
 
-  get currentBalance(): number {
-    if (this.currentNum <= 1) return RECV.P;
-    return this.amortization[this.currentNum - 2]?.balance ?? RECV.P;
+  // ── Given loan derived data ─────────────────────────────────────────
+  get scheduleRows(): Array<{ num: number; date: string; amount: number; paid: boolean; next: boolean }> {
+    if (!this.loan?.installments) return [];
+    const paidCount = this.loan.paidInstallments ?? 0;
+    return (this.loan.installments).map((inst, idx) => ({
+      num:    inst.number ?? idx + 1,
+      date:   this.formatScheduleDate(inst.scheduledDate ?? ''),
+      amount: inst.scheduledAmount ?? 0,
+      paid:   inst.status === 'PAID',
+      next:   idx === paidCount,
+    }));
+  }
+
+  get scheduleDocRows(): ScheduleDocRow[] {
+    return this.scheduleRows.map(r => ({
+      num:    r.num,
+      date:   r.date,
+      amount: r.amount,
+      paid:   r.paid,
+    }));
+  }
+
+  get accountName(): string {
+    return this.isGiven ? (this.loan?.counterpartyName ?? '…') : '2020 Préstamo carro';
   }
 
   get balanceFormatted(): string {
-    return this.loanType === 'received'
-      ? 'RD$' + this.currentBalance.toLocaleString()
-      : 'RD$' + GIVEN.remaining.toLocaleString();
+    if (this.isGiven) return 'RD$' + ((this.loan?.remainingBalance ?? 0)).toLocaleString();
+    const balance = this.currentNum <= 1 ? RECV.P : (this.amortization[this.currentNum - 2]?.balance ?? RECV.P);
+    return 'RD$' + balance.toLocaleString();
   }
 
   get progressPercent(): number {
-    return this.loanType === 'received'
-      ? Math.round((this.currentNum / RECV.n) * 100)
-      : Math.round((GIVEN.paidCount / GIVEN.totalRows) * 100);
+    if (this.isGiven && this.loan) {
+      const total = this.loan.totalInstallments ?? 1;
+      return Math.round(((this.loan.paidInstallments ?? 0) / total) * 100);
+    }
+    return Math.round((this.currentNum / RECV.n) * 100);
   }
 
   get progressCaption(): string {
-    if (this.loanType === 'received') {
-      return this.progressPercent + '% pagado · ' + this.currentNum + ' de ' + RECV.n + ' cuotas';
+    if (this.isGiven && this.loan) {
+      return this.progressPercent + '% cobrado · ' + (this.loan.paidInstallments ?? 0) + ' de ' + (this.loan.totalInstallments ?? 0) + ' cuotas';
     }
-    return this.progressPercent + '% cobrado · ' + GIVEN.paidCount + ' de ' + GIVEN.totalRows + ' cuotas';
+    return this.progressPercent + '% pagado · ' + this.currentNum + ' de ' + RECV.n + ' cuotas';
   }
 
   get principalFormatted(): string {
-    return this.loanType === 'received'
-      ? 'RD$' + RECV.P.toLocaleString()
-      : 'RD$' + GIVEN.principal.toLocaleString();
+    if (this.isGiven) return 'RD$' + ((this.loan?.principal ?? 0)).toLocaleString();
+    return 'RD$' + RECV.P.toLocaleString();
   }
 
   get rateLabel(): string {
-    return this.loanType === 'received' ? '3% mensual' : GIVEN.rate + '%';
+    if (this.isGiven && this.loan) return (this.loan.frequency === 'WEEKLY' ? '' : '') + '% plana';
+    return '3% mensual';
   }
 
   get installmentFormatted(): string {
-    return this.loanType === 'received'
-      ? 'RD$' + RECV.pmt.toLocaleString()
-      : 'RD$' + GIVEN.installment.toLocaleString();
+    if (this.isGiven) return 'RD$' + ((this.loan?.installmentAmount ?? 0)).toLocaleString();
+    return 'RD$' + RECV.pmt.toLocaleString();
   }
 
-  get totalPaid(): number      { return this.amortization.slice(0, this.currentNum - 1).reduce((s, r) => s + r.interest + r.principal, 0); }
-  get interestPaid(): number   { return this.amortization.slice(0, this.currentNum - 1).reduce((s, r) => s + r.interest, 0); }
-  get principalPaid(): number  { return this.amortization.slice(0, this.currentNum - 1).reduce((s, r) => s + r.principal, 0); }
-
-  get totalPaidFormatted(): string     { return 'RD$' + this.totalPaid.toLocaleString(); }
-  get interestPaidFormatted(): string  { return 'RD$' + this.interestPaid.toLocaleString(); }
-  get principalPaidFormatted(): string { return 'RD$' + this.principalPaid.toLocaleString(); }
-  get collectedFormatted(): string    { return 'RD$' + GIVEN.collected.toLocaleString(); }
-  get remainingFormatted(): string    { return 'RD$' + GIVEN.remaining.toLocaleString(); }
-
-  formatRD(value: number): string {
-    return 'RD$' + value.toLocaleString();
+  get collectedFormatted(): string {
+    if (!this.loan) return 'RD$0';
+    const collected = (this.loan.totalAmount ?? 0) - (this.loan.remainingBalance ?? 0);
+    return 'RD$' + Math.max(0, collected).toLocaleString();
   }
 
-  // ── Amortization table ──────────────────────────────────────────────
+  get remainingFormatted(): string {
+    return 'RD$' + ((this.loan?.remainingBalance ?? 0)).toLocaleString();
+  }
+
+  formatRD(value: number): string { return 'RD$' + value.toLocaleString(); }
+
+  private formatScheduleDate(iso: string): string {
+    if (!iso) return '';
+    const [y, m, d] = iso.split('-').map(Number);
+    const date = new Date(y, m - 1, d);
+    const days   = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
+    const months = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+    return `${days[date.getDay()]} ${d}/${months[m - 1]}/${y}`;
+  }
+
+  // ── Received loan amortization ──────────────────────────────────────
   amortization: AmortizationRow[] = this.buildAmortization();
 
   private buildAmortization(): AmortizationRow[] {
     const { P, r, n, pmt } = RECV;
     const rows: AmortizationRow[] = [];
     let balance = P;
-
     for (let i = 1; i <= n; i++) {
       const interest  = Math.round(balance * r);
       const principal = Math.round(pmt - interest);
@@ -451,6 +449,14 @@ export class FinancingComponent implements OnInit {
     return this.amortization.slice(start, end);
   }
 
+  get totalPaid(): number    { return this.amortization.slice(0, this.currentNum - 1).reduce((s, r) => s + r.interest + r.principal, 0); }
+  get interestPaid(): number { return this.amortization.slice(0, this.currentNum - 1).reduce((s, r) => s + r.interest, 0); }
+  get principalPaid(): number{ return this.amortization.slice(0, this.currentNum - 1).reduce((s, r) => s + r.principal, 0); }
+
+  get totalPaidFormatted():     string { return 'RD$' + this.totalPaid.toLocaleString(); }
+  get interestPaidFormatted():  string { return 'RD$' + this.interestPaid.toLocaleString(); }
+  get principalPaidFormatted(): string { return 'RD$' + this.principalPaid.toLocaleString(); }
+
   registerPayment(): void {
     if (this.currentNum >= RECV.n) return;
     const cur = this.amortization.find(r => r.num === this.currentNum);
@@ -460,64 +466,28 @@ export class FinancingComponent implements OnInit {
     if (next) next.current = true;
   }
 
-  // ── Given loan schedule ─────────────────────────────────────────────
-  readonly schedule: ScheduleRow[] = this.buildSchedule();
-
-  private buildSchedule(): ScheduleRow[] {
-    const dates = [
-      'vie 1 may 2026',  'vie 8 may 2026',  'vie 15 may 2026',
-      'vie 22 may 2026', 'vie 29 may 2026', 'vie 5 jun 2026',
-      'vie 12 jun 2026', 'vie 19 jun 2026', 'vie 26 jun 2026',
-      'vie 3 jul 2026',  'vie 10 jul 2026', 'vie 17 jul 2026',
-    ];
-    return dates.map((date, i) => ({
-      num:    i + 1,
-      date,
-      amount: GIVEN.installment,
-      paid:   i + 1 <= GIVEN.paidCount,
-      next:   i + 1 === GIVEN.paidCount + 1,
-    }));
-  }
-
-  markCollected(num: number): void {
-    const row = this.schedule.find(r => r.num === num);
-    if (!row) return;
-    row.paid = true;
-    row.next = false;
-    const nextRow = this.schedule.find(r => r.num === num + 1);
-    if (nextRow) nextRow.next = true;
-  }
-
   // ── Principal payment impact ────────────────────────────────────────
-  impactReduceTermText        = '';
-  impactReduceInstallmentText = '';
-
   onPrincipalAmountChange(): void {
     this.impactReady = false;
     if (!this.principalAmount || this.principalAmount <= 0) return;
-
-    const newBalance = this.currentBalance - this.principalAmount;
+    const balance = this.currentNum <= 1 ? RECV.P : (this.amortization[this.currentNum - 2]?.balance ?? RECV.P);
+    const newBalance = balance - this.principalAmount;
     if (newBalance <= 0) return;
-
     const r   = RECV.r;
     const pmt = RECV.pmt;
     const remainingInstallments = RECV.n - this.currentNum;
-
     if (this.principalMode === 'reduce-term') {
-      const n_new   = Math.ceil(-Math.log(1 - (newBalance * r) / pmt) / Math.log(1 + r));
-      const saved   = Math.max(0, remainingInstallments - n_new);
+      const n_new       = Math.ceil(-Math.log(1 - (newBalance * r) / pmt) / Math.log(1 + r));
+      const saved       = Math.max(0, remainingInstallments - n_new);
       const savedInterest = Math.max(0, Math.round(saved * pmt - this.principalAmount));
-      this.impactReduceTermText =
-        'Con este abono terminarías ' + saved + ' cuotas antes' +
+      this.impactReduceTermText = 'Con este abono terminarías ' + saved + ' cuotas antes' +
         (savedInterest > 0 ? ' y ahorrarías aprox. RD$' + savedInterest.toLocaleString() + ' en intereses.' : '.');
     } else {
       const newPmt = Math.round(newBalance * r / (1 - Math.pow(1 + r, -remainingInstallments)));
-      const saving  = Math.max(0, pmt - newPmt);
-      this.impactReduceInstallmentText =
-        'Tu nueva cuota mensual sería RD$' + newPmt.toLocaleString() +
+      const saving = Math.max(0, pmt - newPmt);
+      this.impactReduceInstallmentText = 'Tu nueva cuota mensual sería RD$' + newPmt.toLocaleString() +
         (saving > 0 ? ', ahorrando RD$' + saving.toLocaleString() + ' por mes.' : '.');
     }
-
     this.impactReady = true;
   }
 
@@ -526,7 +496,5 @@ export class FinancingComponent implements OnInit {
     this.showPrincipalPayment = false;
     this.principalAmount = 0;
     this.impactReady = false;
-    // TODO: wire to API
   }
-
 }

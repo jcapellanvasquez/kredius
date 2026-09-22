@@ -15,3 +15,13 @@ export type { GetAccountTransactions$Params as GetAccountTransactions$Params } f
 export { getAccountTransactions as getAccountTransactions } from './fn/accounts/get-account-transactions';
 export type { GetLoans$Params as GetLoans$Params } from './fn/loans/get-loans';
 export { getLoans as getLoans } from './fn/loans/get-loans';
+export type { UploadStatement$Params as UploadStatement$Params } from './fn/statements/upload-statement';
+export { uploadStatement as uploadStatement } from './fn/statements/upload-statement';
+export type { GetStatementImport$Params as GetStatementImport$Params } from './fn/statements/get-statement-import';
+export { getStatementImport as getStatementImport } from './fn/statements/get-statement-import';
+export type { PatchStatementLine$Params as PatchStatementLine$Params } from './fn/statements/patch-statement-line';
+export { patchStatementLine as patchStatementLine } from './fn/statements/patch-statement-line';
+export type { ConfirmStatementImport$Params as ConfirmStatementImport$Params } from './fn/statements/confirm-statement-import';
+export { confirmStatementImport as confirmStatementImport } from './fn/statements/confirm-statement-import';
+export type { ReverseStatementImport$Params as ReverseStatementImport$Params } from './fn/statements/reverse-statement-import';
+export { reverseStatementImport as reverseStatementImport } from './fn/statements/reverse-statement-import';

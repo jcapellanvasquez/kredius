@@ -3,7 +3,7 @@
 
 import { AccountType } from '../models/account-type';
 export interface CreateAccountRequest {
-  code?: string | null;
+  code?: number | null;
   name: string;
   showInAlerts?: boolean;
   thresholdPct?: number | null;

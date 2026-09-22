@@ -9,7 +9,7 @@ export interface AccountSummaryResponse {
    * Signed balance in RD$ (positive = normal balance for account type)
    */
   balance?: number;
-  code?: string | null;
+  code?: number | null;
   id?: number;
   lastTransactionDate?: string | null;
   lastTransactionDescription?: string | null;

@@ -7,7 +7,7 @@ import { MonthlyBalancePoint } from '../models/monthly-balance-point';
 import { TransactionItem } from '../models/transaction-item';
 export interface AccountDetailResponse {
   balance?: number;
-  code?: string | null;
+  code?: number | null;
   id?: number;
   loanAccount?: boolean;
   loanData?: LoanData;

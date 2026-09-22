@@ -4,7 +4,7 @@
 import { AccountType } from '../models/account-type';
 export interface AccountResponse {
   active?: boolean;
-  code?: string | null;
+  code?: number | null;
   createdAt?: string;
   id?: number;
 

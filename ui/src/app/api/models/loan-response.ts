@@ -4,7 +4,7 @@
 import { LoanFrequency } from '../models/loan-frequency';
 import { LoanType } from '../models/loan-type';
 export interface LoanResponse {
-  accountCode?: string | null;
+  accountCode?: number | null;
   accountName?: string;
   active?: boolean;
   counterpartyName?: string;

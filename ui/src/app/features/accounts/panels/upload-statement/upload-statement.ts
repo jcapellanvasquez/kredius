@@ -1,5 +1,10 @@
-import { Component } from '@angular/core';
+import { Component, inject, OnInit, ElementRef, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { timeout, TimeoutError } from 'rxjs';
+import { AccountApiService } from '../../account-api.service';
+import { ApiConfiguration } from '../../../../api/api-configuration';
+import { AccountSummaryResponse } from '../../../../api/models/account-summary-response';
 
 type AccountFlow = 'credit-card' | 'savings';
 type NewMerchantStatus = 'pending' | 'resolved';
@@ -15,14 +20,15 @@ interface CategorizedLine {
 }
 
 interface NewMerchantLine {
-  id:          number;
-  merchant:    string;
-  amount:      number;
-  currency:    'dop' | 'usd';
-  rdEquiv:     number;
-  suggestions: string[];
-  selected:    string | null;
-  status:      NewMerchantStatus;
+  id:           number;
+  merchant:     string;
+  amount:       number;
+  currency:     'dop' | 'usd';
+  rdEquiv:      number;
+  suggestions:  string[];
+  selected:     string | null;
+  status:       NewMerchantStatus;
+  saving:       boolean;
   showDropdown: boolean;
   otherCategory: string;
 }
@@ -50,11 +56,22 @@ interface SavingsMovement {
   inflow:  boolean;
 }
 
-const CATEGORIES = [
-  'Alimentación', 'Transporte', 'Entretenimiento', 'Salud',
-  'Servicios del hogar', 'Ropa y calzado', 'Tecnología',
-  'Educación', 'Gasolina', 'Farmacia', 'Restaurantes', 'Otro',
-];
+interface ApiLine {
+  id:                  number;
+  lineDate:            string;
+  description:         string;
+  currency:            'RD' | 'USD';
+  amount:              number;
+  isExcluded:          boolean;
+  isPayment:           boolean;
+  categoryAccountId:   number | null;
+  categoryAccountName: string | null;
+}
+
+const MONTHS_ES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+const TIMEOUT_MS = 15_000;
+const MIN_UPLOAD_SPINNER_MS  = 800;
+const MIN_MERCHANT_SAVE_MS   = 600;
 
 @Component({
   selector: 'app-upload-statement',
@@ -90,10 +107,38 @@ const CATEGORIES = [
       </div>
 
       <!-- ────────────────── UPLOAD ZONE ────────────────── -->
-      @if (!parsed) {
+      @if (!parsed && !uploading) {
+
+        <!-- Account + date (required before uploading) -->
+        <div class="flex flex-col gap-3">
+          <select [(ngModel)]="selectedAccountId"
+            class="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-300">
+            <option [ngValue]="null" disabled>Selecciona una cuenta...</option>
+            @for (acc of accountOptions; track acc.id) {
+              <option [ngValue]="acc.id">{{ acc.name }}</option>
+            }
+          </select>
+          <input type="date" [(ngModel)]="statementDate"
+            class="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-300"/>
+        </div>
+
+        <!-- Upload error -->
+        @if (uploadError) {
+          <div class="flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3">
+            <div class="flex-1">
+              <p class="text-sm font-medium text-red-800">No se pudo procesar el archivo</p>
+              <p class="text-xs text-red-600 mt-0.5">{{ uploadError }}</p>
+            </div>
+            <button type="button" (click)="uploadError = ''" class="text-xs text-red-600 hover:text-red-800 shrink-0">
+              Cerrar
+            </button>
+          </div>
+        }
+
         <div
           class="rounded-xl border-2 border-dashed border-gray-300 bg-white px-6 py-10 flex flex-col items-center gap-3 hover:border-brand-300 hover:bg-brand-50 transition-colors cursor-pointer"
-          (click)="simulateParse()">
+          [class.opacity-40]="!canUpload"
+          (click)="triggerFileInput()">
           <svg class="w-[22px] h-[22px] text-brand-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
             <path d="M14 3v4a1 1 0 0 0 1 1h4" />
@@ -109,6 +154,15 @@ const CATEGORIES = [
             Seleccionar archivo
           </span>
         </div>
+        <input #fileInput type="file" accept=".pdf" class="hidden" (change)="onFileSelected($event)"/>
+      }
+
+      <!-- Uploading spinner -->
+      @if (uploading) {
+        <div class="flex flex-col items-center gap-4 py-16">
+          <div class="w-10 h-10 border-4 border-brand-200 border-t-brand-600 rounded-full animate-spin"></div>
+          <p class="text-sm font-medium text-gray-600">Procesando estado de cuenta...</p>
+        </div>
       }
 
       <!-- ────────────────── CREDIT CARD FLOW ────────────────── -->
@@ -120,8 +174,8 @@ const CATEGORIES = [
             <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
           </svg>
           <div>
-            <p class="text-sm font-medium text-green-800">Corte oct 2026 procesado</p>
-            <p class="text-xs text-green-600">Se detectaron 2 bloques de moneda · 24 líneas</p>
+            <p class="text-sm font-medium text-green-800">{{ parsedNoticeTitle }}</p>
+            <p class="text-xs text-green-600">{{ parsedNoticeSubtitle }}</p>
           </div>
           <button type="button" (click)="reset()" class="ml-auto text-xs text-green-600 hover:text-green-800 shrink-0">
             Cambiar archivo
@@ -134,12 +188,12 @@ const CATEGORIES = [
 
           <div class="grid grid-cols-2 gap-3">
             <div class="rounded-lg bg-gray-50 px-3 py-3">
-              <p class="text-xs text-gray-400 mb-0.5">Subtotal RD$</p>
-              <p class="text-base font-bold text-gray-900">RD$52,340</p>
+              <p class="text-xs text-gray-400 mb-0.5">Cargos del período RD$</p>
+              <p class="text-base font-bold text-gray-900">{{ rdTotalFormatted }}</p>
             </div>
             <div class="rounded-lg bg-gray-50 px-3 py-3">
-              <p class="text-xs text-gray-400 mb-0.5">Subtotal US$</p>
-              <p class="text-base font-bold text-gray-900">US$1,240</p>
+              <p class="text-xs text-gray-400 mb-0.5">Cargos del período US$</p>
+              <p class="text-base font-bold text-gray-900">{{ usdTotalFormatted }}</p>
             </div>
           </div>
 
@@ -162,9 +216,22 @@ const CATEGORIES = [
           </div>
 
           <div class="flex items-center justify-between text-sm">
-            <span class="text-gray-600">Total comisiones bancarias</span>
-            <span class="font-medium text-expense">{{ ccTotalFeesFormatted }}</span>
+            <span class="text-gray-600">Pagos excluidos del período (RD$)</span>
+            <span class="font-medium text-income">− {{ ccTotalFeesFormatted }}</span>
           </div>
+
+          <!-- Balance al corte note -->
+          @if (ccTotalFees > 0) {
+            <div class="flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-100 px-3 py-2.5">
+              <svg class="w-3.5 h-3.5 text-amber-500 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/>
+              </svg>
+              <p class="text-xs text-amber-700 leading-snug">
+                El <strong>Balance al corte</strong> del estado también incluye el saldo anterior del período previo,
+                por eso puede diferir de los cargos mostrados aquí.
+              </p>
+            </div>
+          }
 
           <div class="flex items-center justify-between pt-3 border-t border-gray-100">
             <span class="text-sm font-semibold text-gray-700">Total consolidado</span>
@@ -252,7 +319,14 @@ const CATEGORIES = [
                       <p class="text-xs text-gray-500">{{ formatRD(m.rdEquiv) }}</p>
                     </div>
                     @if (m.status === 'resolved') {
-                      <span class="text-xs text-income font-medium shrink-0">Guardado ✓</span>
+                      @if (m.saving) {
+                        <div class="flex items-center gap-1.5 shrink-0">
+                          <div class="w-3 h-3 border-2 border-gray-200 border-t-brand-500 rounded-full animate-spin"></div>
+                          <span class="text-xs text-gray-400">Guardando...</span>
+                        </div>
+                      } @else {
+                        <span class="text-xs text-income font-medium shrink-0">Guardado ✓</span>
+                      }
                     }
                   </div>
                   @if (m.status === 'pending') {
@@ -276,6 +350,10 @@ const CATEGORIES = [
                           }
                         </select>
                       }
+                      <button type="button" (click)="excludeLine(m.id)"
+                        class="ml-auto px-3 py-1 text-xs font-medium rounded-full bg-red-50 text-red-600 hover:bg-red-100 transition-colors">
+                        Excluir
+                      </button>
                     </div>
                   }
                 </div>
@@ -318,10 +396,16 @@ const CATEGORIES = [
 
         <!-- Confirm -->
         @if (!confirmed) {
+          @if (confirmError) {
+            <div class="flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3">
+              <p class="flex-1 text-sm text-red-700">{{ confirmError }}</p>
+              <button type="button" (click)="confirmError = ''" class="text-xs text-red-500 shrink-0">Cerrar</button>
+            </div>
+          }
           <button type="button" (click)="confirm()"
-            [disabled]="pendingNewMerchants > 0"
+            [disabled]="pendingNewMerchants > 0 || confirming"
             class="w-full py-3 text-sm font-semibold text-white bg-brand-600 rounded-xl hover:bg-brand-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
-            {{ pendingNewMerchants > 0 ? 'Resuelve los comercios nuevos para continuar' : 'Confirmar y registrar corte' }}
+            {{ confirming ? 'Registrando...' : pendingNewMerchants > 0 ? 'Resuelve los comercios nuevos para continuar' : 'Confirmar y registrar corte' }}
           </button>
         } @else {
           <div class="flex flex-col items-center gap-2 rounded-xl border border-green-200 bg-green-50 px-4 py-6">
@@ -329,7 +413,7 @@ const CATEGORIES = [
               <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
             </svg>
             <p class="text-base font-semibold text-green-800">Corte registrado</p>
-            <p class="text-sm text-green-600 text-center">{{ categorized.length + newMerchants.length }} transacciones importadas · {{ newMerchants.length }} comercios nuevos guardados en el diccionario.</p>
+            <p class="text-sm text-green-600 text-center">{{ postedEntries }} transacciones importadas a la contabilidad.</p>
             <button type="button" (click)="reset()"
               class="mt-2 px-4 py-1.5 text-xs font-medium text-brand-800 bg-brand-50 rounded-full hover:bg-brand-100 transition-colors">
               Subir otro corte
@@ -348,7 +432,7 @@ const CATEGORIES = [
             <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
           </svg>
           <div>
-            <p class="text-sm font-medium text-green-800">Estado de cuenta oct 2026 procesado</p>
+            <p class="text-sm font-medium text-green-800">{{ savingsParsedNoticeTitle }}</p>
             <p class="text-xs text-green-600">{{ savingsDeposits.length }} depósitos · {{ savingsMovements.length }} movimientos</p>
           </div>
           <button type="button" (click)="reset()" class="ml-auto text-xs text-green-600 hover:text-green-800 shrink-0">
@@ -457,8 +541,9 @@ const CATEGORIES = [
         <!-- Confirm -->
         @if (!confirmed) {
           <button type="button" (click)="confirm()"
-            class="w-full py-3 text-sm font-semibold text-white bg-brand-600 rounded-xl hover:bg-brand-700 transition-colors">
-            Confirmar y registrar movimientos
+            [disabled]="confirming"
+            class="w-full py-3 text-sm font-semibold text-white bg-brand-600 rounded-xl hover:bg-brand-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+            {{ confirming ? 'Registrando...' : 'Confirmar y registrar movimientos' }}
           </button>
         } @else {
           <div class="flex flex-col items-center gap-2 rounded-xl border border-green-200 bg-green-50 px-4 py-6">
@@ -479,19 +564,36 @@ const CATEGORIES = [
     </div>
   `,
 })
-export class UploadStatementComponent {
+export class UploadStatementComponent implements OnInit {
+  @ViewChild('fileInput') private fileInputRef!: ElementRef<HTMLInputElement>;
+
+  private readonly http    = inject(HttpClient);
+  private readonly rootUrl = inject(ApiConfiguration).rootUrl;
+  private readonly acctSvc = inject(AccountApiService);
+
   flow: AccountFlow   = 'credit-card';
   parsed              = false;
   confirmed           = false;
+  uploading           = false;
+  confirming          = false;
+  uploadError         = '';
+  confirmError        = '';
   consolidationRate   = 59.00;
+  postedEntries       = 0;
   showCategorized      = false;
   showExcluded         = false;
   showSavingsDeposits  = false;
   showSavingsMovements = false;
 
-  readonly categories = CATEGORIES;
+  selectedAccountId: number | null = null;
+  statementDate                    = '';
 
-  // ── Credit card mock data ───────────────────────────────────────────
+  private importId: number | null             = null;
+  private _rawLines: ApiLine[]                = [];
+  private _uploadStart                        = 0;
+  private _merchantSaveStart                  = new Map<number, number>();
+
+  // ── Credit card data (populated from API or kept as mock) ──────────
   categorized: CategorizedLine[] = [
     { id:  1, merchant: 'NETFLIX',              category: 'Entretenimiento',    currency: 'usd', amount:  17,   rate: 59.00, rdEquiv: 1003  },
     { id:  2, merchant: 'SUPERMERCADO NACIONAL', category: 'Alimentación',      currency: 'dop', amount: 3480,  rate: null,  rdEquiv: 3480  },
@@ -509,55 +611,98 @@ export class UploadStatementComponent {
     {
       id: 1, merchant: 'PLAZA VALERIO', amount: 346, currency: 'dop', rdEquiv: 346,
       suggestions: ['Entretenimiento', 'Restaurantes'], selected: null, status: 'pending',
-      showDropdown: false, otherCategory: CATEGORIES[0],
+      saving: false, showDropdown: false, otherCategory: '',
     },
     {
       id: 2, merchant: 'COLMADO DON RAMON', amount: 430, currency: 'dop', rdEquiv: 430,
       suggestions: ['Alimentación', 'Restaurantes'], selected: null, status: 'pending',
-      showDropdown: false, otherCategory: CATEGORIES[0],
+      saving: false, showDropdown: false, otherCategory: '',
     },
   ];
 
   excluded: ExcludedLine[] = [
-    { id: 1, reason: 'Pago a tarjeta',    merchant: 'PAGO BHD',              amount: 15000 },
-    { id: 2, reason: 'Puntos / rewards',  merchant: 'BONO PUNTOS MASTERCARD', amount:    0 },
+    { id: 1, reason: 'Pago a tarjeta',   merchant: 'PAGO BHD',              amount: 15000 },
+    { id: 2, reason: 'Puntos / rewards', merchant: 'BONO PUNTOS MASTERCARD', amount:    0 },
   ];
 
   budgetComparison = [
-    { name: '3010 Alimentación', budget: 12300, actual: 7035  },
-    { name: '3020 Transporte',   budget:  3100, actual:  620  },
-    { name: '3030 Entretenimiento', budget: 2500, actual: 1652 },
-    { name: '3040 Gasolina',     budget:  3000, actual: 2100  },
+    { name: '3010 Alimentación',    budget: 12300, actual: 7035  },
+    { name: '3020 Transporte',      budget:  3100, actual:  620  },
+    { name: '3030 Entretenimiento', budget:  2500, actual: 1652  },
+    { name: '3040 Gasolina',        budget:  3000, actual: 2100  },
   ];
 
+  // ── Credit card computed ────────────────────────────────────────────
+  get rdTotal(): number {
+    return this._rawLines.filter(l => !l.isExcluded && l.currency === 'RD').reduce((s, l) => s + l.amount, 0);
+  }
+  get usdTotal(): number {
+    return this._rawLines.filter(l => !l.isExcluded && l.currency === 'USD').reduce((s, l) => s + l.amount, 0);
+  }
+  get ccTotalFees(): number {
+    return this._rawLines.filter(l => l.isPayment && l.currency === 'RD').reduce((s, l) => s + l.amount, 0);
+  }
+  get usdRdEquiv(): number {
+    return Math.round(this.usdTotal * this.consolidationRate);
+  }
+
+  private fmt(v: number, prefix: string): string {
+    return prefix + v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  get rdTotalFormatted():           string { return this.fmt(this.rdTotal, 'RD$'); }
+  get usdTotalFormatted():          string { return this.fmt(this.usdTotal, 'US$'); }
+  get ccTotalFeesFormatted():       string { return this.fmt(this.ccTotalFees, 'RD$'); }
+  get usdRdEquivFormatted():        string { return 'RD$' + this.usdRdEquiv.toLocaleString(); }
+  get consolidatedTotalFormatted(): string { return this.fmt(this.rdTotal + this.usdRdEquiv, 'RD$'); }
+
+  // ── Parsed notice ───────────────────────────────────────────────────
+  get parsedNoticeTitle(): string {
+    if (!this.statementDate) return 'Corte procesado';
+    const [y, m] = this.statementDate.split('-');
+    return `Corte ${MONTHS_ES[+m - 1]} ${y} procesado`;
+  }
+  get parsedNoticeSubtitle(): string {
+    const blocks = new Set(this._rawLines.map(l => l.currency)).size || 2;
+    const total  = this._rawLines.length || 24;
+    return `Se detectaron ${blocks} ${blocks === 1 ? 'bloque' : 'bloques'} de moneda · ${total} líneas`;
+  }
+  get savingsParsedNoticeTitle(): string {
+    if (!this.statementDate) return 'Estado de cuenta procesado';
+    const [y, m] = this.statementDate.split('-');
+    return `Estado de cuenta ${MONTHS_ES[+m - 1]} ${y} procesado`;
+  }
+
+  // ── Pending count ───────────────────────────────────────────────────
   get pendingNewMerchants(): number {
     return this.newMerchants.filter(m => m.status === 'pending').length;
   }
 
-  readonly ccTotalFees = 890;
-  get ccTotalFeesFormatted(): string { return 'RD$' + this.ccTotalFees.toLocaleString(); }
-
-  get usdRdEquiv(): number {
-    return Math.round(1240 * this.consolidationRate);
+  // ── Account options and category names from API ─────────────────────
+  get accountOptions(): AccountSummaryResponse[] {
+    const type = this.flow === 'credit-card' ? 'LIABILITY' : 'ASSET';
+    return this.acctSvc.accounts().filter(a => a.type === type && !a.loanAccount);
   }
 
-  get usdRdEquivFormatted(): string {
-    return 'RD$' + this.usdRdEquiv.toLocaleString();
+  get categories(): string[] {
+    const names = this.acctSvc.accounts().filter(a => a.type === 'EXPENSE').map(a => a.name ?? '').filter(Boolean);
+    return names.length > 0 ? names : ['Alimentación', 'Transporte', 'Entretenimiento', 'Salud',
+      'Servicios del hogar', 'Ropa y calzado', 'Tecnología', 'Educación', 'Gasolina', 'Farmacia', 'Restaurantes', 'Otro'];
   }
 
-  get consolidatedTotalFormatted(): string {
-    return 'RD$' + (52340 + this.usdRdEquiv).toLocaleString();
+  private get expenseAccountsByName(): Map<string, number> {
+    const map = new Map<string, number>();
+    for (const a of this.acctSvc.accounts().filter(a => a.type === 'EXPENSE')) {
+      if (a.name && a.id) map.set(a.name, a.id);
+    }
+    return map;
   }
 
-  resolveNewMerchant(id: number, category: string): void {
-    const m = this.newMerchants.find(x => x.id === id);
-    if (!m) return;
-    m.selected     = category;
-    m.status       = 'resolved';
-    m.showDropdown = false;
+  get canUpload(): boolean {
+    return this.selectedAccountId !== null && this.statementDate !== '';
   }
 
-  // ── Savings mock data ──────────────────────────────────────────────
+  // ── Savings mock data (savings flow not yet wired to API) ───────────
   savingsDeposits: SavingsDeposit[] = [
     { id: 1, date: '1 oct',  desc: 'Nómina octubre',          amount: 85000, fee: 0   },
     { id: 2, date: '5 oct',  desc: 'Transferencia de ahorro', amount: 10000, fee: 350 },
@@ -571,50 +716,224 @@ export class UploadStatementComponent {
     { id: 4, date: '12 oct', desc: 'Compra supermercado',     amount:  3480, inflow: false },
   ];
 
-  get savingsTotalDeposits(): number {
-    return this.savingsDeposits.reduce((s, d) => s + d.amount, 0);
-  }
-
-  get savingsTotalWithdrawals(): number {
-    return this.savingsMovements.filter(m => !m.inflow).reduce((s, m) => s + m.amount, 0);
-  }
-
-  get savingsBalance(): number {
-    return this.savingsTotalDeposits - this.savingsTotalWithdrawals;
-  }
-
-  get savingsTotalFees(): number {
-    return this.savingsDeposits.reduce((s, d) => s + d.fee, 0);
-  }
+  get savingsTotalDeposits():    number { return this.savingsDeposits.reduce((s, d) => s + d.amount, 0); }
+  get savingsTotalWithdrawals(): number { return this.savingsMovements.filter(m => !m.inflow).reduce((s, m) => s + m.amount, 0); }
+  get savingsBalance():          number { return this.savingsTotalDeposits - this.savingsTotalWithdrawals; }
+  get savingsTotalFees():        number { return this.savingsDeposits.reduce((s, d) => s + d.fee, 0); }
 
   get savingsTotalDepositsFormatted():    string { return 'RD$' + this.savingsTotalDeposits.toLocaleString(); }
   get savingsTotalWithdrawalsFormatted(): string { return 'RD$' + this.savingsTotalWithdrawals.toLocaleString(); }
   get savingsBalanceFormatted():          string { return 'RD$' + this.savingsBalance.toLocaleString(); }
   get savingsTotalFeesFormatted():        string { return 'RD$' + this.savingsTotalFees.toLocaleString(); }
 
-  // ── Shared ─────────────────────────────────────────────────────────
+  // ── Lifecycle ───────────────────────────────────────────────────────
+  ngOnInit(): void {
+    if (this.acctSvc.accounts().length === 0) {
+      this.acctSvc.load().subscribe();
+    }
+  }
+
+  // ── Actions ─────────────────────────────────────────────────────────
+  triggerFileInput(): void {
+    if (!this.canUpload) return;
+    this.fileInputRef?.nativeElement.click();
+  }
+
+  onFileSelected(event: Event): void {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (!file || !this.selectedAccountId || !this.statementDate) return;
+
+    this.uploading    = true;
+    this.uploadError  = '';
+    this._uploadStart = Date.now();
+
+    const form = new FormData();
+    form.append('file', file);
+    form.append('accountId', String(this.selectedAccountId));
+    form.append('type', this.flow === 'credit-card' ? 'CREDIT_CARD' : 'SAVINGS');
+    form.append('statementDate', this.statementDate);
+
+    this.http.post<any>(`${this.rootUrl}/api/v1/statement-imports`, form)
+      .pipe(timeout(TIMEOUT_MS))
+      .subscribe({
+        next: res => {
+          this._afterMinSpinner(() => {
+            this.importId = res.id;
+            if (res.status === 'FAILED') {
+              this.uploadError = res.errorMessage ?? 'No se pudo procesar el archivo.';
+            } else {
+              this._rawLines = res.lines ?? [];
+              this._populateLists();
+              this.parsed = true;
+            }
+          });
+        },
+        error: (err: HttpErrorResponse | TimeoutError) => {
+          this._afterMinSpinner(() => {
+            if (err instanceof TimeoutError) {
+              this.uploadError = 'La solicitud tardó demasiado. Verifica tu conexión.';
+            } else if ((err as HttpErrorResponse).status === 409) {
+              this.uploadError = 'Ya existe un corte confirmado para esta cuenta y fecha.';
+            } else {
+              this.uploadError = (err as HttpErrorResponse).error?.message ?? 'Error al subir el archivo.';
+            }
+          });
+        },
+      });
+  }
+
+  private _afterMinSpinner(then: () => void): void {
+    const remaining = MIN_UPLOAD_SPINNER_MS - (Date.now() - this._uploadStart);
+    const finish = () => { this.uploading = false; then(); };
+    if (remaining <= 0) finish();
+    else setTimeout(finish, remaining);
+  }
+
+  private _afterMinSave(id: number, then: () => void): void {
+    const remaining = MIN_MERCHANT_SAVE_MS - (Date.now() - (this._merchantSaveStart.get(id) ?? 0));
+    if (remaining <= 0) then();
+    else setTimeout(then, remaining);
+  }
+
+  private _populateLists(): void {
+    const rate = this.consolidationRate;
+    const expNames = this.categories;
+    const suggestions = expNames.slice(0, 2);
+
+    this.categorized = this._rawLines
+      .filter(l => !l.isExcluded && l.categoryAccountId != null)
+      .map(l => ({
+        id:       l.id,
+        merchant: l.description,
+        category: l.categoryAccountName ?? '',
+        currency: l.currency === 'RD' ? 'dop' as const : 'usd' as const,
+        amount:   l.amount,
+        rate:     l.currency === 'USD' ? rate : null,
+        rdEquiv:  l.currency === 'RD' ? l.amount : Math.round(l.amount * rate),
+      }));
+
+    this.newMerchants = this._rawLines
+      .filter(l => !l.isExcluded && l.categoryAccountId == null)
+      .map(l => ({
+        id:           l.id,
+        merchant:     l.description,
+        amount:       l.amount,
+        currency:     l.currency === 'RD' ? 'dop' as const : 'usd' as const,
+        rdEquiv:      l.currency === 'RD' ? l.amount : Math.round(l.amount * rate),
+        suggestions,
+        selected:     null,
+        status:       'pending' as const,
+        saving:       false,
+        showDropdown: false,
+        otherCategory: expNames[0] ?? '',
+      }));
+
+    this.excluded = this._rawLines
+      .filter(l => l.isExcluded)
+      .map(l => ({
+        id:       l.id,
+        reason:   l.isPayment ? 'Pago detectado automáticamente' : 'Excluida manualmente',
+        merchant: l.description,
+        amount:   l.amount,
+      }));
+  }
+
+  resolveNewMerchant(id: number, categoryName: string): void {
+    const m = this.newMerchants.find(x => x.id === id);
+    if (!m || !categoryName) return;
+
+    m.selected     = categoryName;
+    m.status       = 'resolved';
+    m.saving       = true;
+    m.showDropdown = false;
+    this._merchantSaveStart.set(id, Date.now());
+
+    const categoryAccountId = this.expenseAccountsByName.get(categoryName);
+    if (!categoryAccountId) { this._afterMinSave(id, () => { m.saving = false; }); return; }
+
+    this.http.patch<any>(`${this.rootUrl}/api/v1/statement-lines/${id}`, { categoryAccountId })
+      .pipe(timeout(TIMEOUT_MS))
+      .subscribe({
+        next:  () => { this._afterMinSave(id, () => { m.saving = false; }); },
+        error: () => {
+          this._afterMinSave(id, () => {
+            m.saving   = false;
+            m.status   = 'pending';
+            m.selected = null;
+          });
+        },
+      });
+  }
+
+  excludeLine(id: number): void {
+    const idx = this.newMerchants.findIndex(m => m.id === id);
+    if (idx === -1) return;
+    const [m] = this.newMerchants.splice(idx, 1);
+    this.excluded.push({ id: m.id, reason: 'Excluida manualmente', merchant: m.merchant, amount: m.rdEquiv });
+
+    this.http.patch<any>(`${this.rootUrl}/api/v1/statement-lines/${id}`, { isExcluded: true })
+      .pipe(timeout(TIMEOUT_MS))
+      .subscribe({
+        error: () => {
+          this.excluded.pop();
+          this.newMerchants.splice(idx, 0, m);
+        },
+      });
+  }
+
+  confirm(): void {
+    if (!this.importId) {
+      this.confirmed = true;
+      return;
+    }
+
+    this.confirming = true;
+    this.http.post<any>(`${this.rootUrl}/api/v1/statement-imports/${this.importId}/confirm`, {})
+      .pipe(timeout(TIMEOUT_MS))
+      .subscribe({
+        next: res => {
+          this.confirming   = false;
+          this.postedEntries = res.postedEntries ?? 0;
+          this.confirmed    = true;
+        },
+        error: (err: HttpErrorResponse | TimeoutError) => {
+          this.confirming = false;
+          if (err instanceof TimeoutError) {
+            this.confirmError = 'La solicitud tardó demasiado. Verifica tu conexión.';
+          } else if ((err as HttpErrorResponse).status === 422) {
+            const unresolvedIds = new Set<number>((err as HttpErrorResponse).error?.lineIds ?? []);
+            this.newMerchants
+              .filter(m => unresolvedIds.has(m.id))
+              .forEach(m => { m.status = 'pending'; });
+            this.confirmError = 'Hay líneas sin categorizar. Resuélvelas antes de confirmar.';
+          } else {
+            this.confirmError = (err as HttpErrorResponse).error?.message ?? 'Error al registrar el corte. Intenta de nuevo.';
+          }
+        },
+      });
+  }
+
+  // ── Shared ──────────────────────────────────────────────────────────
   formatRD(v: number): string { return 'RD$' + v.toLocaleString(); }
 
   usdConversionLabel(line: CategorizedLine): string {
     return 'US$' + line.amount + ' × ' + line.rate + ' = ' + this.formatRD(line.rdEquiv);
   }
 
-  simulateParse(): void {
-    this.parsed    = false;
-    this.confirmed = false;
-    setTimeout(() => { this.parsed = true; }, 400);
-  }
-
-  confirm(): void {
-    this.confirmed = true;
-  }
-
   reset(): void {
-    this.parsed    = false;
-    this.confirmed = false;
+    this.parsed        = false;
+    this.confirmed     = false;
+    this.uploading     = false;
+    this.confirming    = false;
+    this.uploadError   = '';
+    this.confirmError  = '';
+    this.importId      = null;
+    this._rawLines     = [];
+    this.postedEntries = 0;
     this.newMerchants.forEach(m => {
       m.status       = 'pending';
       m.selected     = null;
+      m.saving       = false;
       m.showDropdown = false;
     });
     this.showCategorized      = false;

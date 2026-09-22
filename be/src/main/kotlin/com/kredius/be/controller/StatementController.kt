@@ -26,11 +26,11 @@ class StatementController(private val statementService: StatementService) : Stat
     override fun getStatementImport(id: Long): ResponseEntity<StatementImportResponse> =
         ResponseEntity.ok(statementService.get(id))
 
-    // Phase 3 — implemented in next phase
     override fun patchStatementLine(
         id: Long,
         patchStatementLineRequest: PatchStatementLineRequest,
-    ): ResponseEntity<StatementLineDto> = super.patchStatementLine(id, patchStatementLineRequest)
+    ): ResponseEntity<StatementLineDto> =
+        ResponseEntity.ok(statementService.patchLine(id, patchStatementLineRequest))
 
     // Phase 4 — implemented in next phase
     override fun confirmStatementImport(id: Long): ResponseEntity<ConfirmImportResponse> =

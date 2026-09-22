@@ -5,6 +5,7 @@ import com.kredius.be.entity.StatementImportStatus
 import com.kredius.be.entity.StatementLine
 import com.kredius.be.exception.ApiException
 import com.kredius.be.exception.DuplicateImportException
+import com.kredius.be.model.PatchStatementLineRequest
 import com.kredius.be.model.StatementImportResponse
 import com.kredius.be.model.StatementImportStatus as ApiStatus
 import com.kredius.be.model.StatementLineDto
@@ -13,6 +14,7 @@ import com.kredius.be.parser.BhdPdfParser
 import com.kredius.be.repository.AccountRepository
 import com.kredius.be.repository.MerchantDictionaryRepository
 import com.kredius.be.repository.StatementImportRepository
+import com.kredius.be.repository.StatementLineRepository
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -25,6 +27,7 @@ class StatementService(
     private val currentUser: CurrentUserService,
     private val accountRepo: AccountRepository,
     private val importRepo: StatementImportRepository,
+    private val lineRepo: StatementLineRepository,
     private val merchantRepo: MerchantDictionaryRepository,
     private val parser: BhdPdfParser,
 ) {
@@ -81,6 +84,23 @@ class StatementService(
             importRepo.save(import)
             import.toResponse()
         }
+    }
+
+    fun patchLine(id: Long, request: PatchStatementLineRequest): StatementLineDto {
+        val line = lineRepo.findByIdAndStatementImportUserId(id, currentUser.id)
+            ?: throw ApiException("NOT_FOUND", "Statement line not found", HttpStatus.NOT_FOUND)
+
+        request.isExcluded?.let { line.isExcluded = it }
+        request.categoryAccountId?.let { accId ->
+            line.categoryAccount = accountRepo.findByIdAndUserId(accId, currentUser.id)
+                ?: throw ApiException("NOT_FOUND", "Category account not found", HttpStatus.NOT_FOUND)
+        }
+        // Allow clearing the category
+        if (request.categoryAccountId == null && request.isExcluded == null) {
+            throw ApiException("BAD_REQUEST", "Nothing to update", HttpStatus.BAD_REQUEST)
+        }
+
+        return lineRepo.save(line).toDto()
     }
 
     @Transactional(readOnly = true)

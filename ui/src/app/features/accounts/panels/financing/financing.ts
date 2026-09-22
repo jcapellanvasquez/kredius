@@ -5,6 +5,7 @@ import { HttpClient } from '@angular/common/http';
 import { map } from 'rxjs';
 import { ApiConfiguration } from '../../../../api/api-configuration';
 import { getLoan } from '../../../../api/fn/loans/get-loan';
+import { collectInstallment } from '../../../../api/fn/loans/collect-installment';
 import { LoanDetailResponse } from '../../../../api/models/loan-detail-response';
 import { LoanScheduleDocComponent, ScheduleDocRow } from './loan-schedule-doc';
 
@@ -199,6 +200,12 @@ const RECV = {
                     [class.text-gray-900]="row.next">
                     {{ formatRD(row.amount) }}
                   </span>
+                  @if (row.next) {
+                    <button type="button" (click)="markCollected(row.num)"
+                      class="shrink-0 px-2.5 py-1 text-xs font-medium text-white bg-income rounded-lg hover:opacity-90 transition-opacity">
+                      Cobrar
+                    </button>
+                  }
                 </div>
               }
             </div>
@@ -316,6 +323,7 @@ export class FinancingComponent implements OnInit {
 
   loan: LoanDetailResponse | null = null;
   isGiven = false;
+  private accountId = 0;
 
   currentNum           = RECV.currentNum;
   showSchedule         = false;
@@ -331,16 +339,28 @@ export class FinancingComponent implements OnInit {
   impactReduceInstallmentText = '';
 
   ngOnInit(): void {
-    const loanId = this.route.snapshot.queryParamMap.get('loanId');
-    if (loanId) {
+    const id = this.route.snapshot.queryParamMap.get('id');
+    const type = this.route.snapshot.queryParamMap.get('type');
+    if (id && type !== 'received') {
       this.isGiven = true;
-      getLoan(this.http, this.rootUrl, { id: +loanId }).pipe(map(r => r.body!)).subscribe(loan => {
-        this.loan = loan;
-      });
+      this.accountId = +id;
+      this.loadLoan();
     } else {
       this.isGiven = false;
       this.showSchedule = true;
     }
+  }
+
+  private loadLoan(): void {
+    getLoan(this.http, this.rootUrl, { accountId: this.accountId }).pipe(map(r => r.body!)).subscribe(loan => {
+      this.loan = loan;
+    });
+  }
+
+  markCollected(num: number): void {
+    collectInstallment(this.http, this.rootUrl, { accountId: this.accountId, num }).pipe(map(r => r.body!)).subscribe(loan => {
+      this.loan = loan;
+    });
   }
 
   // ── Given loan derived data ─────────────────────────────────────────

@@ -190,7 +190,7 @@
               @for (account of filteredLoans(); track account.id) {
                 <button
                   [routerLink]="account.loanType === 'GIVEN' ? ['financing'] : ['detail']"
-                  [queryParams]="account.loanType === 'GIVEN' ? { loanId: account.loanId } : { id: account.id }"
+                  [queryParams]="{ id: account.id }"
                   (click)="selectAccount(account.id)"
                   class="w-full px-3 py-2.5 text-left transition-colors"
                   [ngClass]="selectedKey() === 'a-' + account.id ? 'bg-brand-50' : 'hover:bg-gray-50'">

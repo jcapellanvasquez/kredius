@@ -9,14 +9,16 @@ import { RequestBuilder } from '../../request-builder';
 
 import { LoanDetailResponse } from '../../models/loan-detail-response';
 
-export interface GetLoan$Params {
+export interface CollectInstallment$Params {
   accountId: number;
+  num: number;
 }
 
-export function getLoan(http: HttpClient, rootUrl: string, params: GetLoan$Params, context?: HttpContext): Observable<StrictHttpResponse<LoanDetailResponse>> {
-  const rb = new RequestBuilder(rootUrl, getLoan.PATH, 'get');
+export function collectInstallment(http: HttpClient, rootUrl: string, params: CollectInstallment$Params, context?: HttpContext): Observable<StrictHttpResponse<LoanDetailResponse>> {
+  const rb = new RequestBuilder(rootUrl, collectInstallment.PATH, 'post');
   if (params) {
     rb.path('accountId', params.accountId, {});
+    rb.path('num', params.num, {});
   }
 
   return http.request(
@@ -29,4 +31,4 @@ export function getLoan(http: HttpClient, rootUrl: string, params: GetLoan$Param
   );
 }
 
-getLoan.PATH = '/api/v1/loans/account/{accountId}';
+collectInstallment.PATH = '/api/v1/loans/account/{accountId}/installments/{num}/collect';

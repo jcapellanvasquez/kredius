@@ -202,6 +202,60 @@ paths:
                   $ref: '#/components/schemas/LoanResponse'
         '500':
           $ref: '#/components/responses/InternalServerError'
+    post:
+      tags: [Loans]
+      summary: Create a given loan
+      description: Creates a loan-given record with a WEEKLY flat-rate schedule and the disbursement journal entry
+      operationId: createGivenLoan
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateGivenLoanRequest'
+      responses:
+        '201':
+          description: Loan created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoanResponse'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/loans/received:
+    post:
+      tags: [Loans]
+      summary: Create a received loan
+      description: Creates a loan-received record with a MONTHLY amortizing schedule and the disbursement journal entry
+      operationId: createReceivedLoan
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateReceivedLoanRequest'
+      responses:
+        '201':
+          description: Loan registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoanResponse'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 
   /api/v1/statement-imports:
     get:
@@ -924,6 +978,51 @@ components:
           type: number
           format: double
           description: Remaining loan balance (principal not yet paid)
+
+    CreateGivenLoanRequest:
+      type: object
+      required: [counterpartyName, principal, rate, installmentAmount, startDate]
+      properties:
+        counterpartyName:
+          type: string
+          description: Name of the borrower
+        principal:
+          type: number
+          format: double
+          description: Capital lent in RD$
+        rate:
+          type: number
+          format: double
+          description: Total flat rate as a percentage (e.g. 15 = 15%)
+        installmentAmount:
+          type: number
+          format: double
+          description: Desired weekly installment amount in RD$
+        startDate:
+          type: string
+          format: date
+
+    CreateReceivedLoanRequest:
+      type: object
+      required: [counterpartyName, principal, monthlyRate, numInstallments, startDate]
+      properties:
+        counterpartyName:
+          type: string
+          description: Name of the lender
+        principal:
+          type: number
+          format: double
+          description: Capital received in RD$
+        monthlyRate:
+          type: number
+          format: double
+          description: Monthly interest rate as a percentage (e.g. 3 = 3%)
+        numInstallments:
+          type: integer
+          description: Number of monthly installments
+        startDate:
+          type: string
+          format: date
 
     LoanType:
       type: string

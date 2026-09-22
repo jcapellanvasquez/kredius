@@ -15,6 +15,10 @@ export type { GetAccountTransactions$Params as GetAccountTransactions$Params } f
 export { getAccountTransactions as getAccountTransactions } from './fn/accounts/get-account-transactions';
 export type { GetLoans$Params as GetLoans$Params } from './fn/loans/get-loans';
 export { getLoans as getLoans } from './fn/loans/get-loans';
+export type { CreateGivenLoan$Params as CreateGivenLoan$Params } from './fn/loans/create-given-loan';
+export { createGivenLoan as createGivenLoan } from './fn/loans/create-given-loan';
+export type { CreateReceivedLoan$Params as CreateReceivedLoan$Params } from './fn/loans/create-received-loan';
+export { createReceivedLoan as createReceivedLoan } from './fn/loans/create-received-loan';
 export type { ListStatementImports$Params as ListStatementImports$Params } from './fn/statements/list-statement-imports';
 export { listStatementImports as listStatementImports } from './fn/statements/list-statement-imports';
 export type { UploadStatement$Params as UploadStatement$Params } from './fn/statements/upload-statement';

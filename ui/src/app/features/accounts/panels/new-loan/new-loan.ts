@@ -1,6 +1,12 @@
-import { Component } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { HttpClient } from '@angular/common/http';
+import { combineLatest, map, timer } from 'rxjs';
+import { ApiConfiguration } from '../../../../api/api-configuration';
+import { createGivenLoan } from '../../../../api/fn/loans/create-given-loan';
+
+const MIN_SPINNER_MS = 700;
 
 interface PreviewRow {
   num:    number;
@@ -13,7 +19,7 @@ interface PreviewRow {
   imports: [FormsModule, RouterLink],
   host: { class: 'block' },
   template: `
-    @if (created) {
+    @if (created()) {
 
       <div class="flex flex-col items-center justify-center gap-3 py-16 text-center">
         <svg class="w-10 h-10 text-income" viewBox="0 0 24 24" fill="currentColor">
@@ -131,9 +137,19 @@ interface PreviewRow {
 
         <!-- Create button -->
         <button type="button" (click)="create()"
-          [disabled]="!isValid"
+          [disabled]="!isValid || saving()"
           class="w-full py-2.5 text-sm font-medium text-white bg-brand-600 rounded-xl hover:bg-brand-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
-          Crear préstamo
+          @if (saving()) {
+            <span class="inline-flex items-center gap-2">
+              <svg class="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+              </svg>
+              Creando…
+            </span>
+          } @else {
+            Crear préstamo
+          }
         </button>
 
       </div>
@@ -142,12 +158,17 @@ interface PreviewRow {
   `,
 })
 export class NewLoanComponent {
+  private readonly http    = inject(HttpClient);
+  private readonly rootUrl = inject(ApiConfiguration).rootUrl;
+
   borrower    = '';
   capital     = 10_000;
   rate        = 15;
   installment = 2_000;
   startDate   = new Date().toISOString().substring(0, 10);
-  created     = false;
+
+  readonly saving  = signal(false);
+  readonly created = signal(false);
 
   get total(): number {
     return Math.round(this.capital * (1 + this.rate / 100));
@@ -205,8 +226,23 @@ export class NewLoanComponent {
   }
 
   create(): void {
-    if (!this.isValid) return;
-    this.created = true;
+    if (!this.isValid || this.saving()) return;
+    this.saving.set(true);
+    combineLatest([
+      createGivenLoan(this.http, this.rootUrl, {
+        body: {
+          counterpartyName:  this.borrower,
+          principal:         this.capital,
+          rate:              this.rate,
+          installmentAmount: this.installment,
+          startDate:         this.startDate,
+        },
+      }).pipe(map(r => r.body!)),
+      timer(MIN_SPINNER_MS),
+    ]).subscribe({
+      next:  () => { this.saving.set(false); this.created.set(true); },
+      error: () => { this.saving.set(false); },
+    });
   }
 
   reset(): void {
@@ -215,6 +251,7 @@ export class NewLoanComponent {
     this.rate        = 15;
     this.installment = 2_000;
     this.startDate   = new Date().toISOString().substring(0, 10);
-    this.created     = false;
+    this.saving.set(false);
+    this.created.set(false);
   }
 }

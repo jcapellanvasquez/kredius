@@ -9,6 +9,19 @@
   }
 }
 
+@media print {
+  body * { visibility: hidden; }
+  #schedule-card,
+  #schedule-card * { visibility: visible; }
+  #schedule-card {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    box-shadow: none;
+    border: none;
+  }
+}
+
 @layer components {
   /* Sidebar account list rows */
   .account-row {

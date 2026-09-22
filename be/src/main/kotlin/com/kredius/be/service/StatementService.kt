@@ -24,6 +24,7 @@ import com.kredius.be.repository.AccountRepository
 import com.kredius.be.repository.ExchangeRateRepository
 import com.kredius.be.repository.JournalEntryRepository
 import com.kredius.be.repository.JournalLineRepository
+import com.kredius.be.entity.MerchantDictionary
 import com.kredius.be.repository.MerchantDictionaryRepository
 import com.kredius.be.repository.StatementImportRepository
 import com.kredius.be.repository.StatementLineRepository
@@ -109,15 +110,43 @@ class StatementService(
 
         request.isExcluded?.let { line.isExcluded = it }
         request.categoryAccountId?.let { accId ->
-            line.categoryAccount = accountRepo.findByIdAndUserId(accId, currentUser.id)
+            val account = accountRepo.findByIdAndUserId(accId, currentUser.id)
                 ?: throw ApiException("NOT_FOUND", "Category account not found", HttpStatus.NOT_FOUND)
+            line.categoryAccount = account
+            learnMerchant(line.description, account)
         }
-        // Allow clearing the category
         if (request.categoryAccountId == null && request.isExcluded == null) {
             throw ApiException("BAD_REQUEST", "Nothing to update", HttpStatus.BAD_REQUEST)
         }
 
         return lineRepo.save(line).toDto()
+    }
+
+    private fun learnMerchant(description: String, account: com.kredius.be.entity.Account) {
+        val pattern = extractPattern(description)
+        val existing = merchantRepo.findByUserIdAndTextPattern(currentUser.id, pattern)
+        if (existing == null) {
+            merchantRepo.save(MerchantDictionary(
+                textPattern = pattern,
+                account     = account,
+                user        = currentUser.user,
+            ))
+        } else if (existing.account.id != account.id) {
+            existing.account   = account
+            existing.updatedAt = java.time.OffsetDateTime.now()
+            merchantRepo.save(existing)
+        }
+    }
+
+    private fun extractPattern(description: String): String {
+        // Credit card descriptions often embed a transaction reference after # or *
+        // e.g. "BRAVOVA #8820738 SANTODOMINGO-DO" → "BRAVOVA"
+        //      "AMAZON*PRIME"                     → "AMAZON"
+        for (separator in listOf("#", "*")) {
+            val before = description.substringBefore(separator).trim()
+            if (before.isNotBlank() && before != description.trim()) return before
+        }
+        return description.trim()
     }
 
     fun confirm(id: Long): ResponseEntity<*> {

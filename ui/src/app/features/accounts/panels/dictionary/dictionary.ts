@@ -128,7 +128,7 @@ interface Merchant {
 
             <!-- Pattern -->
             <div class="flex-1 min-w-0">
-              <p class="text-sm font-medium text-gray-900 truncate font-mono tracking-tight">{{ merchant.pattern }}</p>
+              <p class="text-sm font-medium text-gray-900 truncate">{{ merchant.pattern }}</p>
             </div>
 
             <!-- Category dropdown (inline edit) -->

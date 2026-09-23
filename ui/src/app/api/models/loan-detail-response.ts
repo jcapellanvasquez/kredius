@@ -3,7 +3,18 @@
 
 import { LoanInstallmentDto } from '../models/loan-installment-dto';
 import { LoanResponse } from '../models/loan-response';
+import { PrincipalPaymentRecord } from '../models/principal-payment-record';
 export type LoanDetailResponse = LoanResponse & {
 'installments'?: Array<LoanInstallmentDto>;
+
+/**
+ * Outstanding principal balance (received loans only; null for given loans)
+ */
+'remainingPrincipal'?: number | null;
+
+/**
+ * History of principal-only payments (abonos a capital), newest first
+ */
+'principalPayments'?: Array<PrincipalPaymentRecord> | null;
 };
 

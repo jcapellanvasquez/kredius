@@ -21,6 +21,8 @@ export type { CreateReceivedLoan$Params as CreateReceivedLoan$Params } from './f
 export { createReceivedLoan as createReceivedLoan } from './fn/loans/create-received-loan';
 export type { GetLoan$Params as GetLoan$Params } from './fn/loans/get-loan';
 export { getLoan as getLoan } from './fn/loans/get-loan';
+export type { ApplyPrincipalPayment$Params as ApplyPrincipalPayment$Params } from './fn/loans/apply-principal-payment';
+export { applyPrincipalPayment as applyPrincipalPayment } from './fn/loans/apply-principal-payment';
 export type { CollectInstallment$Params as CollectInstallment$Params } from './fn/loans/collect-installment';
 export { collectInstallment as collectInstallment } from './fn/loans/collect-installment';
 export type { ListStatementImports$Params as ListStatementImports$Params } from './fn/statements/list-statement-imports';

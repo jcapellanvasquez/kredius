@@ -6,6 +6,7 @@ import { map } from 'rxjs';
 import { ApiConfiguration } from '../../../../api/api-configuration';
 import { getLoan } from '../../../../api/fn/loans/get-loan';
 import { collectInstallment } from '../../../../api/fn/loans/collect-installment';
+import { applyPrincipalPayment } from '../../../../api/fn/loans/apply-principal-payment';
 import { LoanDetailResponse } from '../../../../api/models/loan-detail-response';
 import { LoanScheduleDocComponent, ScheduleDocRow } from './loan-schedule-doc';
 
@@ -19,14 +20,6 @@ interface AmortizationRow {
   current:  boolean;
 }
 
-// Received loan mock data ("2020 Préstamo carro")
-const RECV = {
-  P:          350_000,
-  r:          0.03,
-  n:          24,
-  pmt:        20_667,
-  currentNum: 9,
-};
 
 @Component({
   selector: 'app-financing',
@@ -312,6 +305,23 @@ const RECV = {
         </div>
       }
 
+      <!-- Principal payment history (received only) -->
+      @if (!isGiven && principalPaymentHistory.length > 0) {
+        <div class="rounded-xl border border-gray-200 bg-white overflow-hidden">
+          <div class="px-4 py-3 border-b border-gray-100">
+            <p class="text-sm font-medium text-gray-700">Historial de abonos a capital</p>
+          </div>
+          <div class="divide-y divide-gray-50">
+            @for (p of principalPaymentHistory; track p.date) {
+              <div class="flex items-center justify-between px-4 py-3">
+                <span class="text-sm text-gray-600">{{ formatHistoryDate(p.date ?? '') }}</span>
+                <span class="text-sm font-semibold text-income">-{{ formatRD(p.amount ?? 0) }}</span>
+              </div>
+            }
+          </div>
+        </div>
+      }
+
     </div>
   `,
 })
@@ -325,7 +335,7 @@ export class FinancingComponent implements OnInit {
   isGiven = false;
   private accountId = 0;
 
-  currentNum           = RECV.currentNum;
+  currentNum           = 1;
   showSchedule         = false;
   showFullSchedule     = false;
   showPrincipalPayment = false;
@@ -355,7 +365,11 @@ export class FinancingComponent implements OnInit {
     getLoan(this.http, this.rootUrl, { accountId: this.accountId }).pipe(map(r => r.body!)).subscribe(loan => {
       this.loan = loan;
       this.isGiven = loan.type === 'GIVEN';
-      if (!this.isGiven) this.showSchedule = true;
+      if (!this.isGiven) {
+        this.currentNum = (loan.paidInstallments ?? 0) + 1;
+        this.amortization = this.buildAmortization();
+        this.showSchedule = true;
+      }
     });
   }
 
@@ -388,43 +402,41 @@ export class FinancingComponent implements OnInit {
   }
 
   get accountName(): string {
-    return this.isGiven ? (this.loan?.counterpartyName ?? '…') : '2020 Préstamo carro';
+    return this.loan?.counterpartyName ?? '…';
   }
 
   get balanceFormatted(): string {
     if (this.isGiven) return 'RD$' + ((this.loan?.remainingBalance ?? 0)).toLocaleString();
-    const balance = this.currentNum <= 1 ? RECV.P : (this.amortization[this.currentNum - 2]?.balance ?? RECV.P);
-    return 'RD$' + balance.toLocaleString();
+    return 'RD$' + ((this.loan?.remainingPrincipal ?? 0)).toLocaleString();
   }
 
   get progressPercent(): number {
-    if (this.isGiven && this.loan) {
-      const total = this.loan.totalInstallments ?? 1;
-      return Math.round(((this.loan.paidInstallments ?? 0) / total) * 100);
-    }
-    return Math.round((this.currentNum / RECV.n) * 100);
+    if (!this.loan) return 0;
+    const total = this.loan.totalInstallments ?? 1;
+    return Math.round(((this.loan.paidInstallments ?? 0) / total) * 100);
   }
 
   get progressCaption(): string {
-    if (this.isGiven && this.loan) {
-      return this.progressPercent + '% cobrado · ' + (this.loan.paidInstallments ?? 0) + ' de ' + (this.loan.totalInstallments ?? 0) + ' cuotas';
-    }
-    return this.progressPercent + '% pagado · ' + this.currentNum + ' de ' + RECV.n + ' cuotas';
+    if (!this.loan) return '';
+    const paid = this.loan.paidInstallments ?? 0;
+    const total = this.loan.totalInstallments ?? 0;
+    if (this.isGiven) return this.progressPercent + '% cobrado · ' + paid + ' de ' + total + ' cuotas';
+    return this.progressPercent + '% pagado · ' + paid + ' de ' + total + ' cuotas';
   }
 
   get principalFormatted(): string {
-    if (this.isGiven) return 'RD$' + ((this.loan?.principal ?? 0)).toLocaleString();
-    return 'RD$' + RECV.P.toLocaleString();
+    return 'RD$' + ((this.loan?.principal ?? 0)).toLocaleString();
   }
 
   get rateLabel(): string {
-    if (this.isGiven && this.loan) return (this.loan.frequency === 'WEEKLY' ? '' : '') + '% plana';
-    return '3% mensual';
+    if (!this.loan) return '';
+    const r = this.loan.rate ?? 0;
+    if (this.isGiven) return r + '% plana';
+    return r + '% mensual';
   }
 
   get installmentFormatted(): string {
-    if (this.isGiven) return 'RD$' + ((this.loan?.installmentAmount ?? 0)).toLocaleString();
-    return 'RD$' + RECV.pmt.toLocaleString();
+    return 'RD$' + ((this.loan?.installmentAmount ?? 0)).toLocaleString();
   }
 
   get collectedFormatted(): string {
@@ -449,19 +461,18 @@ export class FinancingComponent implements OnInit {
   }
 
   // ── Received loan amortization ──────────────────────────────────────
-  amortization: AmortizationRow[] = this.buildAmortization();
+  amortization: AmortizationRow[] = [];
 
   private buildAmortization(): AmortizationRow[] {
-    const { P, r, n, pmt } = RECV;
-    const rows: AmortizationRow[] = [];
-    let balance = P;
-    for (let i = 1; i <= n; i++) {
-      const interest  = Math.round(balance * r);
-      const principal = Math.round(pmt - interest);
+    if (!this.loan?.installments) return [];
+    const paid = this.loan.paidInstallments ?? 0;
+    let balance = this.loan.principal ?? 0;
+    return this.loan.installments.map((inst, idx) => {
+      const interest  = inst.scheduledInterest  ?? 0;
+      const principal = inst.scheduledPrincipal ?? 0;
       balance = Math.max(0, Math.round(balance - principal));
-      rows.push({ num: i, interest, principal, balance, current: i === this.currentNum });
-    }
-    return rows;
+      return { num: inst.number ?? (idx + 1), interest, principal, balance, current: idx === paid };
+    });
   }
 
   get visibleAmortization(): AmortizationRow[] {
@@ -471,16 +482,17 @@ export class FinancingComponent implements OnInit {
     return this.amortization.slice(start, end);
   }
 
-  get totalPaid(): number    { return this.amortization.slice(0, this.currentNum - 1).reduce((s, r) => s + r.interest + r.principal, 0); }
-  get interestPaid(): number { return this.amortization.slice(0, this.currentNum - 1).reduce((s, r) => s + r.interest, 0); }
-  get principalPaid(): number{ return this.amortization.slice(0, this.currentNum - 1).reduce((s, r) => s + r.principal, 0); }
+  get totalPaid():     number { return (this.loan?.installments ?? []).filter(i => i.status === 'PAID').reduce((s, i) => s + (i.scheduledAmount ?? 0), 0); }
+  get interestPaid():  number { return (this.loan?.installments ?? []).filter(i => i.status === 'PAID').reduce((s, i) => s + (i.scheduledInterest ?? 0), 0); }
+  get principalPaid(): number { return (this.loan?.installments ?? []).filter(i => i.status === 'PAID').reduce((s, i) => s + (i.scheduledPrincipal ?? 0), 0); }
 
   get totalPaidFormatted():     string { return 'RD$' + this.totalPaid.toLocaleString(); }
   get interestPaidFormatted():  string { return 'RD$' + this.interestPaid.toLocaleString(); }
   get principalPaidFormatted(): string { return 'RD$' + this.principalPaid.toLocaleString(); }
 
   registerPayment(): void {
-    if (this.currentNum >= RECV.n) return;
+    const total = this.loan?.totalInstallments ?? 0;
+    if (this.currentNum >= total) return;
     const cur = this.amortization.find(r => r.num === this.currentNum);
     if (cur) cur.current = false;
     this.currentNum++;
@@ -488,19 +500,29 @@ export class FinancingComponent implements OnInit {
     if (next) next.current = true;
   }
 
+  // ── Principal payment history ───────────────────────────────────────
+  get principalPaymentHistory() { return this.loan?.principalPayments ?? []; }
+
+  formatHistoryDate(iso: string): string {
+    if (!iso) return '';
+    const [y, m, d] = iso.split('-').map(Number);
+    const months = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+    return `${d} ${months[m - 1]} ${y}`;
+  }
+
   // ── Principal payment impact ────────────────────────────────────────
   onPrincipalAmountChange(): void {
     this.impactReady = false;
-    if (!this.principalAmount || this.principalAmount <= 0) return;
-    const balance = this.currentNum <= 1 ? RECV.P : (this.amortization[this.currentNum - 2]?.balance ?? RECV.P);
-    const newBalance = balance - this.principalAmount;
+    if (!this.principalAmount || this.principalAmount <= 0 || !this.loan) return;
+    const remainingPrincipal = this.loan.remainingPrincipal ?? 0;
+    const newBalance = remainingPrincipal - this.principalAmount;
     if (newBalance <= 0) return;
-    const r   = RECV.r;
-    const pmt = RECV.pmt;
-    const remainingInstallments = RECV.n - this.currentNum;
+    const r   = (this.loan.rate ?? 0) / 100;
+    const pmt = this.loan.installmentAmount ?? 0;
+    const remainingInstallments = (this.loan.totalInstallments ?? 0) - (this.loan.paidInstallments ?? 0);
     if (this.principalMode === 'reduce-term') {
-      const n_new       = Math.ceil(-Math.log(1 - (newBalance * r) / pmt) / Math.log(1 + r));
-      const saved       = Math.max(0, remainingInstallments - n_new);
+      const n_new         = Math.ceil(-Math.log(1 - (newBalance * r) / pmt) / Math.log(1 + r));
+      const saved         = Math.max(0, remainingInstallments - n_new);
       const savedInterest = Math.max(0, Math.round(saved * pmt - this.principalAmount));
       this.impactReduceTermText = 'Con este abono terminarías ' + saved + ' cuotas antes' +
         (savedInterest > 0 ? ' y ahorrarías aprox. RD$' + savedInterest.toLocaleString() + ' en intereses.' : '.');
@@ -514,9 +536,22 @@ export class FinancingComponent implements OnInit {
   }
 
   confirmPrincipalPayment(): void {
-    if (this.principalAmount <= 0) return;
-    this.showPrincipalPayment = false;
-    this.principalAmount = 0;
-    this.impactReady = false;
+    if (this.principalAmount <= 0 || !this.loan) return;
+    applyPrincipalPayment(this.http, this.rootUrl, {
+      accountId: this.accountId,
+      body: {
+        amount: this.principalAmount,
+        date:   this.principalDate,
+        mode:   this.principalMode === 'reduce-term' ? 'REDUCE_TERM' : 'REDUCE_INSTALLMENT',
+      },
+    }).pipe(map(r => r.body!)).subscribe(loan => {
+      this.loan = loan;
+      this.currentNum  = (loan.paidInstallments ?? 0) + 1;
+      this.amortization = this.buildAmortization();
+      this.showPrincipalPayment = false;
+      this.principalAmount      = 0;
+      this.impactReady          = false;
+      this.showSchedule         = true;
+    });
   }
 }

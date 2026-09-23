@@ -29,6 +29,8 @@ export type { LoanType } from './models/loan-type';
 export type { MerchantMappingResponse } from './models/merchant-mapping-response';
 export type { MonthlyBalancePoint } from './models/monthly-balance-point';
 export type { PatchStatementLineRequest } from './models/patch-statement-line-request';
+export type { PrincipalPaymentRecord } from './models/principal-payment-record';
+export type { PrincipalPaymentRequest } from './models/principal-payment-request';
 export type { StatementImportResponse } from './models/statement-import-response';
 export type { StatementImportStatus } from './models/statement-import-status';
 export type { StatementImportSummaryResponse } from './models/statement-import-summary-response';

@@ -5,5 +5,7 @@ export interface LoanInstallmentDto {
   number?: number;
   scheduledAmount?: number;
   scheduledDate?: string;
+  scheduledInterest?: number | null;
+  scheduledPrincipal?: number | null;
   status?: 'PENDING' | 'PAID' | 'OVERDUE';
 }

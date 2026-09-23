@@ -14,6 +14,11 @@ export interface LoanResponse {
   nextInstallmentDate?: string | null;
   paidInstallments?: number;
   principal?: number;
+
+  /**
+   * Interest rate percentage (flat total for GIVEN; monthly for RECEIVED)
+   */
+  rate?: number | null;
   remainingBalance?: number;
   startDate?: string | null;
   totalAmount?: number;

@@ -2,6 +2,7 @@ services:
   postgres:
     build: ./db
     image: kredius-db:local
+    pull_policy: build
     ports:
       - "5432:5432"
     environment:

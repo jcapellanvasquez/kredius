@@ -52,22 +52,6 @@ interface ExcludedLine {
   amount:   number;
 }
 
-interface SavingsDeposit {
-  id:      number;
-  date:    string;
-  desc:    string;
-  amount:  number;
-  fee:     number;
-}
-
-interface SavingsMovement {
-  id:      number;
-  date:    string;
-  desc:    string;
-  amount:  number;
-  inflow:  boolean;
-}
-
 interface ApiLine {
   id:                  number;
   lineDate:            string;
@@ -286,8 +270,8 @@ const MIN_MERCHANT_SAVE_MS   = 600;
         </div>
       }
 
-      <!-- ────────────────── CREDIT CARD FLOW ────────────────── -->
-      @if (parsed && flow === 'credit-card') {
+      <!-- ────────────────── PARSED FLOW ────────────────── -->
+      @if (parsed) {
 
         <!-- File parsed notice -->
         <div class="flex items-center gap-3 rounded-xl border border-green-200 bg-green-50 px-4 py-3">
@@ -526,14 +510,14 @@ const MIN_MERCHANT_SAVE_MS   = 600;
           <button type="button" (click)="confirm()"
             [disabled]="pendingNewMerchants > 0 || confirming"
             class="w-full py-3 text-sm font-semibold text-white bg-brand-600 rounded-xl hover:bg-brand-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
-            {{ confirming ? 'Registrando...' : pendingNewMerchants > 0 ? 'Resuelve los comercios nuevos para continuar' : 'Confirmar y registrar corte' }}
+            {{ confirming ? 'Registrando...' : pendingNewMerchants > 0 ? 'Resuelve los comercios nuevos para continuar' : flow === 'savings' ? 'Confirmar y registrar movimientos' : 'Confirmar y registrar corte' }}
           </button>
         } @else {
           <div class="flex flex-col items-center gap-2 rounded-xl border border-green-200 bg-green-50 px-4 py-6">
             <svg class="w-8 h-8 text-income" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
             </svg>
-            <p class="text-base font-semibold text-green-800">Corte registrado</p>
+            <p class="text-base font-semibold text-green-800">{{ flow === 'savings' ? 'Movimientos registrados' : 'Corte registrado' }}</p>
             <p class="text-sm text-green-600 text-center">{{ postedEntries }} transacciones importadas a la contabilidad.</p>
             <button type="button" (click)="reset()"
               class="mt-2 px-4 py-1.5 text-xs font-medium text-brand-800 bg-brand-50 rounded-full hover:bg-brand-100 transition-colors">
@@ -544,143 +528,6 @@ const MIN_MERCHANT_SAVE_MS   = 600;
 
       }
 
-      <!-- ────────────────── SAVINGS FLOW ────────────────── -->
-      @if (parsed && flow === 'savings') {
-
-        <!-- File parsed notice -->
-        <div class="flex items-center gap-3 rounded-xl border border-green-200 bg-green-50 px-4 py-3">
-          <svg class="w-5 h-5 text-income shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
-          </svg>
-          <div>
-            <p class="text-sm font-medium text-green-800">{{ savingsParsedNoticeTitle }}</p>
-            <p class="text-xs text-green-600">{{ savingsDeposits.length }} depósitos · {{ savingsMovements.length }} movimientos</p>
-          </div>
-          <button type="button" (click)="reset()" class="ml-auto text-xs text-green-600 hover:text-green-800 shrink-0">
-            Cambiar archivo
-          </button>
-        </div>
-
-        <!-- Consolidation box -->
-        <div class="rounded-xl border border-gray-200 bg-white p-4 flex flex-col gap-4">
-          <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Resumen del período</p>
-
-          <div class="grid grid-cols-2 gap-3">
-            <div class="rounded-lg bg-gray-50 px-3 py-3">
-              <p class="text-xs text-gray-400 mb-0.5">Total depósitos</p>
-              <p class="text-base font-bold text-income">{{ savingsTotalDepositsFormatted }}</p>
-            </div>
-            <div class="rounded-lg bg-gray-50 px-3 py-3">
-              <p class="text-xs text-gray-400 mb-0.5">Total retiros</p>
-              <p class="text-base font-bold text-expense">{{ savingsTotalWithdrawalsFormatted }}</p>
-            </div>
-          </div>
-
-          <div class="flex items-center justify-between text-sm">
-            <span class="text-gray-600">Total comisiones bancarias</span>
-            <span class="font-medium text-expense">{{ savingsTotalFeesFormatted }}</span>
-          </div>
-
-          <div class="flex items-center justify-between pt-3 border-t border-gray-100">
-            <span class="text-sm font-semibold text-gray-700">Balance resultante</span>
-            <span class="text-lg font-bold text-gray-900">{{ savingsBalanceFormatted }}</span>
-          </div>
-        </div>
-
-        <!-- Deposits with paired fees (expandable) -->
-        <div class="rounded-xl border border-gray-200 bg-white overflow-hidden">
-          <button type="button" (click)="showSavingsDeposits = !showSavingsDeposits"
-            class="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors">
-            <div class="flex items-center gap-2">
-              <span class="text-sm font-medium text-gray-700">Depósitos</span>
-              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-income">
-                {{ savingsDeposits.length }}
-              </span>
-            </div>
-            <svg class="w-4 h-4 text-gray-400 transition-transform"
-              [class.rotate-180]="showSavingsDeposits"
-              fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/>
-            </svg>
-          </button>
-          @if (showSavingsDeposits) {
-            <div class="border-t border-gray-100 divide-y divide-gray-50">
-              @for (dep of savingsDeposits; track dep.id) {
-                <div class="px-4 pt-3 pb-2">
-                  <div class="flex items-center justify-between">
-                    <p class="text-sm text-gray-800">{{ dep.date }} &middot; {{ dep.desc }}</p>
-                    <span class="text-sm font-medium text-income">{{ formatRD(dep.amount) }}</span>
-                  </div>
-                  @if (dep.fee > 0) {
-                    <div class="ml-4 mt-1 flex items-center justify-between text-xs text-gray-400 pl-3 border-l-2 border-gray-100">
-                      <span>Comisión de transferencia</span>
-                      <span class="text-expense">-{{ formatRD(dep.fee) }}</span>
-                    </div>
-                    <div class="mt-1 flex items-center justify-between text-xs font-semibold text-gray-600 pt-1 border-t border-gray-100">
-                      <span>Neto recibido</span>
-                      <span>{{ formatRD(dep.amount - dep.fee) }}</span>
-                    </div>
-                  }
-                </div>
-              }
-            </div>
-          }
-        </div>
-
-        <!-- Other movements (expandable) -->
-        <div class="rounded-xl border border-gray-200 bg-white overflow-hidden">
-          <button type="button" (click)="showSavingsMovements = !showSavingsMovements"
-            class="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors">
-            <div class="flex items-center gap-2">
-              <span class="text-sm font-medium text-gray-700">Otros movimientos</span>
-              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500">
-                {{ savingsMovements.length }}
-              </span>
-            </div>
-            <svg class="w-4 h-4 text-gray-400 transition-transform"
-              [class.rotate-180]="showSavingsMovements"
-              fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/>
-            </svg>
-          </button>
-          @if (showSavingsMovements) {
-            <div class="border-t border-gray-100 divide-y divide-gray-50">
-              @for (mov of savingsMovements; track mov.id) {
-                <div class="px-4 py-3 flex items-center justify-between">
-                  <span class="text-sm text-gray-700">{{ mov.date }} &middot; {{ mov.desc }}</span>
-                  <span class="text-sm font-medium"
-                    [class.text-income]="mov.inflow"
-                    [class.text-expense]="!mov.inflow">
-                    {{ mov.inflow ? '+' : '-' }}{{ formatRD(mov.amount) }}
-                  </span>
-                </div>
-              }
-            </div>
-          }
-        </div>
-
-        <!-- Confirm -->
-        @if (!confirmed) {
-          <button type="button" (click)="confirm()"
-            [disabled]="confirming"
-            class="w-full py-3 text-sm font-semibold text-white bg-brand-600 rounded-xl hover:bg-brand-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
-            {{ confirming ? 'Registrando...' : 'Confirmar y registrar movimientos' }}
-          </button>
-        } @else {
-          <div class="flex flex-col items-center gap-2 rounded-xl border border-green-200 bg-green-50 px-4 py-6">
-            <svg class="w-8 h-8 text-income" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
-            </svg>
-            <p class="text-base font-semibold text-green-800">Movimientos registrados</p>
-            <p class="text-sm text-green-600 text-center">{{ savingsDeposits.length + savingsMovements.length }} líneas importadas a tu cuenta de ahorros.</p>
-            <button type="button" (click)="reset()"
-              class="mt-2 px-4 py-1.5 text-xs font-medium text-brand-800 bg-brand-50 rounded-full hover:bg-brand-100 transition-colors">
-              Subir otro corte
-            </button>
-          </div>
-        }
-
-      }
 
     </div>
   `,
@@ -701,11 +548,9 @@ export class UploadStatementComponent implements OnInit {
   confirmError        = '';
   consolidationRate   = 59.00;
   postedEntries       = 0;
-  showCategorized      = false;
-  showExcluded         = false;
-  showSavingsDeposits  = false;
-  showSavingsMovements = false;
-  showHistory          = false;
+  showCategorized = false;
+  showExcluded    = false;
+  showHistory     = false;
 
   pendingImports: ImportSummary[] = [];
   historyImports: ImportSummary[] = [];
@@ -718,7 +563,7 @@ export class UploadStatementComponent implements OnInit {
   private _uploadStart                        = 0;
   private _merchantSaveStart                  = new Map<number, number>();
 
-  // ── Credit card data (populated from API or kept as mock) ──────────
+  // ── Credit card data ────────────────────────────────────────────────
   categorized: CategorizedLine[] = [
     { id:  1, merchant: 'NETFLIX',              category: 'Entretenimiento',    currency: 'usd', amount:  17,   rate: 59.00, rdEquiv: 1003  },
     { id:  2, merchant: 'SUPERMERCADO NACIONAL', category: 'Alimentación',      currency: 'dop', amount: 3480,  rate: null,  rdEquiv: 3480  },
@@ -792,12 +637,6 @@ export class UploadStatementComponent implements OnInit {
     const total  = this._rawLines.length || 24;
     return `Se detectaron ${blocks} ${blocks === 1 ? 'bloque' : 'bloques'} de moneda · ${total} líneas`;
   }
-  get savingsParsedNoticeTitle(): string {
-    if (!this.statementDate) return 'Estado de cuenta procesado';
-    const [y, m] = this.statementDate.split('-');
-    return `Estado de cuenta ${MONTHS_ES[+m - 1]} ${y} procesado`;
-  }
-
   // ── Pending count ───────────────────────────────────────────────────
   get pendingNewMerchants(): number {
     return this.newMerchants.filter(m => m.status === 'pending').length;
@@ -827,29 +666,6 @@ export class UploadStatementComponent implements OnInit {
     return this.selectedAccountId !== null && this.statementDate !== '';
   }
 
-  // ── Savings mock data (savings flow not yet wired to API) ───────────
-  savingsDeposits: SavingsDeposit[] = [
-    { id: 1, date: '1 oct',  desc: 'Nómina octubre',          amount: 85000, fee: 0   },
-    { id: 2, date: '5 oct',  desc: 'Transferencia de ahorro', amount: 10000, fee: 350 },
-    { id: 3, date: '15 oct', desc: 'Freelance proyecto web',  amount: 12000, fee: 200 },
-  ];
-
-  savingsMovements: SavingsMovement[] = [
-    { id: 1, date: '3 oct',  desc: 'Pago tarjeta de crédito', amount: 15000, inflow: false },
-    { id: 2, date: '7 oct',  desc: 'Pago alquiler',           amount: 18000, inflow: false },
-    { id: 3, date: '10 oct', desc: 'Cuota préstamo carro',    amount: 20667, inflow: false },
-    { id: 4, date: '12 oct', desc: 'Compra supermercado',     amount:  3480, inflow: false },
-  ];
-
-  get savingsTotalDeposits():    number { return this.savingsDeposits.reduce((s, d) => s + d.amount, 0); }
-  get savingsTotalWithdrawals(): number { return this.savingsMovements.filter(m => !m.inflow).reduce((s, m) => s + m.amount, 0); }
-  get savingsBalance():          number { return this.savingsTotalDeposits - this.savingsTotalWithdrawals; }
-  get savingsTotalFees():        number { return this.savingsDeposits.reduce((s, d) => s + d.fee, 0); }
-
-  get savingsTotalDepositsFormatted():    string { return 'RD$' + this.savingsTotalDeposits.toLocaleString(); }
-  get savingsTotalWithdrawalsFormatted(): string { return 'RD$' + this.savingsTotalWithdrawals.toLocaleString(); }
-  get savingsBalanceFormatted():          string { return 'RD$' + this.savingsBalance.toLocaleString(); }
-  get savingsTotalFeesFormatted():        string { return 'RD$' + this.savingsTotalFees.toLocaleString(); }
 
   // ── Lifecycle ───────────────────────────────────────────────────────
   ngOnInit(): void {
@@ -1141,10 +957,8 @@ export class UploadStatementComponent implements OnInit {
       m.saving       = false;
       m.showDropdown = false;
     });
-    this.showCategorized      = false;
-    this.showExcluded         = false;
-    this.showSavingsDeposits  = false;
-    this.showSavingsMovements = false;
-    this.showHistory          = false;
+    this.showCategorized = false;
+    this.showExcluded    = false;
+    this.showHistory     = false;
   }
 }

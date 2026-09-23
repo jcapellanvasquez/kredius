@@ -21,6 +21,8 @@ enum class RateContext { PAYROLL, CREDIT_CARD, OTHER }
 
 enum class StatementType { CREDIT_CARD, SAVINGS }
 
+enum class StatementLineType { DEBIT, CREDIT, INITIAL_BALANCE }
+
 enum class StatementImportStatus {
     UPLOADED, PROCESSING, PENDING_REVIEW, CONFIRMED, FAILED, REVERSED
 }

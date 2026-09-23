@@ -9,6 +9,7 @@ import com.kredius.be.entity.RateContext
 import com.kredius.be.entity.StatementImport
 import com.kredius.be.entity.StatementImportStatus
 import com.kredius.be.entity.StatementLine
+import com.kredius.be.entity.StatementLineType
 import com.kredius.be.entity.StatementType as EntityStatementType
 import com.kredius.be.exception.ApiException
 import com.kredius.be.exception.DuplicateImportException
@@ -85,14 +86,20 @@ class StatementService(
 
             val lines = when (type) {
                 ApiStatementType.SAVINGS -> savingsParser.parse(file.inputStream).map { row ->
+                    val lineType = when {
+                        row.isInitialBalance          -> StatementLineType.INITIAL_BALANCE
+                        row.credit > java.math.BigDecimal.ZERO -> StatementLineType.CREDIT
+                        else                          -> StatementLineType.DEBIT
+                    }
                     StatementLine(
                         statementImport = import,
                         lineDate        = row.transactionDate,
                         description     = row.description,
                         currency        = row.currency,
                         amount          = row.amount,
-                        isExcluded      = false,
-                        categoryAccount = matchAccount(row.description),
+                        isExcluded      = row.isInitialBalance,
+                        type            = lineType,
+                        categoryAccount = if (row.isInitialBalance) null else matchAccount(row.description),
                     )
                 }
                 else -> parser.parse(file.inputStream).map { row ->
@@ -103,6 +110,7 @@ class StatementService(
                         currency        = row.currency,
                         amount          = row.amount,
                         isExcluded      = row.isPayment,
+                        type            = if (row.isPayment) StatementLineType.CREDIT else StatementLineType.DEBIT,
                         categoryAccount = matchAccount(row.description),
                     )
                 }
@@ -314,6 +322,7 @@ class StatementService(
         amount              = amount.toDouble(),
         isExcluded          = isExcluded,
         isPayment           = isExcluded,
+        lineType            = type?.name?.let { StatementLineDto.LineType.valueOf(it) },
         categoryAccountId   = categoryAccount?.id,
         categoryAccountName = categoryAccount?.name,
     )

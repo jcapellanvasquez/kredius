@@ -32,6 +32,10 @@ class StatementLine(
     @JoinColumn(name = "category_account_id")
     var categoryAccount: Account? = null,
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "line_type", length = 20)
+    var type: StatementLineType? = null,
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "journal_line_id")
     var journalLine: JournalLine? = null,

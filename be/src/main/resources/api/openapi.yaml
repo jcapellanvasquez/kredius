@@ -1308,6 +1308,10 @@ components:
         isPayment:
           type: boolean
           description: Auto-excluded payment row (e.g. PAGO DEBITO A CUENTA)
+        lineType:
+          type: string
+          enum: [DEBIT, CREDIT, INITIAL_BALANCE]
+          nullable: true
         categoryAccountId:
           type: integer
           format: int64

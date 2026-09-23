@@ -25,14 +25,13 @@ data class ParsedSavingsStatementLine(
     val credit: BigDecimal,
     val balance: BigDecimal,
     val currency: CurrencyType,
+    val isInitialBalance: Boolean = false,
 ) {
     /** The non-zero movement amount for this row (credit if present, otherwise debit). */
     val amount: BigDecimal
-        get() = if (credit > BigDecimal.ZERO) credit else debit
+        get() = if (isInitialBalance) balance else if (credit > BigDecimal.ZERO) credit else debit
 
-    /** True when this row reduced the balance (a debit/withdrawal), mirroring isPayment. */
-    val isPayment: Boolean
-        get() = debit > BigDecimal.ZERO
+    val isCredit: Boolean get() = isInitialBalance || credit > BigDecimal.ZERO
 }
 
 @Component
@@ -43,10 +42,10 @@ class BhdSavingsPdfParser {
     private val referenceRegex = Regex("""^\d+$""")
     private val dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
 
-    // Non-transaction rows: table header, opening-balance line, and the trailing
+    // Non-transaction rows: table header, and the trailing
     // "N CKS" / "N DEBITOS" / "N CREDITOS" totals, plus surrounding boilerplate text.
     private val skipPatterns = listOf(
-        "FECHA REF", "BALANCE INICIAL", " CKS", "DEBITOS", "CREDITOS",
+        "FECHA REF", " CKS", "DEBITOS", "CREDITOS",
         "ESTADO DE CUENTA", "CONFIRME LA VALIDEZ", "DOCUMENTO EMITIDO",
         "EL BANCO SIEMPRE", "ESCANEAME", "ESCANÉAME",
     )
@@ -79,6 +78,27 @@ class BhdSavingsPdfParser {
 
         for (line in rawLines) {
             val upper = line.uppercase()
+
+            if (upper.contains("BALANCE INICIAL")) {
+                val amounts = amountRegex.findAll(line).toList()
+                if (amounts.isNotEmpty()) {
+                    val initialAmount = BigDecimal(amounts.last().value.replace(",", ""))
+                    result.add(
+                        ParsedSavingsStatementLine(
+                            transactionDate  = LocalDate.now(),
+                            reference        = null,
+                            description      = "BALANCE INICIAL",
+                            debit            = BigDecimal.ZERO,
+                            credit           = BigDecimal.ZERO,
+                            balance          = initialAmount,
+                            currency         = currency,
+                            isInitialBalance = true,
+                        )
+                    )
+                }
+                continue
+            }
+
             if (skipPatterns.any { upper.contains(it) }) continue
 
             val parsed = tryParseRow(line, currency) ?: continue

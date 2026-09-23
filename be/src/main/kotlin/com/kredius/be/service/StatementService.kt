@@ -22,6 +22,7 @@ import com.kredius.be.model.StatementType
 import com.kredius.be.model.StatementType as ApiStatementType
 import com.kredius.be.model.UnresolvedLinesError
 import com.kredius.be.parser.BhdPdfParser
+import com.kredius.be.parser.BhdSavingsPdfParser
 import com.kredius.be.repository.AccountRepository
 import com.kredius.be.repository.ExchangeRateRepository
 import com.kredius.be.repository.JournalEntryRepository
@@ -50,6 +51,7 @@ class StatementService(
     private val journalLineRepo: JournalLineRepository,
     private val exchangeRateRepo: ExchangeRateRepository,
     private val parser: BhdPdfParser,
+    private val savingsParser: BhdSavingsPdfParser,
 ) {
     fun upload(file: MultipartFile, accountId: Long, type: StatementType, statementDate: LocalDate): StatementImportResponse {
         val userId  = currentUser.id
@@ -74,26 +76,38 @@ class StatementService(
             import.status = StatementImportStatus.PROCESSING
             importRepo.save(import)
 
-            val parsed    = parser.parse(file.inputStream)
             val merchants = merchantRepo.findByUserIdOrderByTextPatternAsc(userId)
                 .associateBy { it.textPattern.uppercase() }
 
-            for (row in parsed) {
-                val matchedAccount = merchants.entries
-                    .firstOrNull { (pattern, _) -> row.description.uppercase().contains(pattern) }
-                    ?.value?.account
+            fun matchAccount(description: String) = merchants.entries
+                .firstOrNull { (pattern, _) -> description.uppercase().contains(pattern) }
+                ?.value?.account
 
-                val line = StatementLine(
-                    statementImport  = import,
-                    lineDate         = row.transactionDate,
-                    description      = row.description,
-                    currency         = row.currency,
-                    amount           = row.amount,
-                    isExcluded       = row.isPayment,
-                    categoryAccount  = matchedAccount,
-                )
-                import.lines.add(line)
+            val lines = when (type) {
+                ApiStatementType.SAVINGS -> savingsParser.parse(file.inputStream).map { row ->
+                    StatementLine(
+                        statementImport = import,
+                        lineDate        = row.transactionDate,
+                        description     = row.description,
+                        currency        = row.currency,
+                        amount          = row.amount,
+                        isExcluded      = false,
+                        categoryAccount = matchAccount(row.description),
+                    )
+                }
+                else -> parser.parse(file.inputStream).map { row ->
+                    StatementLine(
+                        statementImport = import,
+                        lineDate        = row.transactionDate,
+                        description     = row.description,
+                        currency        = row.currency,
+                        amount          = row.amount,
+                        isExcluded      = row.isPayment,
+                        categoryAccount = matchAccount(row.description),
+                    )
+                }
             }
+            import.lines.addAll(lines)
 
             import.status = StatementImportStatus.PENDING_REVIEW
             importRepo.save(import)

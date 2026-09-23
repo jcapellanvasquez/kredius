@@ -7,7 +7,7 @@ import { NewAccountComponent } from './panels/new-account/new-account';
 import { DictionaryComponent } from './panels/dictionary/dictionary';
 import { IncomeComponent } from './panels/income/income';
 import { UploadStatementComponent } from './panels/upload-statement/upload-statement';
-import { ReportsComponent } from './panels/reports/reports';
+import { ReportsV2Component } from './panels/reports/reports-v2';
 import { NewLoanComponent } from './panels/new-loan/new-loan';
 import { NewLoanReceivedComponent } from './panels/new-loan-received/new-loan-received';
 
@@ -25,7 +25,7 @@ export const accountsRoutes: Routes = [
       { path: 'dictionary', component: DictionaryComponent },
       { path: 'income', component: IncomeComponent },
       { path: 'upload-statement', component: UploadStatementComponent },
-      { path: 'reports', component: ReportsComponent },
+      { path: 'reports', component: ReportsV2Component },
     ],
   },
 ];

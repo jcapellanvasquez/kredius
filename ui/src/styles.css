@@ -12,8 +12,11 @@
 @media print {
   body * { visibility: hidden; }
   #schedule-card,
-  #schedule-card * { visibility: visible; }
-  #schedule-card {
+  #schedule-card *,
+  #report-card,
+  #report-card * { visibility: visible; }
+  #schedule-card,
+  #report-card {
     position: absolute;
     inset: 0;
     width: 100%;

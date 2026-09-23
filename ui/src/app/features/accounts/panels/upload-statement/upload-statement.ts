@@ -37,6 +37,7 @@ interface NewMerchantLine {
   amount:       number;
   currency:     'dop' | 'usd';
   rdEquiv:      number;
+  lineType:     'DEBIT' | 'CREDIT' | 'INITIAL_BALANCE' | null;
   suggestions:  string[];
   selected:     string | null;
   status:       NewMerchantStatus;
@@ -60,6 +61,7 @@ interface ApiLine {
   amount:              number;
   isExcluded:          boolean;
   isPayment:           boolean;
+  lineType:            'DEBIT' | 'CREDIT' | 'INITIAL_BALANCE' | null;
   categoryAccountId:   number | null;
   categoryAccountName: string | null;
 }
@@ -287,83 +289,111 @@ const MIN_MERCHANT_SAVE_MS   = 600;
           </button>
         </div>
 
-        <!-- Consolidation box -->
-        <div class="rounded-xl border border-gray-200 bg-white p-4 flex flex-col gap-4">
-          <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Consolidación de monedas</p>
+        <!-- Consolidation box (credit card only) -->
+        @if (flow === 'credit-card') {
+          <div class="rounded-xl border border-gray-200 bg-white p-4 flex flex-col gap-4">
+            <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Consolidación de monedas</p>
 
-          <div class="grid grid-cols-2 gap-3">
-            <div class="rounded-lg bg-gray-50 px-3 py-3">
-              <p class="text-xs text-gray-400 mb-0.5">Cargos del período RD$</p>
-              <p class="text-base font-bold text-gray-900">{{ rdTotalFormatted }}</p>
-            </div>
-            <div class="rounded-lg bg-gray-50 px-3 py-3">
-              <p class="text-xs text-gray-400 mb-0.5">Cargos del período US$</p>
-              <p class="text-base font-bold text-gray-900">{{ usdTotalFormatted }}</p>
-            </div>
-          </div>
-
-          <!-- Rate row -->
-          <div class="flex items-center justify-between gap-3">
-            <div class="flex items-center gap-1.5">
-              <span class="text-sm text-gray-600">Tasa de cambio</span>
-              <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-brand-50 text-brand-600 border border-brand-200">auto</span>
-            </div>
-            <div class="flex items-center gap-1 shrink-0">
-              <span class="text-sm text-gray-400">RD$</span>
-              <input type="number" [(ngModel)]="consolidationRate" min="1" step="0.01"
-                class="w-20 rounded-md border border-gray-300 px-2 py-1 text-sm text-right text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-300"/>
-            </div>
-          </div>
-
-          <div class="flex items-center justify-between text-sm">
-            <span class="text-gray-600">Equivalente en pesos (US$)</span>
-            <span class="font-medium text-gray-900">{{ usdRdEquivFormatted }}</span>
-          </div>
-
-          <div class="flex items-center justify-between text-sm">
-            <span class="text-gray-600">Pagos excluidos del período (RD$)</span>
-            <span class="font-medium text-income">− {{ ccTotalFeesFormatted }}</span>
-          </div>
-
-          <!-- Balance al corte note -->
-          @if (ccTotalFees > 0) {
-            <div class="flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-100 px-3 py-2.5">
-              <svg class="w-3.5 h-3.5 text-amber-500 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/>
-              </svg>
-              <p class="text-xs text-amber-700 leading-snug">
-                El <strong>Balance al corte</strong> del estado también incluye el saldo anterior del período previo,
-                por eso puede diferir de los cargos mostrados aquí.
-              </p>
-            </div>
-          }
-
-          <div class="flex items-center justify-between pt-3 border-t border-gray-100">
-            <span class="text-sm font-semibold text-gray-700">Total consolidado</span>
-            <span class="text-lg font-bold text-gray-900">{{ consolidatedTotalFormatted }}</span>
-          </div>
-        </div>
-
-        <!-- Budget comparison -->
-        <div class="rounded-xl border border-gray-200 bg-white p-4 flex flex-col gap-3">
-          <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Presupuesto vs. real (oct)</p>
-          @for (row of budgetComparison; track row.name) {
-            <div class="flex items-center justify-between py-2 border-t border-gray-100 first:border-t-0 first:pt-0">
-              <span class="text-sm text-gray-600">{{ row.name }}</span>
-              <div class="flex items-center gap-3 shrink-0 text-sm">
-                <span class="text-gray-400">{{ formatRD(row.budget) }}</span>
-                <span class="font-medium"
-                  [class.text-expense]="row.actual > row.budget"
-                  [class.text-income]="row.actual <= row.budget">
-                  {{ formatRD(row.actual) }}
-                </span>
-                @if (row.actual > row.budget) {
-                  <span class="text-xs text-expense">+{{ formatRD(row.actual - row.budget) }}</span>
-                }
+            <div class="grid grid-cols-2 gap-3">
+              <div class="rounded-lg bg-gray-50 px-3 py-3">
+                <p class="text-xs text-gray-400 mb-0.5">Cargos del período RD$</p>
+                <p class="text-base font-bold text-gray-900">{{ rdTotalFormatted }}</p>
+              </div>
+              <div class="rounded-lg bg-gray-50 px-3 py-3">
+                <p class="text-xs text-gray-400 mb-0.5">Cargos del período US$</p>
+                <p class="text-base font-bold text-gray-900">{{ usdTotalFormatted }}</p>
               </div>
             </div>
-          }
-        </div>
+
+            <!-- Rate row -->
+            <div class="flex items-center justify-between gap-3">
+              <div class="flex items-center gap-1.5">
+                <span class="text-sm text-gray-600">Tasa de cambio</span>
+                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-brand-50 text-brand-600 border border-brand-200">auto</span>
+              </div>
+              <div class="flex items-center gap-1 shrink-0">
+                <span class="text-sm text-gray-400">RD$</span>
+                <input type="number" [(ngModel)]="consolidationRate" min="1" step="0.01"
+                  class="w-20 rounded-md border border-gray-300 px-2 py-1 text-sm text-right text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-300"/>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between text-sm">
+              <span class="text-gray-600">Equivalente en pesos (US$)</span>
+              <span class="font-medium text-gray-900">{{ usdRdEquivFormatted }}</span>
+            </div>
+
+            <div class="flex items-center justify-between text-sm">
+              <span class="text-gray-600">Pagos excluidos del período (RD$)</span>
+              <span class="font-medium text-income">− {{ ccTotalFeesFormatted }}</span>
+            </div>
+
+            @if (ccTotalFees > 0) {
+              <div class="flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-100 px-3 py-2.5">
+                <svg class="w-3.5 h-3.5 text-amber-500 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/>
+                </svg>
+                <p class="text-xs text-amber-700 leading-snug">
+                  El <strong>Balance al corte</strong> del estado también incluye el saldo anterior del período previo,
+                  por eso puede diferir de los cargos mostrados aquí.
+                </p>
+              </div>
+            }
+
+            <div class="flex items-center justify-between pt-3 border-t border-gray-100">
+              <span class="text-sm font-semibold text-gray-700">Total consolidado</span>
+              <span class="text-lg font-bold text-gray-900">{{ consolidatedTotalFormatted }}</span>
+            </div>
+          </div>
+
+          <!-- Budget comparison -->
+          <div class="rounded-xl border border-gray-200 bg-white p-4 flex flex-col gap-3">
+            <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Presupuesto vs. real (oct)</p>
+            @for (row of budgetComparison; track row.name) {
+              <div class="flex items-center justify-between py-2 border-t border-gray-100 first:border-t-0 first:pt-0">
+                <span class="text-sm text-gray-600">{{ row.name }}</span>
+                <div class="flex items-center gap-3 shrink-0 text-sm">
+                  <span class="text-gray-400">{{ formatRD(row.budget) }}</span>
+                  <span class="font-medium"
+                    [class.text-expense]="row.actual > row.budget"
+                    [class.text-income]="row.actual <= row.budget">
+                    {{ formatRD(row.actual) }}
+                  </span>
+                  @if (row.actual > row.budget) {
+                    <span class="text-xs text-expense">+{{ formatRD(row.actual - row.budget) }}</span>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        }
+
+        <!-- Savings summary (savings only) -->
+        @if (flow === 'savings') {
+          <div class="rounded-xl border border-gray-200 bg-white p-4 flex flex-col gap-3">
+            <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Resumen del período</p>
+
+            <div class="flex items-center justify-between text-sm">
+              <span class="text-gray-600">Balance inicial</span>
+              <span class="font-medium text-gray-900">{{ savingsInitialBalanceFormatted }}</span>
+            </div>
+            <div class="flex items-center justify-between text-sm">
+              <span class="text-gray-600">+ Créditos</span>
+              <span class="font-medium text-gray-900">{{ savingsCreditsFormatted }}</span>
+            </div>
+            <div class="flex items-center justify-between text-sm">
+              <span class="text-gray-600">− Débitos</span>
+              <span class="font-medium text-gray-900">{{ savingsDebitsFormatted }}</span>
+            </div>
+
+            <div class="flex items-center justify-between pt-3 border-t border-gray-100">
+              <span class="text-sm font-semibold text-gray-700">Balance final</span>
+              <span class="text-lg font-bold text-income">
+                {{ savingsFinalBalanceFormatted }}
+              </span>
+            </div>
+          </div>
+        }
 
         <!-- Auto-categorized -->
         <div class="rounded-xl border border-gray-200 bg-white overflow-hidden">
@@ -402,8 +432,8 @@ const MIN_MERCHANT_SAVE_MS   = 600;
           }
         </div>
 
-        <!-- New merchants -->
-        @if (newMerchants.length > 0) {
+        <!-- New merchants — credit card: single panel -->
+        @if (flow === 'credit-card' && newMerchants.length > 0) {
           <div class="rounded-xl border border-amber-200 bg-amber-50 overflow-hidden">
             <div class="flex items-center gap-2 px-4 py-3 border-b border-amber-100">
               <svg class="w-4 h-4 text-amber-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
@@ -416,8 +446,7 @@ const MIN_MERCHANT_SAVE_MS   = 600;
             </div>
             <div class="divide-y divide-amber-100">
               @for (m of newMerchants; track m.id) {
-                <div class="px-4 py-3 flex flex-col gap-2"
-                  [class.opacity-50]="m.status === 'resolved'">
+                <div class="px-4 py-3 flex flex-col gap-2" [class.opacity-50]="m.status === 'resolved'">
                   <div class="flex items-center justify-between gap-3">
                     <div class="flex-1 min-w-0">
                       <p class="text-sm font-medium text-gray-800 font-mono truncate">{{ m.merchant }}</p>
@@ -450,7 +479,135 @@ const MIN_MERCHANT_SAVE_MS   = 600;
                       } @else {
                         <select [(ngModel)]="m.otherCategory" (ngModelChange)="resolveNewMerchant(m.id, m.otherCategory)"
                           class="text-xs border border-gray-300 rounded-lg px-2 py-1 text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-brand-300">
-                          @for (cat of categories; track cat) {
+                          @for (cat of expenseCategories; track cat) {
+                            <option [value]="cat">{{ cat }}</option>
+                          }
+                        </select>
+                      }
+                      <button type="button" (click)="excludeLine(m.id)"
+                        class="ml-auto px-3 py-1 text-xs font-medium rounded-full bg-red-50 text-red-600 hover:bg-red-100 transition-colors">
+                        Excluir
+                      </button>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+        }
+
+        <!-- New merchants — savings: Créditos -->
+        @if (flow === 'savings' && creditMerchants.length > 0) {
+          <div class="rounded-xl border border-amber-200 bg-amber-50 overflow-hidden">
+            <div class="flex items-center gap-2 px-4 py-3 border-b border-amber-100">
+              <svg class="w-4 h-4 text-amber-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/>
+              </svg>
+              <span class="text-sm font-medium text-amber-800">Créditos nuevos</span>
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-200 text-amber-800">
+                {{ pendingCreditMerchants }} sin resolver
+              </span>
+            </div>
+            <div class="divide-y divide-amber-100">
+              @for (m of creditMerchants; track m.id) {
+                <div class="px-4 py-3 flex flex-col gap-2" [class.opacity-50]="m.status === 'resolved'">
+                  <div class="flex items-center justify-between gap-3">
+                    <div class="flex-1 min-w-0">
+                      <p class="text-sm font-medium text-gray-800 font-mono truncate">{{ m.merchant }}</p>
+                      <p class="text-xs text-gray-500">{{ formatRD(m.rdEquiv) }}</p>
+                    </div>
+                    @if (m.status === 'resolved') {
+                      @if (m.saving) {
+                        <div class="flex items-center gap-1.5 shrink-0">
+                          <div class="w-3 h-3 border-2 border-gray-200 border-t-brand-500 rounded-full animate-spin"></div>
+                          <span class="text-xs text-gray-400">Guardando...</span>
+                        </div>
+                      } @else {
+                        <span class="text-xs text-income font-medium shrink-0">Guardado ✓</span>
+                      }
+                    }
+                  </div>
+                  @if (m.status === 'pending') {
+                    <div class="flex flex-wrap gap-2">
+                      @for (sug of m.suggestions; track sug) {
+                        <button type="button" (click)="resolveNewMerchant(m.id, sug)"
+                          class="px-3 py-1 text-xs font-medium rounded-full bg-brand-50 text-brand-800 hover:bg-brand-100 transition-colors">
+                          {{ sug }}
+                        </button>
+                      }
+                      @if (!m.showDropdown) {
+                        <button type="button" (click)="m.showDropdown = true"
+                          class="px-3 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">
+                          Otra categoría ▾
+                        </button>
+                      } @else {
+                        <select [(ngModel)]="m.otherCategory" (ngModelChange)="resolveNewMerchant(m.id, m.otherCategory)"
+                          class="text-xs border border-gray-300 rounded-lg px-2 py-1 text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-brand-300">
+                          @for (cat of incomeCategories; track cat) {
+                            <option [value]="cat">{{ cat }}</option>
+                          }
+                        </select>
+                      }
+                      <button type="button" (click)="excludeLine(m.id)"
+                        class="ml-auto px-3 py-1 text-xs font-medium rounded-full bg-red-50 text-red-600 hover:bg-red-100 transition-colors">
+                        Excluir
+                      </button>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+        }
+
+        <!-- New merchants — savings: Débitos -->
+        @if (flow === 'savings' && debitMerchants.length > 0) {
+          <div class="rounded-xl border border-amber-200 bg-amber-50 overflow-hidden">
+            <div class="flex items-center gap-2 px-4 py-3 border-b border-amber-100">
+              <svg class="w-4 h-4 text-amber-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/>
+              </svg>
+              <span class="text-sm font-medium text-amber-800">Débitos nuevos</span>
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-200 text-amber-800">
+                {{ pendingDebitMerchants }} sin resolver
+              </span>
+            </div>
+            <div class="divide-y divide-amber-100">
+              @for (m of debitMerchants; track m.id) {
+                <div class="px-4 py-3 flex flex-col gap-2" [class.opacity-50]="m.status === 'resolved'">
+                  <div class="flex items-center justify-between gap-3">
+                    <div class="flex-1 min-w-0">
+                      <p class="text-sm font-medium text-gray-800 font-mono truncate">{{ m.merchant }}</p>
+                      <p class="text-xs text-gray-500">{{ formatRD(m.rdEquiv) }}</p>
+                    </div>
+                    @if (m.status === 'resolved') {
+                      @if (m.saving) {
+                        <div class="flex items-center gap-1.5 shrink-0">
+                          <div class="w-3 h-3 border-2 border-gray-200 border-t-brand-500 rounded-full animate-spin"></div>
+                          <span class="text-xs text-gray-400">Guardando...</span>
+                        </div>
+                      } @else {
+                        <span class="text-xs text-income font-medium shrink-0">Guardado ✓</span>
+                      }
+                    }
+                  </div>
+                  @if (m.status === 'pending') {
+                    <div class="flex flex-wrap gap-2">
+                      @for (sug of m.suggestions; track sug) {
+                        <button type="button" (click)="resolveNewMerchant(m.id, sug)"
+                          class="px-3 py-1 text-xs font-medium rounded-full bg-brand-50 text-brand-800 hover:bg-brand-100 transition-colors">
+                          {{ sug }}
+                        </button>
+                      }
+                      @if (!m.showDropdown) {
+                        <button type="button" (click)="m.showDropdown = true"
+                          class="px-3 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">
+                          Otra categoría ▾
+                        </button>
+                      } @else {
+                        <select [(ngModel)]="m.otherCategory" (ngModelChange)="resolveNewMerchant(m.id, m.otherCategory)"
+                          class="text-xs border border-gray-300 rounded-lg px-2 py-1 text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-brand-300">
+                          @for (cat of expenseCategories; track cat) {
                             <option [value]="cat">{{ cat }}</option>
                           }
                         </select>
@@ -580,12 +737,12 @@ export class UploadStatementComponent implements OnInit {
   newMerchants: NewMerchantLine[] = [
     {
       id: 1, merchant: 'PLAZA VALERIO', amount: 346, currency: 'dop', rdEquiv: 346,
-      suggestions: ['Entretenimiento', 'Restaurantes'], selected: null, status: 'pending',
+      lineType: 'DEBIT', suggestions: ['Entretenimiento', 'Restaurantes'], selected: null, status: 'pending',
       saving: false, showDropdown: false, otherCategory: '',
     },
     {
       id: 2, merchant: 'COLMADO DON RAMON', amount: 430, currency: 'dop', rdEquiv: 430,
-      suggestions: ['Alimentación', 'Restaurantes'], selected: null, status: 'pending',
+      lineType: 'DEBIT', suggestions: ['Alimentación', 'Restaurantes'], selected: null, status: 'pending',
       saving: false, showDropdown: false, otherCategory: '',
     },
   ];
@@ -626,13 +783,30 @@ export class UploadStatementComponent implements OnInit {
   get usdRdEquivFormatted():        string { return 'RD$' + this.usdRdEquiv.toLocaleString(); }
   get consolidatedTotalFormatted(): string { return this.fmt(this.rdTotal + this.usdRdEquiv, 'RD$'); }
 
+  // ── Savings computed ────────────────────────────────────────────────
+  get savingsInitialBalance(): number { return this._rawLines.find(l => l.lineType === 'INITIAL_BALANCE')?.amount ?? 0; }
+  get savingsCredits():        number { return this._rawLines.filter(l => l.lineType === 'CREDIT').reduce((s, l) => s + l.amount, 0); }
+  get savingsDebits():         number { return this._rawLines.filter(l => l.lineType === 'DEBIT').reduce((s, l) => s + l.amount, 0); }
+  get savingsFinalBalance():   number { return this.savingsInitialBalance + this.savingsCredits - this.savingsDebits; }
+
+  get savingsInitialBalanceFormatted(): string { return this.fmt(this.savingsInitialBalance, 'RD$'); }
+  get savingsCreditsFormatted():        string { return this.fmt(this.savingsCredits, 'RD$'); }
+  get savingsDebitsFormatted():         string { return this.fmt(this.savingsDebits, 'RD$'); }
+  get savingsFinalBalanceFormatted():   string { return this.fmt(this.savingsFinalBalance, 'RD$'); }
+
   // ── Parsed notice ───────────────────────────────────────────────────
   get parsedNoticeTitle(): string {
-    if (!this.statementDate) return 'Corte procesado';
+    if (!this.statementDate) return this.flow === 'savings' ? 'Estado de cuenta procesado' : 'Corte procesado';
     const [y, m] = this.statementDate.split('-');
-    return `Corte ${MONTHS_ES[+m - 1]} ${y} procesado`;
+    return this.flow === 'savings'
+      ? `Estado de cuenta ${MONTHS_ES[+m - 1]} ${y} procesado`
+      : `Corte ${MONTHS_ES[+m - 1]} ${y} procesado`;
   }
   get parsedNoticeSubtitle(): string {
+    if (this.flow === 'savings') {
+      const movements = this._rawLines.filter(l => l.lineType !== 'INITIAL_BALANCE').length;
+      return `${movements} movimientos · Balance inicial ${this.savingsInitialBalanceFormatted}`;
+    }
     const blocks = new Set(this._rawLines.map(l => l.currency)).size || 2;
     const total  = this._rawLines.length || 24;
     return `Se detectaron ${blocks} ${blocks === 1 ? 'bloque' : 'bloques'} de moneda · ${total} líneas`;
@@ -648,15 +822,28 @@ export class UploadStatementComponent implements OnInit {
     return this.acctSvc.accounts().filter(a => a.type === type && !a.loanAccount);
   }
 
-  get categories(): string[] {
+  get expenseCategories(): string[] {
     const names = this.acctSvc.accounts().filter(a => a.type === 'EXPENSE').map(a => a.name ?? '').filter(Boolean);
     return names.length > 0 ? names : ['Alimentación', 'Transporte', 'Entretenimiento', 'Salud',
       'Servicios del hogar', 'Ropa y calzado', 'Tecnología', 'Educación', 'Gasolina', 'Farmacia', 'Restaurantes', 'Otro'];
   }
 
+  get incomeCategories(): string[] {
+    const names = this.acctSvc.accounts().filter(a => a.type === 'INCOME').map(a => a.name ?? '').filter(Boolean);
+    return names.length > 0 ? names : ['Salario', 'Comisión', 'Intereses', 'Otro ingreso'];
+  }
+
+  get categories(): string[] { return this.expenseCategories; }
+
+  get creditMerchants(): NewMerchantLine[] { return this.newMerchants.filter(m => m.lineType === 'CREDIT'); }
+  get debitMerchants():  NewMerchantLine[] { return this.newMerchants.filter(m => m.lineType === 'DEBIT'); }
+  get pendingCreditMerchants(): number { return this.creditMerchants.filter(m => m.status === 'pending').length; }
+  get pendingDebitMerchants():  number { return this.debitMerchants.filter(m => m.status === 'pending').length; }
+
   private get expenseAccountsByName(): Map<string, number> {
     const map = new Map<string, number>();
-    for (const a of this.acctSvc.accounts().filter(a => a.type === 'EXPENSE')) {
+    const types = this.flow === 'savings' ? ['EXPENSE', 'INCOME'] : ['EXPENSE'];
+    for (const a of this.acctSvc.accounts().filter(a => types.includes(a.type!))) {
       if (a.name && a.id) map.set(a.name, a.id);
     }
     return map;
@@ -763,9 +950,9 @@ export class UploadStatementComponent implements OnInit {
   }
 
   private _populateLists(): void {
-    const rate = this.consolidationRate;
-    const expNames = this.categories;
-    const suggestions = expNames.slice(0, 2);
+    const rate     = this.consolidationRate;
+    const expNames = this.expenseCategories;
+    const incNames = this.incomeCategories;
 
     this.categorized = this._rawLines
       .filter(l => !l.isExcluded && l.categoryAccountId != null)
@@ -781,22 +968,26 @@ export class UploadStatementComponent implements OnInit {
 
     this.newMerchants = this._rawLines
       .filter(l => !l.isExcluded && l.categoryAccountId == null)
-      .map(l => ({
-        id:           l.id,
-        merchant:     l.description,
-        amount:       l.amount,
-        currency:     l.currency === 'RD' ? 'dop' as const : 'usd' as const,
-        rdEquiv:      l.currency === 'RD' ? l.amount : Math.round(l.amount * rate),
-        suggestions,
-        selected:     null,
-        status:       'pending' as const,
-        saving:       false,
-        showDropdown: false,
-        otherCategory: expNames[0] ?? '',
-      }));
+      .map(l => {
+        const catNames = l.lineType === 'CREDIT' ? incNames : expNames;
+        return {
+          id:           l.id,
+          merchant:     l.description,
+          amount:       l.amount,
+          currency:     l.currency === 'RD' ? 'dop' as const : 'usd' as const,
+          rdEquiv:      l.currency === 'RD' ? l.amount : Math.round(l.amount * rate),
+          lineType:     l.lineType,
+          suggestions:  catNames.slice(0, 2),
+          selected:     null,
+          status:       'pending' as const,
+          saving:       false,
+          showDropdown: false,
+          otherCategory: catNames[0] ?? '',
+        };
+      });
 
     this.excluded = this._rawLines
-      .filter(l => l.isExcluded)
+      .filter(l => l.isExcluded && l.lineType !== 'INITIAL_BALANCE')
       .map(l => ({
         id:       l.id,
         reason:   l.isPayment ? 'Pago detectado automáticamente' : 'Excluida manualmente',

@@ -39,6 +39,8 @@ spec:
                 secretKeyRef:
                   name: kredius-secret
                   key: postgres-password
+            - name: SPRING_JPA_DDL_AUTO
+              value: update
           resources:
             requests:
               memory: 512Mi

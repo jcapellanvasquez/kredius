@@ -8,14 +8,14 @@ spring:
       max-file-size: 20MB
       max-request-size: 20MB
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/kredius}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://10.0.0.49:5432/kredius}
     username: ${SPRING_DATASOURCE_USERNAME:kredius}
     password: ${SPRING_DATASOURCE_PASSWORD:kredius}
     driver-class-name: org.postgresql.Driver
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: ${SPRING_JPA_DDL_AUTO:create-drop}
     open-in-view: false
     show-sql: false
 

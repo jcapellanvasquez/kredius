@@ -1,0 +1,16 @@
+services:
+  postgres:
+    build: ./db
+    image: kredius-db:local
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: kredius
+      POSTGRES_USER: kredius
+      POSTGRES_PASSWORD: kredius
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kredius -d kredius"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+

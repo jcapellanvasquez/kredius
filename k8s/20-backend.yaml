@@ -27,20 +27,18 @@ spec:
                 secretKeyRef:
                   name: kredius-secret
                   key: default-session-user-id
-            # Datasource overrides — currently unused (embedded Postgres).
-            # Uncomment and point to 10-postgres Service to switch to real Postgres.
-            # - name: SPRING_DATASOURCE_URL
-            #   value: jdbc:postgresql://postgres:5432/kredius
-            # - name: SPRING_DATASOURCE_USERNAME
-            #   valueFrom:
-            #     secretKeyRef:
-            #       name: kredius-secret
-            #       key: postgres-user
-            # - name: SPRING_DATASOURCE_PASSWORD
-            #   valueFrom:
-            #     secretKeyRef:
-            #       name: kredius-secret
-            #       key: postgres-password
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:postgresql://postgres:5432/kredius
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: kredius-secret
+                  key: postgres-user
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: kredius-secret
+                  key: postgres-password
           resources:
             requests:
               memory: 512Mi

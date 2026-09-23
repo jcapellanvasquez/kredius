@@ -40,7 +40,7 @@ spec:
     spec:
       containers:
         - name: postgres
-          image: postgres:16-alpine
+          image: kredius-db:0.1.0
           ports:
             - containerPort: 5432
           env:

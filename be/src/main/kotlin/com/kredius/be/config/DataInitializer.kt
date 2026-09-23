@@ -36,6 +36,7 @@ class DataInitializer(
         val equityAccount = accountRepo.save(Account(user = jcapellan, code = 3001, name = "Capital Inicial", type = AccountType.EQUITY))
         val loanReceivedAccount = accountRepo.save(Account(user = jcapellan, code = 3002, name = "Préstamo Recibido – Banco Popular", type = AccountType.LIABILITY))
         val salaryAccount = accountRepo.save(Account(user = jcapellan, code = 4001, name = "Salario", type = AccountType.INCOME))
+        val interestIncomeAccount = accountRepo.save(Account(user = jcapellan, code = 4010, name = "Intereses Ganados", type = AccountType.INCOME))
         val superAccount = accountRepo.save(Account(
             user = jcapellan, code = 5010, name = "Supermercado", type = AccountType.EXPENSE,
             thresholdPct = BigDecimal("20.00"), showInAlerts = true,
@@ -139,10 +140,15 @@ class DataInitializer(
         ))
 
         // Generate 10 weekly installments; first 3 are paid
+        // Flat-rate interest: 50,000 × 15% = 7,500 total / 10 = 750 per installment
+        val givenInterestPerInst = bd("750")
+        val givenPrincipalPerInst = givenInstallment - givenInterestPerInst // 5,000
         repeat(10) { i ->
             val num = i + 1
             val date = givenStartDate.plusWeeks(num.toLong())
             val amount = if (num == 10) givenTotal - givenInstallment * bd("9") else givenInstallment
+            val instInterest = givenInterestPerInst
+            val instPrincipal = amount - instInterest
             val paid = num <= 3
             val installmentEntry = if (paid) journalEntryRepo.save(JournalEntry(
                 entryDate = date, description = "Cuota #$num – Pedro Gómez",
@@ -150,8 +156,9 @@ class DataInitializer(
             )) else null
             if (installmentEntry != null) {
                 journalLineRepo.saveAll(listOf(
-                    JournalLine(journalEntry = installmentEntry, account = savings,          side = EntrySide.DEBIT,  currency = CurrencyType.RD, originalAmount = amount, amountRd = amount),
-                    JournalLine(journalEntry = installmentEntry, account = loanGivenAccount, side = EntrySide.CREDIT, currency = CurrencyType.RD, originalAmount = amount, amountRd = amount),
+                    JournalLine(journalEntry = installmentEntry, account = savings,               side = EntrySide.DEBIT,  currency = CurrencyType.RD, originalAmount = amount,       amountRd = amount),
+                    JournalLine(journalEntry = installmentEntry, account = loanGivenAccount,      side = EntrySide.CREDIT, currency = CurrencyType.RD, originalAmount = instPrincipal, amountRd = instPrincipal),
+                    JournalLine(journalEntry = installmentEntry, account = interestIncomeAccount, side = EntrySide.CREDIT, currency = CurrencyType.RD, originalAmount = instInterest,  amountRd = instInterest),
                 ))
             }
             loanInstallmentRepo.save(LoanInstallment(
@@ -159,6 +166,8 @@ class DataInitializer(
                 number = num,
                 scheduledDate = date,
                 scheduledAmount = amount,
+                scheduledInterest = instInterest,
+                scheduledPrincipal = instPrincipal,
                 status = if (paid) InstallmentStatus.PAID else InstallmentStatus.PENDING,
                 actualPaymentDate = if (paid) date else null,
                 journalEntry = installmentEntry,
@@ -268,6 +277,7 @@ class DataInitializer(
         val tLoanRecvAcc    = accountRepo.save(Account(user = jcapellanTest, code = 3020, name = "Préstamo Recibido – BHD", type = AccountType.LIABILITY))
         val tEquity         = accountRepo.save(Account(user = jcapellanTest, code = 3000, name = "Capital Inicial", type = AccountType.EQUITY))
         val tSalary         = accountRepo.save(Account(user = jcapellanTest, code = 4010, name = "Salario", type = AccountType.INCOME))
+        val tInterestIncome = accountRepo.save(Account(user = jcapellanTest, code = 4020, name = "Intereses Ganados", type = AccountType.INCOME))
         val tSuper          = accountRepo.save(Account(user = jcapellanTest, code = 5010, name = "Supermercado", type = AccountType.EXPENSE, thresholdPct = bd("20.00"), showInAlerts = true))
         val tGas            = accountRepo.save(Account(user = jcapellanTest, code = 5020, name = "Gasolina", type = AccountType.EXPENSE, thresholdPct = bd("10.00"), showInAlerts = true))
         val tRestaurant     = accountRepo.save(Account(user = jcapellanTest, code = 5030, name = "Restaurantes", type = AccountType.EXPENSE, thresholdPct = bd("15.00"), showInAlerts = true))
@@ -361,21 +371,28 @@ class DataInitializer(
             startDate = tGivenStartDate, user = jcapellanTest,
         ))
 
+        // Flat-rate interest: 20,000 × 15% = 3,000 total / 5 = 600 per installment
+        val tGivenInterestPerInst  = bd("600")
+        val tGivenPrincipalPerInst = tGivenInstallment - tGivenInterestPerInst // 4,000
         repeat(5) { i ->
             val num = i + 1
             val date = tGivenStartDate.plusWeeks(num.toLong())
             val amount = if (num == 5) tGivenTotal - tGivenInstallment * bd("4") else tGivenInstallment
+            val instInterest  = tGivenInterestPerInst
+            val instPrincipal = amount - instInterest
             val paid = num <= 2
             val entry = if (paid) journalEntryRepo.save(JournalEntry(
                 entryDate = date, description = "Cuota #$num – Juan Pérez",
                 source = JournalSource.LOAN, referenceId = tLoanGiven.id, user = jcapellanTest,
             )) else null
             if (entry != null) journalLineRepo.saveAll(listOf(
-                JournalLine(journalEntry = entry, account = tSavings,      side = EntrySide.DEBIT,  currency = CurrencyType.RD, originalAmount = amount, amountRd = amount),
-                JournalLine(journalEntry = entry, account = tLoanGivenAcc, side = EntrySide.CREDIT, currency = CurrencyType.RD, originalAmount = amount, amountRd = amount),
+                JournalLine(journalEntry = entry, account = tSavings,       side = EntrySide.DEBIT,  currency = CurrencyType.RD, originalAmount = amount,       amountRd = amount),
+                JournalLine(journalEntry = entry, account = tLoanGivenAcc,  side = EntrySide.CREDIT, currency = CurrencyType.RD, originalAmount = instPrincipal, amountRd = instPrincipal),
+                JournalLine(journalEntry = entry, account = tInterestIncome, side = EntrySide.CREDIT, currency = CurrencyType.RD, originalAmount = instInterest,  amountRd = instInterest),
             ))
             loanInstallmentRepo.save(LoanInstallment(
                 loan = tLoanGiven, number = num, scheduledDate = date, scheduledAmount = amount,
+                scheduledInterest = instInterest, scheduledPrincipal = instPrincipal,
                 status = if (paid) InstallmentStatus.PAID else InstallmentStatus.PENDING,
                 actualPaymentDate = if (paid) date else null, journalEntry = entry,
             ))

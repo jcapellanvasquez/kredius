@@ -50,7 +50,27 @@ interface TransactionView {
     val side: String
 }
 
+interface PrincipalPaymentView {
+    val entryDate: java.time.LocalDate
+    val amountRd: java.math.BigDecimal
+}
+
 interface JournalLineRepository : JpaRepository<JournalLine, Long> {
+
+    @Query(
+        value = """
+            SELECT je.entry_date AS entryDate, jl.amount_rd AS amountRd
+            FROM journal_lines jl
+            JOIN journal_entries je ON jl.journal_entry_id = je.id
+            WHERE jl.account_id = :accountId
+              AND jl.side = 'DEBIT'
+              AND je.description LIKE 'Abono a capital%'
+            ORDER BY je.entry_date DESC, je.id DESC
+        """,
+        nativeQuery = true,
+    )
+    fun findPrincipalPayments(@Param("accountId") accountId: Long): List<PrincipalPaymentView>
+
 
     @Query(
         value = """

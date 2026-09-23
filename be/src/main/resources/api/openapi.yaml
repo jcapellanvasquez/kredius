@@ -286,6 +286,43 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
+  /api/v1/loans/account/{accountId}/principal-payment:
+    post:
+      tags: [Loans]
+      summary: Apply a principal-only payment to a received loan
+      description: Posts the payment journal entry and regenerates the remaining installment schedule based on the chosen mode (reduce term or reduce installment)
+      operationId: applyPrincipalPayment
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PrincipalPaymentRequest'
+      responses:
+        '200':
+          description: Updated loan detail with recalculated schedule
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoanDetailResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          description: Loan not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
   /api/v1/loans/account/{accountId}/installments/{num}/collect:
     post:
       tags: [Loans]
@@ -1120,6 +1157,11 @@ components:
         principal:
           type: number
           format: double
+        rate:
+          type: number
+          format: double
+          nullable: true
+          description: Interest rate percentage (flat total for GIVEN; monthly for RECEIVED)
         installmentAmount:
           type: number
           format: double
@@ -1158,6 +1200,14 @@ components:
         scheduledAmount:
           type: number
           format: double
+        scheduledInterest:
+          type: number
+          format: double
+          nullable: true
+        scheduledPrincipal:
+          type: number
+          format: double
+          nullable: true
         status:
           type: string
           enum: [PENDING, PAID, OVERDUE]
@@ -1171,6 +1221,42 @@ components:
               type: array
               items:
                 $ref: '#/components/schemas/LoanInstallmentDto'
+            remainingPrincipal:
+              type: number
+              format: double
+              nullable: true
+              description: Outstanding principal balance (received loans only; null for given loans)
+            principalPayments:
+              type: array
+              nullable: true
+              description: History of principal-only payments (abonos a capital), newest first
+              items:
+                $ref: '#/components/schemas/PrincipalPaymentRecord'
+
+    PrincipalPaymentRecord:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        amount:
+          type: number
+          format: double
+
+    PrincipalPaymentRequest:
+      type: object
+      required: [amount, date, mode]
+      properties:
+        amount:
+          type: number
+          format: double
+          description: Principal payment amount in RD$
+        date:
+          type: string
+          format: date
+        mode:
+          type: string
+          enum: [REDUCE_TERM, REDUCE_INSTALLMENT]
 
     CreateLoanRequest:
       type: object

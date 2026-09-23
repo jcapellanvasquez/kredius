@@ -6,6 +6,7 @@ import com.kredius.be.model.CreateReceivedLoanRequest
 import com.kredius.be.model.LoanDetailResponse
 import com.kredius.be.model.LoanResponse
 import com.kredius.be.model.LoanType
+import com.kredius.be.model.PrincipalPaymentRequest
 import com.kredius.be.service.LoanService
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -13,6 +14,9 @@ import org.springframework.web.bind.annotation.RestController
 
 @RestController
 class LoanController(private val loanService: LoanService) : LoansApi {
+
+    override fun applyPrincipalPayment(accountId: Long, principalPaymentRequest: PrincipalPaymentRequest): ResponseEntity<LoanDetailResponse> =
+        ResponseEntity.ok(loanService.applyPrincipalPayment(accountId, principalPaymentRequest))
 
     override fun getLoan(accountId: Long): ResponseEntity<LoanDetailResponse> =
         ResponseEntity.ok(loanService.getOne(accountId))

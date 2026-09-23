@@ -2,7 +2,10 @@ package com.kredius.be.repository
 
 import com.kredius.be.entity.Loan
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
+import org.springframework.data.repository.query.Param
+import java.math.BigDecimal
 
 interface LoanRepository : JpaRepository<Loan, Long> {
     @Query("SELECT l.account.id FROM Loan l WHERE l.user.id = :userId")
@@ -13,4 +16,8 @@ interface LoanRepository : JpaRepository<Loan, Long> {
     fun findByAccountIdAndUserId(accountId: Long, userId: Long): Loan?
 
     fun findByIdAndUserId(id: Long, userId: Long): Loan?
+
+    @Modifying
+    @Query("UPDATE Loan l SET l.installmentAmount = :amount, l.numInstallments = :n WHERE l.id = :id")
+    fun updateInstallmentFields(@Param("id") id: Long, @Param("amount") amount: BigDecimal, @Param("n") n: Int)
 }

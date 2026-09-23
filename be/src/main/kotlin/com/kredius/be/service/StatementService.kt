@@ -299,8 +299,8 @@ class StatementService(
         statementDate   = statementDate,
         accountId       = account.id,
         accountName     = account.name,
-        lineCount       = lines.size,
-        unresolvedCount = lines.count { !it.isExcluded && it.categoryAccount == null },
+        lineCount       = lines.count { it.type != StatementLineType.INITIAL_BALANCE },
+        unresolvedCount = lines.count { !it.isExcluded && it.categoryAccount == null && it.type != StatementLineType.INITIAL_BALANCE },
     )
 
     private fun StatementImport.toResponse() = StatementImportResponse(

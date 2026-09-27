@@ -1,5 +1,6 @@
 package com.kredius.be.service
 
+import com.kredius.be.entity.AccountType
 import com.kredius.be.entity.CurrencyType
 import com.kredius.be.entity.EntrySide
 import com.kredius.be.entity.ExchangeRate
@@ -21,8 +22,8 @@ class JournalService(
     private val journalEntryRepo: JournalEntryRepository,
     private val journalLineRepo: JournalLineRepository,
 ) {
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
 
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     fun saveJournalLine(
         line: StatementLine,
         importStatement: StatementImport,
@@ -42,22 +43,26 @@ class JournalService(
                 amount = amountRd,
             )
         )
+        val categoryAccountEntrySide = line.categoryAccount?.type
+        val categorySide = ACCOUNT_NATURE[categoryAccountEntrySide]
         val managedDebitLine = journalLineRepo.save(
             JournalLine(
                 journalEntry = savedEntry,
                 account = line.categoryAccount!!,
-                side = EntrySide.DEBIT,
+                side = categorySide!!,
                 currency = line.currency,
                 originalAmount = line.amount,
                 exchangeRate = if (line.currency == CurrencyType.USD) usdRate else null,
                 amountRd = amountRd,
             )
         )
+        val importStatementType = importStatement.account.type
+        val importStatementSide = ACCOUNT_NATURE[importStatementType]
         journalLineRepo.saveAndFlush(
             JournalLine(
                 journalEntry = savedEntry,
                 account = importStatement.account,
-                side = EntrySide.CREDIT,
+                side = importStatementSide!!,
                 currency = line.currency,
                 originalAmount = line.amount,
                 exchangeRate = if (line.currency == CurrencyType.USD) usdRate else null,
@@ -65,5 +70,15 @@ class JournalService(
             )
         )
         return managedDebitLine
+    }
+
+    companion object {
+        private val ACCOUNT_NATURE = mapOf(
+            AccountType.ASSET to EntrySide.DEBIT,
+            AccountType.LIABILITY to EntrySide.CREDIT,
+            AccountType.EQUITY to EntrySide.CREDIT,
+            AccountType.INCOME to EntrySide.CREDIT,
+            AccountType.EXPENSE to EntrySide.DEBIT,
+        )
     }
 }

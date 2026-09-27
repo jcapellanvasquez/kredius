@@ -7,6 +7,7 @@ enum class AccountType(val group: Int) {
 
 enum class EntrySide { DEBIT, CREDIT }
 
+
 // Stored as 'RD' and 'USD' (DB columns are VARCHAR via ddl-auto)
 enum class CurrencyType(val symbol: String) {
     RD("RD$"),

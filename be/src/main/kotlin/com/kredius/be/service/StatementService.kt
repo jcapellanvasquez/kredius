@@ -195,7 +195,7 @@ class StatementService(
         }
 
         val journalLinesCount = journalEntryList.size + postedCount
-        importStatement.status = if (importStatement.lines.size == journalLinesCount) StatementImportStatus.CONFIRMED else StatementImportStatus.PENDING_REVIEW
+        importStatement.status = if (importStatement.lines.filter { !it.isExcluded  }.size == journalLinesCount) StatementImportStatus.CONFIRMED else StatementImportStatus.PENDING_REVIEW
         importRepo.saveAndFlush(importStatement)
 
         return ResponseEntity.ok(ConfirmImportResponse(id = importStatement.id, status = ApiStatus.CONFIRMED, postedEntries = postedCount))

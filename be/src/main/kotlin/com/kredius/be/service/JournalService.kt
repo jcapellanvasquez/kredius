@@ -39,6 +39,7 @@ class JournalService(
                 referenceId = importStatement.id,
                 user = currentUser,
                 occurrenceIndex = line.occurrenceIndex,
+                amount = amountRd,
             )
         )
         val managedDebitLine = journalLineRepo.save(

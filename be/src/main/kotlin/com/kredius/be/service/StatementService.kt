@@ -84,6 +84,7 @@ class StatementService(
                             isExcluded = row.isInitialBalance,
                             type = lineType,
                             categoryAccount = if (row.isInitialBalance) null else matchAccount(row.description),
+                            occurrenceIndex = row.occurrenceIndex,
                         )
                     }
 

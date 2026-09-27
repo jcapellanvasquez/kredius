@@ -100,6 +100,6 @@ class BhdPdfParser {
 
         val occurrenceIndex = currentResult
             .filter { it.description == description && it.transactionDate == txDate && it.amount == amount && it.currency == currency}.size
-        return ParsedStatementLine(txDate, description, amount, currency, isPayment, if (occurrenceIndex > 0) occurrenceIndex else 1)
+        return ParsedStatementLine(txDate, description, amount, currency, isPayment, occurrenceIndex + 1)
     }
 }

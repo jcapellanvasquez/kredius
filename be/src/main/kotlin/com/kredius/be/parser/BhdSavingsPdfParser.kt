@@ -26,6 +26,7 @@ data class ParsedSavingsStatementLine(
     val balance: BigDecimal,
     val currency: CurrencyType,
     val isInitialBalance: Boolean = false,
+    var occurrenceIndex: Int = 1,
 ) {
     /** The non-zero movement amount for this row (credit if present, otherwise debit). */
     val amount: BigDecimal
@@ -101,14 +102,14 @@ class BhdSavingsPdfParser {
 
             if (skipPatterns.any { upper.contains(it) }) continue
 
-            val parsed = tryParseRow(line, currency) ?: continue
+            val parsed = tryParseRow(line, currency, result) ?: continue
             result.add(parsed)
         }
 
         return result
     }
 
-    private fun tryParseRow(line: String, currency: CurrencyType): ParsedSavingsStatementLine? {
+    private fun tryParseRow(line: String, currency: CurrencyType, currentResult: MutableList<ParsedSavingsStatementLine>): ParsedSavingsStatementLine? {
         // Line must start with a transaction date: DD/MM/YYYY
         val firstDate = dateRegex.find(line) ?: return null
         if (firstDate.range.first != 0) return null
@@ -130,10 +131,14 @@ class BhdSavingsPdfParser {
         val debit   = BigDecimal(tokens[debitIdx].replace(",", ""))
         val credit  = BigDecimal(tokens[creditIdx].replace(",", ""))
         val balance = BigDecimal(tokens[balanceIdx].replace(",", ""))
+        val amount = if (debit > BigDecimal.ZERO) debit else credit
 
         val description = tokens.subList(0, debitIdx).joinToString(" ").trim()
         if (description.isBlank()) return null
 
-        return ParsedSavingsStatementLine(txDate, reference, description, debit, credit, balance, currency)
+        val occurrenceIndex = currentResult
+            .filter { it.description == description && it.transactionDate == txDate && it.amount == amount && it.currency == currency}.size
+        return ParsedSavingsStatementLine(txDate, reference, description, debit, credit, balance, currency,
+            occurrenceIndex = occurrenceIndex + 1)
     }
 }

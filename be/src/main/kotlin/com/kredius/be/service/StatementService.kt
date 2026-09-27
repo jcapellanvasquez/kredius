@@ -1,37 +1,17 @@
 package com.kredius.be.service
 
-import com.kredius.be.entity.CurrencyType
-import com.kredius.be.entity.EntrySide
-import com.kredius.be.entity.JournalEntry
-import com.kredius.be.entity.JournalLine
-import com.kredius.be.entity.JournalSource
-import com.kredius.be.entity.RateContext
-import com.kredius.be.entity.StatementImport
+import com.kredius.be.entity.*
 import com.kredius.be.entity.StatementImportStatus
-import com.kredius.be.entity.StatementLine
-import com.kredius.be.entity.StatementLineType
-import com.kredius.be.entity.StatementType as EntityStatementType
 import com.kredius.be.exception.ApiException
 import com.kredius.be.exception.DuplicateImportException
-import com.kredius.be.model.ConfirmImportResponse
-import com.kredius.be.model.PatchStatementLineRequest
-import com.kredius.be.model.StatementImportResponse
-import com.kredius.be.model.StatementImportStatus as ApiStatus
-import com.kredius.be.model.StatementImportSummaryResponse
-import com.kredius.be.model.StatementLineDto
+import com.kredius.be.model.*
 import com.kredius.be.model.StatementType
-import com.kredius.be.model.StatementType as ApiStatementType
-import com.kredius.be.model.UnresolvedLinesError
 import com.kredius.be.parser.BhdPdfParser
 import com.kredius.be.parser.BhdSavingsPdfParser
-import com.kredius.be.repository.AccountRepository
-import com.kredius.be.repository.ExchangeRateRepository
-import com.kredius.be.repository.JournalEntryRepository
-import com.kredius.be.repository.JournalLineRepository
-import com.kredius.be.entity.MerchantDictionary
-import com.kredius.be.repository.MerchantDictionaryRepository
-import com.kredius.be.repository.StatementImportRepository
-import com.kredius.be.repository.StatementLineRepository
+import com.kredius.be.parser.ParsedSavingsStatementLine
+import com.kredius.be.repository.*
+import org.slf4j.LoggerFactory
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.stereotype.Service
@@ -39,6 +19,9 @@ import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.multipart.MultipartFile
 import java.math.BigDecimal
 import java.time.LocalDate
+import com.kredius.be.entity.StatementType as EntityStatementType
+import com.kredius.be.model.StatementImportStatus as ApiStatus
+import com.kredius.be.model.StatementType as ApiStatementType
 
 @Service
 @Transactional
@@ -53,28 +36,28 @@ class StatementService(
     private val exchangeRateRepo: ExchangeRateRepository,
     private val parser: BhdPdfParser,
     private val savingsParser: BhdSavingsPdfParser,
+    private val journalService: JournalService,
 ) {
+    @Transactional
     fun upload(file: MultipartFile, accountId: Long, type: StatementType, statementDate: LocalDate): StatementImportResponse {
-        val userId  = currentUser.id
+        val userId = currentUser.id
         val account = accountRepo.findByIdAndUserId(accountId, userId)
-            ?: throw ApiException("NOT_FOUND", "Account not found", HttpStatus.NOT_FOUND)
+            ?: throw ApiException(ApiException.NOT_FOUND, "Account not found", HttpStatus.NOT_FOUND)
 
-        // Duplicate check: reject if a CONFIRMED import already exists
-        val existing = importRepo.findByAccountIdAndStatementDateAndStatus(accountId, statementDate, StatementImportStatus.CONFIRMED)
-        if (existing != null) throw DuplicateImportException(existing.id)
+        val existingStatementOfMonth = importRepo.findByAccountIdAndStatementDateMonth(accountId, statementDate.monthValue)
+        if (existingStatementOfMonth != null) return existingStatementOfMonth.toResponse()
 
         val import = StatementImport(
-            account       = account,
-            type          = com.kredius.be.entity.StatementType.valueOf(type.value),
+            account = account,
+            type = com.kredius.be.entity.StatementType.valueOf(type.value),
             statementDate = statementDate,
-            fileName      = file.originalFilename,
-            status        = StatementImportStatus.UPLOADED,
-            user          = currentUser.user,
+            fileName = file.originalFilename,
+            status = StatementImportStatus.UPLOADED,
+            user = currentUser.user,
         )
         importRepo.save(import)
 
         return try {
-            import.status = StatementImportStatus.PROCESSING
             importRepo.save(import)
 
             val merchants = merchantRepo.findByUserIdOrderByTextPatternAsc(userId)
@@ -85,33 +68,37 @@ class StatementService(
                 ?.value?.account
 
             val lines = when (type) {
-                ApiStatementType.SAVINGS -> savingsParser.parse(file.inputStream).map { row ->
-                    val lineType = when {
-                        row.isInitialBalance          -> StatementLineType.INITIAL_BALANCE
-                        row.credit > java.math.BigDecimal.ZERO -> StatementLineType.CREDIT
-                        else                          -> StatementLineType.DEBIT
+                ApiStatementType.SAVINGS -> savingsParser.parse(file.inputStream)
+                    .map { row ->
+                        val lineType = when {
+                            row.isInitialBalance -> StatementLineType.INITIAL_BALANCE
+                            row.credit > BigDecimal.ZERO -> StatementLineType.CREDIT
+                            else -> StatementLineType.DEBIT
+                        }
+
+                        StatementLine(
+                            statementImport = import,
+                            lineDate = row.transactionDate,
+                            description = row.description,
+                            currency = row.currency,
+                            amount = row.amount,
+                            isExcluded = row.isInitialBalance,
+                            type = lineType,
+                            categoryAccount = if (row.isInitialBalance) null else matchAccount(row.description),
+                        )
                     }
-                    StatementLine(
-                        statementImport = import,
-                        lineDate        = row.transactionDate,
-                        description     = row.description,
-                        currency        = row.currency,
-                        amount          = row.amount,
-                        isExcluded      = row.isInitialBalance,
-                        type            = lineType,
-                        categoryAccount = if (row.isInitialBalance) null else matchAccount(row.description),
-                    )
-                }
+
                 else -> parser.parse(file.inputStream).map { row ->
                     StatementLine(
                         statementImport = import,
-                        lineDate        = row.transactionDate,
-                        description     = row.description,
-                        currency        = row.currency,
-                        amount          = row.amount,
-                        isExcluded      = row.isPayment,
-                        type            = if (row.isPayment) StatementLineType.CREDIT else StatementLineType.DEBIT,
+                        lineDate = row.transactionDate,
+                        description = row.description,
+                        currency = row.currency,
+                        amount = row.amount,
+                        isExcluded = row.isPayment,
+                        type = if (row.isPayment) StatementLineType.CREDIT else StatementLineType.DEBIT,
                         categoryAccount = matchAccount(row.description),
+                        occurrenceIndex = row.occurrenceIndex,
                     )
                 }
             }
@@ -121,7 +108,7 @@ class StatementService(
             importRepo.save(import)
             import.toResponse()
         } catch (ex: Exception) {
-            import.status       = StatementImportStatus.FAILED
+            import.status = StatementImportStatus.FAILED
             import.errorMessage = ex.message?.take(500)
             importRepo.save(import)
             import.toResponse()
@@ -130,33 +117,35 @@ class StatementService(
 
     fun patchLine(id: Long, request: PatchStatementLineRequest): StatementLineDto {
         val line = lineRepo.findByIdAndStatementImportUserId(id, currentUser.id)
-            ?: throw ApiException("NOT_FOUND", "Statement line not found", HttpStatus.NOT_FOUND)
+            ?: throw ApiException(ApiException.NOT_FOUND, "Statement line not found", HttpStatus.NOT_FOUND)
 
         request.isExcluded?.let { line.isExcluded = it }
         request.categoryAccountId?.let { accId ->
             val account = accountRepo.findByIdAndUserId(accId, currentUser.id)
-                ?: throw ApiException("NOT_FOUND", "Category account not found", HttpStatus.NOT_FOUND)
+                ?: throw ApiException(ApiException.NOT_FOUND, "Category account not found", HttpStatus.NOT_FOUND)
             line.categoryAccount = account
             learnMerchant(line.description, account)
         }
         if (request.categoryAccountId == null && request.isExcluded == null) {
-            throw ApiException("BAD_REQUEST", "Nothing to update", HttpStatus.BAD_REQUEST)
+            throw ApiException(ApiException.BAD_REQUEST, "Nothing to update", HttpStatus.BAD_REQUEST)
         }
 
         return lineRepo.save(line).toDto()
     }
 
-    private fun learnMerchant(description: String, account: com.kredius.be.entity.Account) {
+    private fun learnMerchant(description: String, account: Account) {
         val pattern = extractPattern(description)
         val existing = merchantRepo.findByUserIdAndTextPattern(currentUser.id, pattern)
         if (existing == null) {
-            merchantRepo.save(MerchantDictionary(
-                textPattern = pattern,
-                account     = account,
-                user        = currentUser.user,
-            ))
+            merchantRepo.save(
+                MerchantDictionary(
+                    textPattern = pattern,
+                    account = account,
+                    user = currentUser.user,
+                )
+            )
         } else if (existing.account.id != account.id) {
-            existing.account   = account
+            existing.account = account
             existing.updatedAt = java.time.OffsetDateTime.now()
             merchantRepo.save(existing)
         }
@@ -173,103 +162,82 @@ class StatementService(
         return description.trim()
     }
 
+    @Transactional
     fun confirm(id: Long): ResponseEntity<*> {
-        val import = importRepo.findByIdAndUserId(id, currentUser.id)
-            ?: throw ApiException("NOT_FOUND", "Statement import not found", HttpStatus.NOT_FOUND)
+        val importStatement = importRepo.findByIdAndUserId(id, currentUser.id)
+            ?: throw ApiException(ApiException.NOT_FOUND, "Statement import not found", HttpStatus.NOT_FOUND)
 
-        // Unresolved lines check
-        val unresolved = import.lines.filter { !it.isExcluded && it.categoryAccount == null }.map { it.id }
-        if (unresolved.isNotEmpty()) {
-            return ResponseEntity.unprocessableEntity()
-                .body(UnresolvedLinesError(error = "unresolved_lines", lineIds = unresolved))
-        }
-
+        var postedCount = 0
         // Race-condition duplicate check
         val existing = importRepo.findByAccountIdAndStatementDateAndStatus(
-            import.account.id, import.statementDate, StatementImportStatus.CONFIRMED
+            importStatement.account.id, importStatement.statementDate, StatementImportStatus.CONFIRMED
         )
         if (existing != null && existing.id != id) throw DuplicateImportException(existing.id)
 
-        val source = if (import.type == EntityStatementType.CREDIT_CARD)
+        val source = if (importStatement.type == EntityStatementType.CREDIT_CARD)
             JournalSource.CARD_STATEMENT else JournalSource.SAVINGS_STATEMENT
 
         val usdRate = exchangeRateRepo.findTopByContextOrderByRateDateDesc(RateContext.CREDIT_CARD)
+        val journalEntryList = journalEntryRepo.findByReferenceIdAndSource(importStatement.id, source)
 
-        var postedCount = 0
-        for (line in import.lines.filter { !it.isExcluded }) {
-            val amountRd = if (line.currency == CurrencyType.RD) line.amount
-                          else line.amount.multiply(usdRate?.value ?: BigDecimal.ONE)
+        for (line in importStatement.lines.filter { line -> isNewJournalEntry(line) }) {
+            try {
+                val amountRd = if (line.currency == CurrencyType.RD) line.amount
+                else line.amount.multiply(usdRate?.value ?: BigDecimal.ONE)
 
-            // Save entry first, then save each JournalLine explicitly and use the returned
-            // managed instance. With id: Long = 0 (non-nullable), Spring Data JPA calls
-            // em.merge() which returns a NEW managed object — the original local variable
-            // stays transient. Explicit saves ensure we hold the managed reference before
-            // assigning it to StatementLine.journalLine.
-            val savedEntry = journalEntryRepo.save(JournalEntry(
-                entryDate   = line.lineDate,
-                description = line.description,
-                source      = source,
-                referenceId = import.id,
-                user        = currentUser.user,
-            ))
-            val managedDebitLine = journalLineRepo.save(JournalLine(
-                journalEntry   = savedEntry,
-                account        = line.categoryAccount!!,
-                side           = EntrySide.DEBIT,
-                currency       = line.currency,
-                originalAmount = line.amount,
-                exchangeRate   = if (line.currency == CurrencyType.USD) usdRate else null,
-                amountRd       = amountRd,
-            ))
-            journalLineRepo.save(JournalLine(
-                journalEntry   = savedEntry,
-                account        = import.account,
-                side           = EntrySide.CREDIT,
-                currency       = line.currency,
-                originalAmount = line.amount,
-                exchangeRate   = if (line.currency == CurrencyType.USD) usdRate else null,
-                amountRd       = amountRd,
-            ))
-
-            line.journalLine = managedDebitLine
-            postedCount++
+                // Save entry first, then save each JournalLine explicitly and use the returned
+                // managed instance. With id: Long = 0 (non-nullable), Spring Data JPA calls
+                // em.merge() which returns a NEW managed object — the original local variable
+                // stays transient. Explicit saves ensure we hold the managed reference before
+                // assigning it to StatementLine.journalLine.
+                line.journalLine = journalService.saveJournalLine(
+                    line = line, importStatement = importStatement, source = source, amountRd = amountRd,
+                    usdRate = usdRate, currentUser = currentUser.user)
+                postedCount++
+            } catch (ex: DataIntegrityViolationException) {
+                LOGGER.warn("Skipping duplicate entry for line occurrence ${line.occurrenceIndex}: ${ex.message}")
+                continue
+            }
         }
 
-        import.status = StatementImportStatus.CONFIRMED
-        importRepo.save(import)
+        val journalLinesCount = journalEntryList.size + postedCount
+        importStatement.status = if (importStatement.lines.size == journalLinesCount) StatementImportStatus.CONFIRMED else StatementImportStatus.PENDING_REVIEW
+        importRepo.saveAndFlush(importStatement)
 
-        return ResponseEntity.ok(ConfirmImportResponse(id = import.id, status = ApiStatus.CONFIRMED, postedEntries = postedCount))
+        return ResponseEntity.ok(ConfirmImportResponse(id = importStatement.id, status = ApiStatus.CONFIRMED, postedEntries = postedCount))
     }
 
     fun reverse(id: Long): StatementImportResponse {
         val import = importRepo.findByIdAndUserId(id, currentUser.id)
-            ?: throw ApiException("NOT_FOUND", "Statement import not found", HttpStatus.NOT_FOUND)
+            ?: throw ApiException(ApiException.NOT_FOUND, "Statement import not found", HttpStatus.NOT_FOUND)
 
         if (import.status != StatementImportStatus.CONFIRMED)
-            throw ApiException("CONFLICT", "Import is not in CONFIRMED status", HttpStatus.CONFLICT)
+            throw ApiException(ApiException.CONFLICT, "Import is not in CONFIRMED status", HttpStatus.CONFLICT)
 
         val source = if (import.type == EntityStatementType.CREDIT_CARD)
             JournalSource.CARD_STATEMENT else JournalSource.SAVINGS_STATEMENT
 
         val originals = journalEntryRepo.findByReferenceIdAndSource(import.id, source)
         for (original in originals) {
-            val reversal = journalEntryRepo.save(JournalEntry(
-                entryDate     = LocalDate.now(),
-                description   = "REVERSAL: ${original.description}",
-                source        = source,
-                referenceId   = import.id,
-                reversesEntry = original,
-                user          = currentUser.user,
-            ))
+            val reversal = journalEntryRepo.save(
+                JournalEntry(
+                    entryDate = LocalDate.now(),
+                    description = "REVERSAL: ${original.description}",
+                    source = source,
+                    referenceId = import.id,
+                    reversesEntry = original,
+                    user = currentUser.user,
+                )
+            )
             val mirroredLines = original.lines.map { orig ->
                 JournalLine(
-                    journalEntry   = reversal,
-                    account        = orig.account,
-                    side           = if (orig.side == EntrySide.DEBIT) EntrySide.CREDIT else EntrySide.DEBIT,
-                    currency       = orig.currency,
+                    journalEntry = reversal,
+                    account = orig.account,
+                    side = if (orig.side == EntrySide.DEBIT) EntrySide.CREDIT else EntrySide.DEBIT,
+                    currency = orig.currency,
                     originalAmount = orig.originalAmount,
-                    exchangeRate   = orig.exchangeRate,
-                    amountRd       = orig.amountRd,
+                    exchangeRate = orig.exchangeRate,
+                    amountRd = orig.amountRd,
                 )
             }
             reversal.lines.addAll(mirroredLines)
@@ -288,42 +256,56 @@ class StatementService(
     @Transactional(readOnly = true)
     fun get(id: Long): StatementImportResponse {
         val import = importRepo.findByIdAndUserId(id, currentUser.id)
-            ?: throw ApiException("NOT_FOUND", "Statement import not found", HttpStatus.NOT_FOUND)
+            ?: throw ApiException(ApiException.NOT_FOUND, "Statement import not found", HttpStatus.NOT_FOUND)
         return import.toResponse()
     }
 
     private fun StatementImport.toSummary() = StatementImportSummaryResponse(
-        id              = id,
-        status          = ApiStatus.valueOf(status.name),
-        type            = ApiStatementType.valueOf(type.name),
-        statementDate   = statementDate,
-        accountId       = account.id,
-        accountName     = account.name,
-        lineCount       = lines.count { it.type != StatementLineType.INITIAL_BALANCE },
+        id = id,
+        status = ApiStatus.valueOf(status.name),
+        type = ApiStatementType.valueOf(type.name),
+        statementDate = statementDate,
+        accountId = account.id,
+        accountName = account.name,
+        lineCount = lines.count { it.type != StatementLineType.INITIAL_BALANCE },
         unresolvedCount = lines.count { !it.isExcluded && it.categoryAccount == null && it.type != StatementLineType.INITIAL_BALANCE },
     )
 
     private fun StatementImport.toResponse() = StatementImportResponse(
-        id            = id,
-        status        = ApiStatus.valueOf(status.name),
-        type          = ApiStatementType.valueOf(type.name),
+        id = id,
+        status = ApiStatus.valueOf(status.name),
+        type = ApiStatementType.valueOf(type.name),
         statementDate = statementDate,
-        accountId     = account.id,
-        accountName   = account.name,
-        errorMessage  = errorMessage,
-        lines         = lines.map { it.toDto() },
+        accountId = account.id,
+        accountName = account.name,
+        errorMessage = errorMessage,
+        lines = lines.map { it.toDto() },
     )
 
     private fun StatementLine.toDto() = StatementLineDto(
-        id                  = id,
-        lineDate            = lineDate,
-        description         = description,
-        currency            = StatementLineDto.Currency.valueOf(currency.name),
-        amount              = amount.toDouble(),
-        isExcluded          = isExcluded,
-        isPayment           = isExcluded,
-        lineType            = type?.name?.let { StatementLineDto.LineType.valueOf(it) },
-        categoryAccountId   = categoryAccount?.id,
+        id = id,
+        lineDate = lineDate,
+        description = description,
+        currency = StatementLineDto.Currency.valueOf(currency.name),
+        amount = amount.toDouble(),
+        isExcluded = isExcluded,
+        isPayment = isExcluded,
+        lineType = type?.name?.let { StatementLineDto.LineType.valueOf(it) },
+        categoryAccountId = categoryAccount?.id,
         categoryAccountName = categoryAccount?.name,
     )
+
+    private fun isNewTransaction(row: ParsedSavingsStatementLine, lines: MutableList<StatementLine>): Boolean {
+        return lines.none { line ->
+            line.description == row.description && line.lineDate == row.transactionDate && line.amount == row.amount
+        }
+    }
+
+    private fun isNewJournalEntry(row: StatementLine): Boolean {
+        return !row.isExcluded && row.categoryAccount != null
+    }
+
+    companion object {
+        private val LOGGER = LoggerFactory.getLogger(StatementService::class.java)
+    }
 }

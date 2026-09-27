@@ -7,7 +7,7 @@ import java.time.OffsetDateTime
 
 @Filter(name = "userFilter", condition = "user_id = :userId")
 @Entity
-@Table(name = "journal_entries")
+@Table(name = "journal_entries", uniqueConstraints = [UniqueConstraint(columnNames = ["description", "occurrence_index", "reference_id"])])
 class JournalEntry(
     @Column(name = "entry_date", nullable = false)
     var entryDate: LocalDate = LocalDate.now(),
@@ -35,6 +35,9 @@ class JournalEntry(
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long = 0,
+
+    @Column("occurrence_index", nullable = false)
+    val occurrenceIndex: Int = 0,
 ) {
     @Column(name = "created_at", nullable = false, updatable = false)
     val createdAt: OffsetDateTime = OffsetDateTime.now()

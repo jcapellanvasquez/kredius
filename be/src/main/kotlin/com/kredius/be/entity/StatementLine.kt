@@ -6,7 +6,9 @@ import java.time.LocalDate
 import java.time.OffsetDateTime
 
 @Entity
-@Table(name = "statement_lines")
+@Table(name = "statement_lines", uniqueConstraints = [
+    UniqueConstraint(columnNames = arrayOf("description", "lineDate", "amount", "occurrenceIndex", "currency"))
+])
 class StatementLine(
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "statement_import_id", nullable = false)
@@ -42,6 +44,9 @@ class StatementLine(
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long = 0,
+
+    @Column("occurrence_index", nullable = false)
+    val occurrenceIndex: Int = 0,
 ) {
     @Column(name = "created_at", nullable = false, updatable = false)
     val createdAt: OffsetDateTime = OffsetDateTime.now()

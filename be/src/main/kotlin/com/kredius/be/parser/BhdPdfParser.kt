@@ -15,6 +15,7 @@ data class ParsedStatementLine(
     val amount: BigDecimal,
     val currency: CurrencyType,
     val isPayment: Boolean,
+    var occurrenceIndex: Int = 0,
 )
 
 @Component
@@ -61,14 +62,14 @@ class BhdPdfParser {
             if (!inTransactionSection) continue
             if (skipPatterns.any { upper.contains(it) }) continue
 
-            val parsed = tryParseRow(line, currentCurrency) ?: continue
+            val parsed = tryParseRow(line, currentCurrency, result) ?: continue
             result.add(parsed)
         }
 
         return result
     }
 
-    private fun tryParseRow(line: String, currency: CurrencyType): ParsedStatementLine? {
+    private fun tryParseRow(line: String, currency: CurrencyType, currentResult: MutableList<ParsedStatementLine>): ParsedStatementLine? {
         // Line must start with a transaction date: DD/MM/YYYY
         val firstDate = dateRegex.find(line) ?: return null
         if (firstDate.range.first != 0) return null
@@ -97,6 +98,8 @@ class BhdPdfParser {
         val upper     = description.uppercase()
         val isPayment = autoExcludePatterns.any { upper.contains(it) }
 
-        return ParsedStatementLine(txDate, description, amount, currency, isPayment)
+        val occurrenceIndex = currentResult
+            .filter { it.description == description && it.transactionDate == txDate && it.amount == amount && it.currency == currency}.size
+        return ParsedStatementLine(txDate, description, amount, currency, isPayment, occurrenceIndex)
     }
 }

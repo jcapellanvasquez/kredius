@@ -665,9 +665,8 @@ const MIN_MERCHANT_SAVE_MS   = 600;
             </div>
           }
           <button type="button" (click)="confirm()"
-            [disabled]="pendingNewMerchants > 0 || confirming"
             class="w-full py-3 text-sm font-semibold text-white bg-brand-600 rounded-xl hover:bg-brand-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
-            {{ confirming ? 'Registrando...' : pendingNewMerchants > 0 ? 'Resuelve los comercios nuevos para continuar' : flow === 'savings' ? 'Confirmar y registrar movimientos' : 'Confirmar y registrar corte' }}
+            {{ confirming ? 'Registrando...' : pendingNewMerchants > 0 ? 'Guardar cambios' : flow === 'savings' ? 'Confirmar y registrar movimientos' : 'Confirmar y registrar corte' }}
           </button>
         } @else {
           <div class="flex flex-col items-center gap-2 rounded-xl border border-green-200 bg-green-50 px-4 py-6">

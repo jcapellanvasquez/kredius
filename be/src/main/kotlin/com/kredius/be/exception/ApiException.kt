@@ -7,4 +7,10 @@ class ApiException(
     override val message: String,
     val httpStatus: HttpStatus = HttpStatus.INTERNAL_SERVER_ERROR,
     val details: List<String> = emptyList()
-) : RuntimeException(message)
+) : RuntimeException(message) {
+    companion object {
+        val NOT_FOUND = "NOT_FOUND"
+        val BAD_REQUEST = "BAD_REQUEST"
+        val CONFLICT = "CONFLICT"
+    }
+}

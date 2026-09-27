@@ -32,7 +32,6 @@ class StatementService(
     private val lineRepo: StatementLineRepository,
     private val merchantRepo: MerchantDictionaryRepository,
     private val journalEntryRepo: JournalEntryRepository,
-    private val journalLineRepo: JournalLineRepository,
     private val exchangeRateRepo: ExchangeRateRepository,
     private val parser: BhdPdfParser,
     private val savingsParser: BhdSavingsPdfParser,
@@ -185,11 +184,6 @@ class StatementService(
                 val amountRd = if (line.currency == CurrencyType.RD) line.amount
                 else line.amount.multiply(usdRate?.value ?: BigDecimal.ONE)
 
-                // Save entry first, then save each JournalLine explicitly and use the returned
-                // managed instance. With id: Long = 0 (non-nullable), Spring Data JPA calls
-                // em.merge() which returns a NEW managed object — the original local variable
-                // stays transient. Explicit saves ensure we hold the managed reference before
-                // assigning it to StatementLine.journalLine.
                 line.journalLine = journalService.saveJournalLine(
                     line = line, importStatement = importStatement, source = source, amountRd = amountRd,
                     usdRate = usdRate, currentUser = currentUser.user)

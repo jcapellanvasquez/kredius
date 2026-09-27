@@ -94,7 +94,7 @@ class StatementService(
                         description = row.description,
                         currency = row.currency,
                         amount = row.amount,
-                        isExcluded = row.isPayment,
+                        isExcluded = false,
                         type = if (row.isPayment) StatementLineType.CREDIT else StatementLineType.DEBIT,
                         categoryAccount = matchAccount(row.description),
                         occurrenceIndex = row.occurrenceIndex,
@@ -283,17 +283,10 @@ class StatementService(
         currency = StatementLineDto.Currency.valueOf(currency.name),
         amount = amount.toDouble(),
         isExcluded = isExcluded,
-        isPayment = isExcluded,
         lineType = type?.name?.let { StatementLineDto.LineType.valueOf(it) },
         categoryAccountId = categoryAccount?.id,
         categoryAccountName = categoryAccount?.name,
     )
-
-    private fun isNewTransaction(row: ParsedSavingsStatementLine, lines: MutableList<StatementLine>): Boolean {
-        return lines.none { line ->
-            line.description == row.description && line.lineDate == row.transactionDate && line.amount == row.amount
-        }
-    }
 
     private fun isNewJournalEntry(row: StatementLine): Boolean {
         return !row.isExcluded && row.categoryAccount != null

@@ -31,7 +31,7 @@ class BhdPdfParser {
         "INFORMACION DE", "ESTRELLAS", "TASA ", "SALDOS ",
         "INTERESES", "BAL.", "AHORRO MI PAIS",
     )
-    private val autoExcludePatterns = listOf("PAGO DEBITO", "PAGO CREDITO")
+    private val paymentPatterns = listOf("PAGO DEBITO","PAGO CREDITO")
 
     fun parse(inputStream: InputStream): List<ParsedStatementLine> {
         val bytes = inputStream.readBytes()
@@ -96,7 +96,7 @@ class BhdPdfParser {
         if (description.isBlank()) return null
 
         val upper     = description.uppercase()
-        val isPayment = autoExcludePatterns.any { upper.contains(it) }
+        val isPayment = paymentPatterns.any { upper.contains(it) }
 
         val occurrenceIndex = currentResult
             .filter { it.description == description && it.transactionDate == txDate && it.amount == amount && it.currency == currency}.size

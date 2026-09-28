@@ -21,7 +21,7 @@ export interface BudgetEdit {
   host: { class: 'flex flex-col gap-2' },
   template: `
     @if (uncategorized().length > 0) {
-      <div class="card p-3.5 border-dashed">
+      <div class="rounded-lg bg-white border border-dashed border-gray-300 p-3.5">
         <p class="flex items-center gap-1.5 mb-1.5 text-base font-medium text-gray-900">
           <app-icon [name]="icons.Alert" [size]="16" class="text-gray-500" />
           {{ text.uncategorized }}

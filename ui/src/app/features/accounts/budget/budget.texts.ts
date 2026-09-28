@@ -17,6 +17,7 @@ export const BUDGET_TEXT = {
   close:            'Cerrar',
   back:             'Volver',
 
+  summary:          'Resumen',
   quickCompare:     'Comparativo rápido',
   quickCompareEmpty:'Sin movimientos ni presupuesto este mes.',
   detail:           'Detalle por categoría',

@@ -13,7 +13,8 @@ import { BUDGET_TEXT } from '../../budget.texts';
   template: `
     <div class="flex flex-wrap items-center justify-between gap-2">
       <h1 class="text-lg font-semibold text-gray-900">{{ text.title }}</h1>
-      <div class="flex items-center gap-2">
+      <!-- Mobile: own row, picker left / button right. From sm: grouped next to the title. -->
+      <div class="flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-start">
         <app-month-picker [value]="period()" [disabled]="busy()" (valueChange)="periodChange.emit($event)" />
         <button type="button" (click)="toggleUpload.emit()" [attr.aria-expanded]="uploadOpen()"
           class="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs text-gray-600 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-colors"

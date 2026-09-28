@@ -26,6 +26,7 @@ export const accountsRoutes: Routes = [
       { path: 'income', component: IncomeComponent },
       { path: 'upload-statement', component: UploadStatementComponent },
       { path: 'reports', component: ReportsV2Component },
+      { path: 'budget', loadChildren: () => import('./budget/budget.routes').then((m) => m.budgetRoutes) },
     ],
   },
 ];

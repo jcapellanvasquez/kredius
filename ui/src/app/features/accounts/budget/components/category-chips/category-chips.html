@@ -1,0 +1,67 @@
+<div class="flex flex-wrap items-center gap-1.5" role="group">
+  @for (chip of chips(); track chip.accountId) {
+    @let isSelected = chip.accountId === selectedId();
+    <button type="button" (click)="pick(chip.accountId)" [disabled]="saving() && !isSelected"
+      [attr.aria-pressed]="isSelected" [class]="isSelected ? chipClass.selected : chipClass.idle">
+      @if (isSelected) {
+        @if (saving()) {
+          <app-icon [name]="icons.Loader" [size]="12" class="animate-spin" />
+        } @else {
+          <app-icon [name]="icons.Check" [size]="12" />
+        }
+      }
+      {{ chip.name }}
+    </button>
+  }
+
+  <div class="relative">
+    <button type="button" (click)="toggle()" [disabled]="saving()" [attr.aria-expanded]="open()"
+      class="inline-flex items-center gap-0.5 px-2.5 py-1 rounded-full border border-gray-200 text-xs text-gray-500 hover:border-gray-400 disabled:opacity-40 transition-colors">
+      {{ text.other }}
+      <app-icon [name]="icons.ChevronDown" [size]="12" />
+    </button>
+
+    @if (open()) {
+      <button type="button" tabindex="-1" class="fixed inset-0 z-10 cursor-default" [attr.aria-label]="text.close"
+        (click)="close()"></button>
+      <div class="absolute left-0 top-full mt-1 z-20 w-56 max-w-[calc(100vw-3rem)] rounded-lg border border-gray-200 bg-white shadow-lg p-1.5">
+        <label class="flex items-center gap-1.5 px-2 py-1.5 mb-1 rounded-md border border-gray-200 focus-within:border-gray-400">
+          <app-icon [name]="icons.Search" [size]="14" class="text-gray-400" />
+          <input type="text" class="flex-1 min-w-0 text-xs outline-none" [placeholder]="text.searchCategory"
+            [attr.aria-label]="text.searchCategory" [value]="query()" (input)="onSearch($event)" />
+        </label>
+        <ul class="max-h-56 overflow-y-auto">
+          @for (opt of filtered(); track opt.accountId) {
+            <li>
+              <button type="button" (click)="pick(opt.accountId)"
+                class="w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-md text-left text-xs text-gray-700 hover:bg-gray-50">
+                <span class="flex items-center gap-1.5">
+                  <app-icon [name]="opt.icon" [size]="14" class="text-gray-400" />
+                  {{ opt.name }}
+                </span>
+                @if (opt.accountId === selectedId()) {
+                  <app-icon [name]="icons.Check" [size]="14" class="text-gray-900" />
+                }
+              </button>
+            </li>
+          } @empty {
+            <li class="px-2 py-1.5 text-xs text-gray-400">{{ text.noMatches }}</li>
+          }
+        </ul>
+      </div>
+    }
+  </div>
+
+  @switch (state()) {
+    @case (states.Saved) {
+      <span class="inline-flex items-center gap-0.5 text-xs text-gray-500" role="status">
+        <app-icon [name]="icons.Check" [size]="12" /> {{ text.saved }}
+      </span>
+    }
+    @case (states.Error) {
+      <span class="inline-flex items-center gap-0.5 text-xs text-gray-900" role="alert">
+        <app-icon [name]="icons.Alert" [size]="12" /> {{ text.saveFailed }}
+      </span>
+    }
+  }
+</div>

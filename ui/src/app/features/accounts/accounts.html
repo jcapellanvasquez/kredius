@@ -33,6 +33,11 @@
         @if (showNavMenu) {
           <div class="fixed inset-0 z-10" (click)="showNavMenu = false"></div>
           <div class="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl border border-gray-200 shadow-lg z-20 py-1 overflow-hidden">
+            <button [routerLink]="['budget']" (click)="showNavMenu = false"
+              class="w-full text-left px-3 py-2 text-sm font-medium text-gray-900 hover:bg-gray-50 transition-colors">
+              {{ budgetText.navLabel }}
+            </button>
+            <div class="my-1 border-t border-gray-100"></div>
             <button [routerLink]="['income']" (click)="showNavMenu = false"
               class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
               Ingresos
@@ -48,7 +53,7 @@
             </button>
             <button [routerLink]="['reports']" (click)="showNavMenu = false"
               class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-              Presupuesto
+              Reporte
             </button>
           </div>
         }
@@ -236,6 +241,7 @@
               @for (account of filteredExpense(); track account.id) {
                 <button [routerLink]="['detail']" [queryParams]="{ id: account.id }" (click)="selectAccount(account.id)"
                   class="account-row group" [class.is-selected]="selectedKey() === 'a-' + account.id">
+                  <app-account-icon [icon]="accountIcons.iconFor(account.id, account.type)" [size]="accountIconSize" />
                   <div class="flex-1 min-w-0 text-left">
                     <div class="flex items-center justify-between gap-2">
                       <div class="flex items-center gap-1.5 min-w-0">
@@ -299,6 +305,7 @@
     <ng-template #accountRow let-account let-showAlert="showAlert">
       <button [routerLink]="['detail']" [queryParams]="{ id: account.id }" (click)="selectAccount(account.id)"
         class="account-row group" [class.is-selected]="selectedKey() === 'a-' + account.id">
+        <app-account-icon [icon]="accountIcons.iconFor(account.id, account.type)" [size]="accountIconSize" />
         <div class="flex-1 min-w-0 text-left">
           <!-- top: name · balance -->
           <div class="flex items-center justify-between gap-2">
@@ -355,7 +362,7 @@
       </div>
       <!-- Scrollable content area -->
       <div class="flex-1 min-h-0 overflow-y-auto">
-        <div class="max-w-2xl mx-auto p-6">
+        <div class="mx-auto p-6" [class.max-w-2xl]="!wideOutlet()" [class.max-w-6xl]="wideOutlet()">
           <router-outlet #outlet="outlet"
             (activate)="panelOpen.set(true)"
             (deactivate)="panelOpen.set(false)" />

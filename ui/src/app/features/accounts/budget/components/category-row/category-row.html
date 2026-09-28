@@ -1,0 +1,48 @@
+@let r = row();
+
+<div class="flex items-center justify-between gap-2 mb-2">
+  <div class="flex items-center gap-2.5 min-w-0">
+    <app-account-icon [icon]="r.icon" [highlight]="highlight()" />
+    <span class="text-base font-medium text-gray-900 truncate">{{ r.name }}</span>
+  </div>
+  <div class="flex gap-1 shrink-0">
+    @for (origin of r.origins; track origin) {
+      <span class="text-xs text-gray-500 bg-gray-50 px-2.5 py-0.5 rounded-full">{{ text.kind[origin] }}</span>
+    }
+  </div>
+</div>
+
+<div class="flex items-center gap-2.5 mb-1.5">
+  <app-progress-bar class="flex-1" [pct]="r.pct" [level]="r.level" />
+  <span class="text-sm font-medium text-gray-500 tabular-nums w-11 text-right">
+    {{ r.pct ?? text.noPct }}{{ r.pct !== null ? text.percent : '' }}
+  </span>
+</div>
+
+<p class="text-sm text-gray-500 tabular-nums mb-2.5">
+  {{ r.actual | money }}
+  @if (r.budgetInput !== null) {
+    {{ text.of }} {{ r.budgetInput | money: 2 }}
+  } @else {
+    · {{ text.noBudget }}
+  }
+</p>
+
+<app-budget-input [value]="r.budgetInput" [state]="r.saveState" (valueChange)="budgetChange.emit($event)" />
+
+@if (r.transactions.length > 0) {
+  <button type="button" (click)="expanded.set(!expanded())" [attr.aria-expanded]="expanded()" [attr.aria-controls]="listId"
+    class="mt-2.5 inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-900 transition-colors">
+    <app-icon [name]="icons.ChevronRight" [size]="14" class="transition-transform" [class.rotate-90]="expanded()" />
+    {{ text.transactions(r.transactions.length) }}
+  </button>
+
+  @if (expanded()) {
+    <div [id]="listId" class="mt-1.5 pl-1">
+      @for (line of r.transactions; track line.lineId) {
+        <app-transaction-row [line]="line" [options]="options()" [uiState]="lineStates().get(line.lineId)"
+          (choose)="choose.emit({ line, categoryId: $event })" />
+      }
+    </div>
+  }
+}

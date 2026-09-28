@@ -1,0 +1,62 @@
+import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { IconComponent } from '../../../../../shared/components/icon/icon';
+import { UiIcon } from '../../../../../shared/constants/ui-icons';
+import { BUDGET_TEXT } from '../../budget.texts';
+import {
+  CategoryOption, CategoryRowView, ChipSelection, LineUiState, TransactionLine,
+} from '../../models/budget.models';
+import { CategoryRowComponent } from '../category-row/category-row';
+import { TransactionRowComponent } from '../transaction-row/transaction-row';
+
+export interface BudgetEdit {
+  accountId: number;
+  value: number | null;
+}
+
+/** "Sin categorizar" (always first, hidden when empty) followed by the server-sorted categories. */
+@Component({
+  selector: 'app-category-list',
+  imports: [IconComponent, CategoryRowComponent, TransactionRowComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  host: { class: 'flex flex-col gap-2' },
+  template: `
+    @if (uncategorized().length > 0) {
+      <div class="card p-3.5 border-dashed">
+        <p class="flex items-center gap-1.5 mb-1.5 text-base font-medium text-gray-900">
+          <app-icon [name]="icons.Alert" [size]="16" class="text-gray-500" />
+          {{ text.uncategorized }}
+          <span class="text-sm font-normal text-gray-500">({{ uncategorized().length }})</span>
+        </p>
+        @for (line of uncategorized(); track line.lineId) {
+          <app-transaction-row [line]="line" [options]="options()" [uiState]="lineStates().get(line.lineId)"
+            (choose)="choose.emit({ line, categoryId: $event })" />
+        }
+      </div>
+    }
+
+    <div class="card">
+      @for (row of rows(); track row.accountId) {
+        <app-category-row
+          [row]="row"
+          [options]="options()"
+          [lineStates]="lineStates()"
+          [highlight]="row.accountId === highlightId()"
+          (budgetChange)="budgetChange.emit({ accountId: row.accountId, value: $event })"
+          (choose)="choose.emit($event)" />
+      }
+    </div>
+  `,
+})
+export class CategoryListComponent {
+  readonly uncategorized = input<TransactionLine[]>([]);
+  readonly rows = input<CategoryRowView[]>([]);
+  readonly options = input<CategoryOption[]>([]);
+  readonly lineStates = input<ReadonlyMap<number, LineUiState>>(new Map());
+  readonly highlightId = input<number | null>(null);
+
+  readonly budgetChange = output<BudgetEdit>();
+  readonly choose = output<ChipSelection>();
+
+  protected readonly text = BUDGET_TEXT;
+  protected readonly icons = UiIcon;
+}

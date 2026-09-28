@@ -3,8 +3,18 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AccountApiService } from '../../account-api.service';
 import { AccountType } from '../../../../api/models/account-type';
+import { AccountIconComponent, AccountIconSize } from '../../../../shared/components/account-icon/account-icon';
+import { ACCOUNT_ICONS, DEFAULT_ICON_BY_ACCOUNT_TYPE, FALLBACK_ACCOUNT_ICON } from '../../../../shared/constants/account-icons';
+import { AccountIconService } from '../../../../shared/services/account-icon.service';
 
 type LocalAccountType = 'expense' | 'income' | 'asset' | 'liability';
+
+const TYPE_MAP: Record<LocalAccountType, AccountType> = {
+  asset:     'ASSET',
+  liability: 'LIABILITY',
+  income:    'INCOME',
+  expense:   'EXPENSE',
+};
 
 interface TypeOption {
   value: LocalAccountType;
@@ -13,7 +23,7 @@ interface TypeOption {
 
 @Component({
   selector: 'app-new-account',
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, AccountIconComponent],
   host: { class: 'block' },
   template: `
     <div class="flex flex-col gap-5">
@@ -64,6 +74,20 @@ interface TypeOption {
               </button>
             }
           </div>
+        </div>
+
+        <!-- Icon picker -->
+        <div class="flex flex-col gap-1.5">
+          <span class="text-sm font-medium text-gray-700">Ícono</span>
+          <div class="grid grid-cols-6 gap-2 w-fit" role="radiogroup" aria-label="Ícono">
+            @for (icon of icons; track icon) {
+              <button type="button" role="radio" (click)="selectIcon(icon)" [attr.aria-checked]="selectedIcon === icon"
+                [attr.aria-label]="icon" class="rounded-[10px] focus:outline-none focus:ring-2 focus:ring-brand-300">
+                <app-account-icon [icon]="icon" [size]="iconSize" [highlight]="selectedIcon === icon" />
+              </button>
+            }
+          </div>
+          <p class="text-xs text-gray-400">Se preselecciona un ícono sugerido según el tipo de cuenta; puedes cambiarlo.</p>
         </div>
 
         <!-- Opening balance (Asset / Liability only) -->
@@ -178,6 +202,7 @@ interface TypeOption {
 export class NewAccountComponent {
   private readonly accountSvc = inject(AccountApiService);
   private readonly router = inject(Router);
+  private readonly accountIcons = inject(AccountIconService);
 
   name = '';
   selectedType: LocalAccountType | null = null;
@@ -185,6 +210,12 @@ export class NewAccountComponent {
   threshold = 15;
   showInAlerts = true;
   saving = false;
+
+  readonly icons = ACCOUNT_ICONS;
+  readonly iconSize = AccountIconSize.Xl;
+  selectedIcon: string = FALLBACK_ACCOUNT_ICON;
+  /** Once the user picks an icon, changing the type no longer overrides it. */
+  private iconPickedByUser = false;
 
   readonly typeOptions: TypeOption[] = [
     { value: 'expense',   label: 'Gasto'   },
@@ -196,6 +227,12 @@ export class NewAccountComponent {
   selectType(type: LocalAccountType): void {
     this.selectedType = type;
     this.openingBalance = 0;
+    if (!this.iconPickedByUser) this.selectedIcon = DEFAULT_ICON_BY_ACCOUNT_TYPE[TYPE_MAP[type]];
+  }
+
+  selectIcon(icon: string): void {
+    this.selectedIcon = icon;
+    this.iconPickedByUser = true;
   }
 
   get showOpeningBalance(): boolean {
@@ -231,20 +268,17 @@ export class NewAccountComponent {
     if (!this.isValid || this.saving) return;
     this.saving = true;
 
-    const typeMap: Record<LocalAccountType, AccountType> = {
-      asset:     'ASSET',
-      liability: 'LIABILITY',
-      income:    'INCOME',
-      expense:   'EXPENSE',
-    };
-
     this.accountSvc.create({
       name: this.name.trim(),
-      type: typeMap[this.selectedType!],
+      type: TYPE_MAP[this.selectedType!],
       thresholdPct: this.selectedType === 'expense' ? this.threshold : undefined,
       showInAlerts: this.selectedType === 'expense' ? this.showInAlerts : false,
     }).subscribe({
-      next: () => this.router.navigate(['/accounts']),
+      next: res => {
+        // Kept locally until the backend stores Account.icon.
+        if (res.body?.id != null) this.accountIcons.setIcon(res.body.id, this.selectedIcon);
+        this.router.navigate(['/accounts']);
+      },
       error: () => { this.saving = false; },
     });
   }

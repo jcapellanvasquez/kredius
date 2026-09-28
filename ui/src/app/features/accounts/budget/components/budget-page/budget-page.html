@@ -1,0 +1,89 @@
+<div class="flex flex-col gap-5">
+
+  <app-budget-header
+    [period]="store.period()"
+    [busy]="store.loading()"
+    [uploadOpen]="store.uploadOpen()"
+    [summary]="store.uploadSummary()"
+    (periodChange)="store.changePeriod($event)"
+    (toggleUpload)="store.toggleUpload()" />
+
+  @if (store.uploadOpen()) {
+    <app-upload-panel
+      [lastUploads]="store.screen()?.lastUploads ?? []"
+      [files]="store.uploadFiles()"
+      [uploading]="store.uploading()"
+      [canProcess]="store.canProcess()"
+      [error]="store.uploadError()"
+      [historyOpen]="store.historyOpen()"
+      (fileChange)="store.setFile($event.kind, $event.file)"
+      (process)="store.process()"
+      (toggleHistory)="store.toggleHistory()">
+      @if (store.historyOpen()) {
+        <app-upload-history [imports]="store.history() ?? []" [loading]="store.historyLoading()" />
+      }
+    </app-upload-panel>
+  }
+
+  @if (store.loading()) {
+    <!-- Loading skeleton -->
+    <div [class]="layout.grid" aria-busy="true">
+      <div [class]="layout.aside">
+        <div class="grid grid-cols-2 gap-2">
+          <div class="h-28 rounded-lg bg-gray-100 animate-pulse"></div>
+          <div class="h-28 rounded-lg bg-gray-100 animate-pulse"></div>
+        </div>
+        <div class="h-32 rounded-lg bg-gray-100 animate-pulse"></div>
+      </div>
+      <div class="flex flex-col gap-2">
+        @for (i of skeletonRows; track i) {
+          <div class="h-24 rounded-lg bg-gray-100 animate-pulse"></div>
+        }
+      </div>
+    </div>
+  } @else if (store.loadError()) {
+    <div class="card p-6 flex flex-col items-center gap-3 text-center" role="alert">
+      <app-icon [name]="icons.Alert" [size]="24" class="text-gray-400" />
+      <p class="text-sm text-gray-700">{{ text.loadError }}</p>
+      <button type="button" (click)="store.load()"
+        class="px-3 py-1.5 text-sm text-gray-700 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-colors">
+        {{ text.retry }}
+      </button>
+    </div>
+  } @else if (store.screen(); as screen) {
+    <div [class]="layout.grid">
+
+      <!-- Glance: summary cards + quick compare (sticky left column on wide screens) -->
+      <div [class]="layout.aside">
+        <div class="grid grid-cols-2 gap-2">
+          <app-card-summary [card]="screen.card" />
+          <app-savings-summary [savings]="screen.savings" />
+        </div>
+
+        <section>
+          <h2 class="text-sm font-medium text-gray-500 mb-2">{{ text.quickCompare }}</h2>
+          <app-quick-compare [rows]="store.compareRows()" />
+        </section>
+      </div>
+
+      <!-- Editable detail (right column on wide screens) -->
+      <div [class]="layout.detail">
+        <section>
+          <h2 class="text-sm font-medium text-gray-500 mb-2">{{ text.detail }}</h2>
+          <app-category-list
+            [uncategorized]="screen.uncategorized"
+            [rows]="store.categories()"
+            [options]="store.categoryOptions()"
+            [lineStates]="store.lineStates()"
+            [highlightId]="store.highlightId()"
+            (budgetChange)="store.setDraft($event.accountId, $event.value)"
+            (choose)="store.chooseCategory($event.line, $event.categoryId)" />
+        </section>
+
+        <app-save-bar [count]="store.dirtyCount()" [state]="store.budgetSaveState()" (save)="store.saveBudgets()" />
+      </div>
+
+    </div>
+  }
+
+</div>

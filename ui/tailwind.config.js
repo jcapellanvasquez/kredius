@@ -25,6 +25,13 @@ module.exports = {
         // Semantic financial colors — ONLY for financial meaning
         income:  '#16a34a', // green — inflows, deposits, credits
         expense: '#dc2626', // red   — outflows, alerts (spec: #DC2626, not ef4444)
+        // Progress bars on the budget screen — neutral / amber / red only (budget_screen_final.md §7)
+        bar: {
+          track:   '#f3f4f6',
+          neutral: '#d1d5db',
+          warning: '#c99b54',
+          danger:  '#c77b7b',
+        },
       },
     },
   },

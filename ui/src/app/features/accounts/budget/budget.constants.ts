@@ -1,0 +1,39 @@
+import { AccountIcon } from '../../../shared/constants/account-icons';
+import { ProgressThresholds } from '../../../shared/utils/progress-level';
+import { StatementAccountKind } from './budget.enums';
+
+/** Bar colour thresholds for this screen (budget_screen_final.md §7): gray < 90%, amber 90–100%, red > 100%. */
+export const BUDGET_THRESHOLDS: ProgressThresholds = { warning: 90, danger: 100 };
+
+/** How long "Guardado" stays visible after a successful save. */
+export const SAVED_HINT_MS = 1500;
+
+/** Suggested category chips shown next to the current one (plus "Otra"). */
+export const SUGGESTED_CHIPS = 2;
+
+/** Order of the upload slots and origin tags. */
+export const STATEMENT_KIND_ORDER: readonly StatementAccountKind[] = [
+  StatementAccountKind.CreditCard,
+  StatementAccountKind.Savings,
+];
+
+export const STATEMENT_FILE_ACCEPT = '.pdf';
+
+/** Icon for a statement account when only its kind is known (e.g. upload history rows). */
+export const KIND_ICON: Record<StatementAccountKind, AccountIcon> = {
+  [StatementAccountKind.CreditCard]: AccountIcon.CreditCard,
+  [StatementAccountKind.Savings]:    AccountIcon.BuildingBank,
+};
+
+export const BUDGET_ROUTES = {
+  importDetail:   'imports',
+  /** Absolute: relative '..' is ambiguous across the empty-path parent routes. */
+  root:           '/accounts/budget',
+} as const;
+
+// ── Mock API ────────────────────────────────────────────────────────────────
+export const MOCK_QUERY_PARAM = 'mock';
+export const MOCK_LATENCY_MS = 600;
+export const MOCK_SLOW_LATENCY_MS = 3000;
+/** Changing this line's category always fails, to exercise the chip error state. */
+export const MOCK_FAIL_LINE_ID = 903;

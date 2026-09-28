@@ -1,18 +1,35 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { RouterLink, RouterOutlet } from '@angular/router';
+import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { filter, map } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 import { DatePipe, DecimalPipe, NgClass, NgTemplateOutlet } from '@angular/common';
 import { AccountApiService } from './account-api.service';
 import { AccountSummaryResponse } from '../../api/models/account-summary-response';
+import { AccountIconComponent, AccountIconSize } from '../../shared/components/account-icon/account-icon';
+import { AccountIconService } from '../../shared/services/account-icon.service';
+import { BUDGET_TEXT } from './budget/budget.texts';
+import { BUDGET_ROUTES } from './budget/budget.constants';
 
 @Component({
   selector: 'app-accounts',
-  imports: [RouterOutlet, RouterLink, FormsModule, DecimalPipe, DatePipe, NgClass, NgTemplateOutlet],
+  imports: [RouterOutlet, RouterLink, FormsModule, DecimalPipe, DatePipe, NgClass, NgTemplateOutlet, AccountIconComponent],
   templateUrl: './accounts.html',
   styleUrl: './accounts.css',
 })
 export class AccountsComponent implements OnInit {
   readonly accountSvc = inject(AccountApiService);
+  readonly accountIcons = inject(AccountIconService);
+  readonly accountIconSize = AccountIconSize.Lg;
+  readonly budgetText = BUDGET_TEXT;
+
+  private readonly router = inject(Router);
+  private readonly url = toSignal(
+    this.router.events.pipe(filter(e => e instanceof NavigationEnd), map(() => this.router.url)),
+    { initialValue: this.router.url },
+  );
+  /** Panels are capped at max-w-2xl; the budget screen uses the full width on large screens. */
+  readonly wideOutlet = computed(() => this.url().startsWith(BUDGET_ROUTES.root));
 
   showLoanPicker = false;
   showNavMenu    = false;

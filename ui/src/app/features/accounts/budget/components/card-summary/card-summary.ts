@@ -2,8 +2,8 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
 import { IconComponent } from '../../../../../shared/components/icon/icon';
 import { ProgressRingComponent } from '../../../../../shared/components/progress-ring/progress-ring';
 import { MoneyPipe } from '../../../../../shared/pipes/money.pipe';
-import { progressLevel } from '../../../../../shared/utils/progress-level';
-import { BUDGET_THRESHOLDS } from '../../budget.constants';
+import { ProgressLevel } from '../../../../../shared/utils/progress-level';
+import { CARD_RING_BANDS } from '../../budget.constants';
 import { StatementAccountKind } from '../../budget.enums';
 import { BUDGET_TEXT } from '../../budget.texts';
 import { CardSummary } from '../../models/budget.models';
@@ -59,5 +59,11 @@ export class CardSummaryComponent {
   protected readonly kind = StatementAccountKind.CreditCard;
   /** Label left, amount right; the amount drops under the label when the card is too narrow. */
   protected readonly rowClass = 'flex flex-wrap justify-between gap-x-2';
-  protected readonly level = computed(() => progressLevel(this.card().pct, BUDGET_THRESHOLDS));
+  /** Ring-specific bands (green / amber / red); category bars keep the gray / amber / red rule. */
+  protected readonly level = computed(() => {
+    const pct = this.card().pct ?? 0;
+    if (pct >= CARD_RING_BANDS.dangerFrom) return ProgressLevel.Danger;
+    if (pct >= CARD_RING_BANDS.warningFrom) return ProgressLevel.Warning;
+    return ProgressLevel.Good;
+  });
 }

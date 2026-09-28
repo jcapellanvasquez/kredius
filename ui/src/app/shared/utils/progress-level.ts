@@ -1,4 +1,5 @@
 export enum ProgressLevel {
+  Good    = 'good',
   Neutral = 'neutral',
   Warning = 'warning',
   Danger  = 'danger',
@@ -14,12 +15,14 @@ export interface ProgressThresholds {
 export const DEFAULT_PROGRESS_THRESHOLDS: ProgressThresholds = { warning: 90, danger: 100 };
 
 export const PROGRESS_FILL_CLASS: Record<ProgressLevel, string> = {
+  [ProgressLevel.Good]:    'bg-bar-good',
   [ProgressLevel.Neutral]: 'bg-bar-neutral',
   [ProgressLevel.Warning]: 'bg-bar-warning',
   [ProgressLevel.Danger]:  'bg-bar-danger',
 };
 
 export const PROGRESS_STROKE_CLASS: Record<ProgressLevel, string> = {
+  [ProgressLevel.Good]:    'stroke-bar-good',
   [ProgressLevel.Neutral]: 'stroke-bar-neutral',
   [ProgressLevel.Warning]: 'stroke-bar-warning',
   [ProgressLevel.Danger]:  'stroke-bar-danger',

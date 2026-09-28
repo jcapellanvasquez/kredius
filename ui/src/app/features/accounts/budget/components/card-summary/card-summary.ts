@@ -22,31 +22,30 @@ import { CardSummary } from '../../models/budget.models';
           <p class="flex items-center gap-1 text-xs text-gray-500">
             <app-icon [name]="card().icon" [size]="12" /> {{ text.kind[kind] }}
           </p>
-          <p class="text-sm font-medium text-gray-900 tabular-nums truncate">
-            {{ card().spent | money }}
+          <p class="text-sm font-medium text-gray-900 tabular-nums whitespace-nowrap">{{ card().spent | money }}</p>
+          <p class="text-xs text-gray-400 tabular-nums whitespace-nowrap">
             @if (card().budget !== null) {
-              <span class="text-gray-400">/ {{ card().budget | money: 0 : false }}</span>
+              {{ text.of }} {{ card().budget | money }}
+            } @else {
+              {{ text.noBudget }}
             }
           </p>
-          @if (card().budget === null) {
-            <p class="text-xs text-gray-400">{{ text.noBudget }}</p>
-          }
         </div>
       </div>
 
       @if (card().statement; as st) {
         <dl class="mt-3 pt-2 border-t border-gray-100 flex flex-col gap-0.5 text-xs tabular-nums">
-          <div class="flex justify-between gap-2">
+          <div [class]="rowClass">
             <dt class="text-gray-500">{{ text.charges }}</dt>
-            <dd class="text-gray-700">{{ st.charges | money: 2 }}</dd>
+            <dd class="ml-auto whitespace-nowrap text-gray-700">{{ st.charges | money: 2 }}</dd>
           </div>
-          <div class="flex justify-between gap-2">
+          <div [class]="rowClass">
             <dt class="text-gray-500">{{ text.payments }}</dt>
-            <dd class="text-gray-700">{{ -st.payments | money: 2 }}</dd>
+            <dd class="ml-auto whitespace-nowrap text-gray-700">{{ -st.payments | money: 2 }}</dd>
           </div>
-          <div class="flex justify-between gap-2 pt-0.5">
+          <div [class]="rowClass + ' pt-0.5'">
             <dt class="font-medium text-gray-700">{{ text.monthResult }}</dt>
-            <dd class="font-medium text-gray-900">{{ st.net | money: 2 }}</dd>
+            <dd class="ml-auto whitespace-nowrap font-medium text-gray-900">{{ st.net | money: 2 }}</dd>
           </div>
         </dl>
       }
@@ -58,5 +57,7 @@ export class CardSummaryComponent {
 
   protected readonly text = BUDGET_TEXT;
   protected readonly kind = StatementAccountKind.CreditCard;
+  /** Label left, amount right; the amount drops under the label when the card is too narrow. */
+  protected readonly rowClass = 'flex flex-wrap justify-between gap-x-2';
   protected readonly level = computed(() => progressLevel(this.card().pct, BUDGET_THRESHOLDS));
 }

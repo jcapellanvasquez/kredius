@@ -361,7 +361,8 @@
         </button>
       </div>
       <!-- Scrollable content area -->
-      <div class="flex-1 min-h-0 overflow-y-auto">
+      <!-- relative: absolutely positioned children (e.g. sr-only labels) must be clipped here, not grow the window -->
+      <div class="relative flex-1 min-h-0 overflow-y-auto">
         <div class="mx-auto p-6" [class.max-w-2xl]="!wideOutlet()" [class.max-w-6xl]="wideOutlet()">
           <router-outlet #outlet="outlet"
             (activate)="panelOpen.set(true)"

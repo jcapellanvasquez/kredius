@@ -28,6 +28,7 @@ module.exports = {
         // Progress bars on the budget screen — neutral / amber / red only (budget_screen_final.md §7)
         bar: {
           track:   '#f3f4f6',
+          good:    '#7fae8c', // soft green — only the card ring on the budget screen
           neutral: '#d1d5db',
           warning: '#c99b54',
           danger:  '#c77b7b',

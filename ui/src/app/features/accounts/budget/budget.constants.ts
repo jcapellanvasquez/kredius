@@ -5,6 +5,12 @@ import { StatementAccountKind } from './budget.enums';
 /** Bar colour thresholds for this screen (budget_screen_final.md §7): gray < 90%, amber 90–100%, red > 100%. */
 export const BUDGET_THRESHOLDS: ProgressThresholds = { warning: 90, danger: 100 };
 
+/**
+ * Card ring only (master Decision 15): green 0–70%, amber 71–94%, red 95%+.
+ * Values are the first percentage of each band (inclusive).
+ */
+export const CARD_RING_BANDS = { warningFrom: 71, dangerFrom: 95 } as const;
+
 /** How long "Guardado" stays visible after a successful save. */
 export const SAVED_HINT_MS = 1500;
 

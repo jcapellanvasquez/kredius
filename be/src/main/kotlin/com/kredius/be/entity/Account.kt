@@ -10,7 +10,7 @@ import java.time.OffsetDateTime
 @FilterDef(name = "userFilter", parameters = [ParamDef(name = "userId", type = Long::class)])
 @Filter(name = "userFilter", condition = "user_id = :userId")
 @Entity
-@Table(name = "accounts")
+@Table(name = "accounts", uniqueConstraints = [UniqueConstraint(columnNames = ["user_id", "code"])])
 class Account(
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)

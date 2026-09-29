@@ -3,6 +3,7 @@ package com.kredius.be.controller
 import com.kredius.be.api.StatementsApi
 import com.kredius.be.model.ConfirmImportResponse
 import com.kredius.be.model.PatchStatementLineRequest
+import com.kredius.be.model.RecategorizeStatementLineRequest
 import com.kredius.be.model.StatementImportResponse
 import com.kredius.be.model.StatementImportSummaryResponse
 import com.kredius.be.model.StatementLineDto
@@ -35,6 +36,14 @@ class StatementController(private val statementService: StatementService) : Stat
         patchStatementLineRequest: PatchStatementLineRequest,
     ): ResponseEntity<StatementLineDto> =
         ResponseEntity.ok(statementService.patchLine(id, patchStatementLineRequest))
+
+    override fun recategorizeStatementLine(
+        id: Long,
+        recategorizeStatementLineRequest: RecategorizeStatementLineRequest,
+    ): ResponseEntity<Unit> {
+        statementService.recategorize(id, recategorizeStatementLineRequest)
+        return ResponseEntity.noContent().build()
+    }
 
     @Suppress("UNCHECKED_CAST")
     override fun confirmStatementImport(id: Long): ResponseEntity<ConfirmImportResponse> =

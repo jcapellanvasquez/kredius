@@ -175,6 +175,28 @@ class StatementService(
         return lineRepo.save(line).toDto()
     }
 
+    /**
+     * Moves a posted line to another category by adding a correction entry (the original posting is
+     * never edited), then updates the line and re-learns its merchant pattern.
+     */
+    fun recategorize(id: Long, request: RecategorizeStatementLineRequest) {
+        val line = lineRepo.findByIdAndStatementImportUserId(id, currentUser.id)
+            ?: throw ApiException(ApiException.NOT_FOUND, "Statement line not found", HttpStatus.NOT_FOUND)
+        val posted = line.journalLine
+            ?: throw ApiException(ApiException.CONFLICT, "Line isn't posted yet; set its category with PATCH", HttpStatus.CONFLICT)
+        requireNotReversed(line.statementImport)
+        val newCategory = accountRepo.findByIdAndUserId(request.categoryAccountId, currentUser.id)
+            ?: throw ApiException(ApiException.NOT_FOUND, "Category account not found", HttpStatus.NOT_FOUND)
+        val oldCategory = line.categoryAccount!!
+        if (newCategory.id == oldCategory.id)
+            throw ApiException(ApiException.BAD_REQUEST, "The line already has this category", HttpStatus.BAD_REQUEST)
+
+        journalService.postRecategorization(posted, oldCategory, newCategory, currentUser.user)
+        line.categoryAccount = newCategory
+        learnMerchant(line.description, newCategory)
+        lineRepo.save(line)
+    }
+
     private fun requireNotReversed(import: StatementImport) {
         if (import.status == StatementImportStatus.REVERSED)
             throw ApiException(ApiException.CONFLICT, "Import is reversed", HttpStatus.CONFLICT)
@@ -270,6 +292,7 @@ class StatementService(
                     referenceId = import.id,
                     reversesEntry = original,
                     user = currentUser.user,
+                    correctionType = CorrectionType.REVERSAL,
                 )
             )
             val mirroredLines = original.lines.map { orig ->

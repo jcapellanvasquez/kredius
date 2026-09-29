@@ -2,6 +2,7 @@ package com.kredius.be.service
 
 import com.kredius.be.entity.Account
 import com.kredius.be.entity.AccountType
+import com.kredius.be.entity.CorrectionType
 import com.kredius.be.entity.CurrencyType
 import com.kredius.be.entity.EntrySide
 import com.kredius.be.entity.ExclusionReason
@@ -28,6 +29,7 @@ import com.kredius.be.repository.StatementLineRepository
 import com.kredius.be.repository.UserRepository
 import com.kredius.be.exception.ApiException
 import com.kredius.be.model.PatchStatementLineRequest
+import com.kredius.be.model.RecategorizeStatementLineRequest
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.springframework.http.HttpStatus
@@ -53,6 +55,7 @@ class StatementServiceTest {
     private val card = Account(id = 2, name = "Tarjeta", type = AccountType.LIABILITY)
     private val food = Account(id = 6, name = "Comida", type = AccountType.EXPENSE)
     private val market = Account(id = 7, name = "Supermercado", type = AccountType.EXPENSE)
+    private val leisure = Account(id = 8, name = "Diversión", type = AccountType.EXPENSE)
 
     private val savedEntries = mutableListOf<JournalEntry>()
     private val savedJournalLines = mutableListOf<JournalLine>()
@@ -71,6 +74,7 @@ class StatementServiceTest {
         `when`(accountRepo.findByIdAndUserId(2L, 0L)).thenReturn(card)
         `when`(accountRepo.findByIdAndUserId(6L, 0L)).thenReturn(food)
         `when`(accountRepo.findByIdAndUserId(7L, 0L)).thenReturn(market)
+        `when`(accountRepo.findByIdAndUserId(8L, 0L)).thenReturn(leisure)
         `when`(importRepo.save(any(StatementImport::class.java))).thenAnswer { it.arguments[0] }
         `when`(statementLineRepo.save(any(StatementLine::class.java))).thenAnswer { it.arguments[0] }
         `when`(statementLineRepo.findByAccountIdAndLineDateBetween(anyLong(), anyDate(), anyDate()))
@@ -161,8 +165,20 @@ class StatementServiceTest {
         service.patchLine(line.id, PatchStatementLineRequest(categoryAccountId = categoryAccountId, isExcluded = isExcluded))
     }
 
-    private fun assertConflict(block: () -> Unit) =
-        assertEquals(HttpStatus.CONFLICT, assertThrows<ApiException> { block() }.httpStatus)
+    private fun recategorize(line: StatementLine, categoryAccountId: Long) {
+        `when`(statementLineRepo.findByIdAndStatementImportUserId(anyLong(), anyLong())).thenReturn(line)
+        service.recategorize(line.id, RecategorizeStatementLineRequest(categoryAccountId))
+    }
+
+    private fun assertStatus(status: HttpStatus, block: () -> Unit) =
+        assertEquals(status, assertThrows<ApiException> { block() }.httpStatus)
+
+    private fun assertConflict(block: () -> Unit) = assertStatus(HttpStatus.CONFLICT, block)
+
+    /** Each account's DR − CR over every journal line saved so far, keyed by account name. */
+    private fun netByAccount() = savedJournalLines.groupBy { it.account.name }.mapValues { (_, lines) ->
+        lines.sumOf { if (it.side == EntrySide.DEBIT) it.amountRd else it.amountRd.negate() }
+    }
 
     @Test
     fun `confirming twice posts each line once`() {
@@ -327,5 +343,63 @@ class StatementServiceTest {
         assertConflict { patch(import.lines[0], categoryAccountId = food.id) }
         assertConflict { service.confirm(1) }
         assertEquals(0, savedEntries.size)
+    }
+
+    @Test
+    fun `recategorizing a posted line adds a correction entry and keeps the original`() {
+        val import = cardImport(food)
+        import.lines[0].lineDate = LocalDate.of(2026, 7, 30)
+        service.confirm(1)
+        val original = savedEntries.single()
+
+        recategorize(import.lines[0], market.id)
+
+        val correction = savedEntries.last()
+        assertEquals(2, savedEntries.size)
+        assertEquals(CorrectionType.RECATEGORIZATION, correction.correctionType)
+        assertEquals(LocalDate.of(2026, 7, 30), correction.entryDate)
+        assertEquals(original.referenceId, correction.referenceId)
+        assertEquals(original.source, correction.source)
+        assertEquals("Recategorización: Comida → Supermercado", correction.description)
+        assertEquals(
+            mapOf("Supermercado" to EntrySide.DEBIT, "Comida" to EntrySide.CREDIT),
+            correction.lines.associate { it.account.name to it.side },
+        )
+        assertEquals(market, import.lines[0].categoryAccount)
+        val net = netByAccount()
+        assertEquals(0, net.getValue("Comida").signum())
+        assertEquals(BigDecimal("100.00"), net.getValue("Supermercado"))
+        assertEquals(BigDecimal("-100.00"), net.getValue("Tarjeta"))
+    }
+
+    @Test
+    fun `a chain of recategorizations nets out on the last category`() {
+        val import = cardImport(food)
+        service.confirm(1)
+
+        recategorize(import.lines[0], market.id)
+        recategorize(import.lines[0], leisure.id)
+
+        val net = netByAccount()
+        assertEquals(0, net.getValue("Comida").signum())
+        assertEquals(0, net.getValue("Supermercado").signum())
+        assertEquals(BigDecimal("100.00"), net.getValue("Diversión"))
+        assertEquals(BigDecimal("-100.00"), net.getValue("Tarjeta"))
+    }
+
+    @Test
+    fun `recategorize rejects unknown, unposted, reversed and unchanged lines`() {
+        `when`(statementLineRepo.findByIdAndStatementImportUserId(anyLong(), anyLong())).thenReturn(null)
+        assertStatus(HttpStatus.NOT_FOUND) { service.recategorize(99, RecategorizeStatementLineRequest(market.id)) }
+
+        val import = cardImport(null, food)
+        assertConflict { recategorize(import.lines[0], market.id) }
+
+        service.confirm(1)
+        assertStatus(HttpStatus.BAD_REQUEST) { recategorize(import.lines[1], food.id) }
+
+        import.status = StatementImportStatus.REVERSED
+        assertConflict { recategorize(import.lines[1], market.id) }
+        assertEquals(1, savedEntries.size)
     }
 }

@@ -860,6 +860,11 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/BudgetCategoryRow'
+        loanOptions:
+          type: array
+          description: Active loans, offered in a separate "Préstamos" group when picking a category
+          items:
+            $ref: '#/components/schemas/BudgetCategoryOption'
 
     BudgetCardSummary:
       type: object
@@ -922,6 +927,39 @@ components:
           type: number
           format: double
           description: The month's income-account credits against savings, RD$
+        loanPayments:
+          type: array
+          description: Loan installments paid or collected in the month, oldest first
+          items:
+            $ref: '#/components/schemas/BudgetLoanPayment'
+
+    BudgetLoanPayment:
+      type: object
+      required: [date, loanAccountId, loanName, loanType, installmentNumber, amount, interest]
+      properties:
+        date:
+          type: string
+          format: date
+        loanAccountId:
+          type: integer
+          format: int64
+        loanName:
+          type: string
+        loanType:
+          $ref: '#/components/schemas/LoanType'
+        installmentNumber:
+          type: integer
+        totalInstallments:
+          type: integer
+          nullable: true
+        amount:
+          type: number
+          format: double
+          description: What was paid or collected, RD$ (the bank's amount when it came from a statement)
+        interest:
+          type: number
+          format: double
+          description: The interest part of amount, RD$
 
     BudgetLastUpload:
       type: object
@@ -973,6 +1011,11 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/BudgetTransactionLine'
+        loanInterest:
+          type: array
+          description: Read-only interest of the month's received-loan installments booked to this category
+          items:
+            $ref: '#/components/schemas/BudgetLoanPayment'
 
     BudgetTransactionLine:
       type: object

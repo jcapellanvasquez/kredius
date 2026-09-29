@@ -2,6 +2,9 @@ package com.kredius.be.service
 
 import com.kredius.be.entity.Account
 import com.kredius.be.entity.AccountType
+import com.kredius.be.entity.InstallmentStatus
+import com.kredius.be.entity.LoanInstallment
+import com.kredius.be.entity.LoanType
 import com.kredius.be.entity.RateContext
 import com.kredius.be.entity.StatementImportStatus
 import com.kredius.be.entity.StatementLine
@@ -15,7 +18,10 @@ import com.kredius.be.model.BudgetSavingsSummary
 import com.kredius.be.model.BudgetScreenResponse
 import com.kredius.be.model.BudgetStatementResult
 import com.kredius.be.model.BudgetTransactionLine
+import com.kredius.be.model.BudgetLoanPayment
 import com.kredius.be.repository.BudgetRepository
+import com.kredius.be.repository.LoanInstallmentRepository
+import com.kredius.be.repository.LoanRepository
 import com.kredius.be.repository.AccountRepository
 import com.kredius.be.repository.ExchangeRateRepository
 import com.kredius.be.repository.JournalLineRepository
@@ -25,6 +31,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
 import java.time.LocalDate
+import com.kredius.be.model.LoanType as ApiLoanType
 import com.kredius.be.model.StatementType as ApiStatementType
 
 /** Builds `GET /budget-screen` for one month. Lines of reversed imports are left out everywhere. */
@@ -38,6 +45,8 @@ class BudgetScreenService(
     private val journalLineRepo: JournalLineRepository,
     private val exchangeRateRepo: ExchangeRateRepository,
     private val budgetRepo: BudgetRepository,
+    private val loanRepo: LoanRepository,
+    private val installmentRepo: LoanInstallmentRepository,
 ) {
     fun get(period: LocalDate): BudgetScreenResponse {
         val userId = currentUser.id
@@ -54,14 +63,20 @@ class BudgetScreenService(
         val ranked = rankForSuggestions(expenses)
         fun transaction(line: StatementLine) = line.toTransaction(rd(line), ranked)
 
-        val categories = categories(from, next, expenses, lines, ::transaction)
+        val loanPayments = installmentRepo
+            .findByLoanUserIdAndStatusAndActualPaymentDateBetween(userId, InstallmentStatus.PAID, from, next.minusDays(1))
+            .filter { it.journalEntry != null }
+            .sortedWith(compareBy({ it.actualPaymentDate }, { it.number }))
+            .map { it to it.toLoanPayment(savings) }
+
+        val categories = categories(from, next, expenses, lines, ::transaction, loanPayments)
 
         return BudgetScreenResponse(
             period = from,
             card = card?.let { account ->
                 cardSummary(account, lines.filter { it.account.id == account.id }, ::rd, categories)
             },
-            savings = savings?.let { savingsSummary(it, from, next) },
+            savings = savings?.let { savingsSummary(it, from, next, loanPayments.map { (_, payment) -> payment }) },
             lastUploads = listOfNotNull(card, savings).map { account ->
                 BudgetLastUpload(
                     kind = ApiStatementType.valueOf(account.statementType!!.name),
@@ -74,8 +89,36 @@ class BudgetScreenService(
                 .sortedByDescending { it.lineDate }
                 .map(::transaction),
             categories = categories,
+            loanOptions = loanRepo.findByUserId(userId)
+                .filter { it.active }
+                .map { BudgetCategoryOption(accountId = it.account.id, name = it.account.name, icon = it.account.icon) },
         )
     }
+
+    /**
+     * An installment's payment, read from its journal entry: the amount is the entry's line on savings
+     * (the bank's amount for statement payments), the interest its expense (received loan) or income
+     * (given loan) line.
+     */
+    private fun LoanInstallment.toLoanPayment(savings: Account?): BudgetLoanPayment {
+        val entry = journalEntry!!
+        val interestType = if (loan.type == LoanType.RECEIVED) AccountType.EXPENSE else AccountType.INCOME
+        return BudgetLoanPayment(
+            date = actualPaymentDate!!,
+            loanAccountId = loan.account.id,
+            loanName = loan.account.name,
+            loanType = ApiLoanType.valueOf(loan.type.name),
+            installmentNumber = number,
+            totalInstallments = loan.numInstallments ?: loan.installments.size,
+            amount = (entry.lines.firstOrNull { it.account.id == savings?.id }?.amountRd ?: entry.amount).toDouble(),
+            interest = entry.lines.filter { it.account.type == interestType }.sumOf { it.amountRd }.toDouble(),
+        )
+    }
+
+    /** The account a received-loan installment's interest was booked to, if any. */
+    private fun LoanInstallment.interestAccountId(): Long? =
+        if (loan.type != LoanType.RECEIVED) null
+        else journalEntry!!.lines.firstOrNull { it.account.type == AccountType.EXPENSE }?.account?.id
 
     /**
      * Expense accounts with spend in the month or a budget saved for it. `actual` is debits − credits,
@@ -88,6 +131,7 @@ class BudgetScreenService(
         expenses: List<Account>,
         lines: List<StatementLine>,
         transaction: (StatementLine) -> BudgetTransactionLine,
+        loanPayments: List<Pair<LoanInstallment, BudgetLoanPayment>>,
     ): List<BudgetCategoryRow> {
         val userId = currentUser.id
         if (expenses.isEmpty()) return emptyList()
@@ -114,6 +158,9 @@ class BudgetScreenService(
                     else budgetRepo.findTopByAccountIdAndPeriodLessThanOrderByPeriodDesc(category.id, from)?.amount?.toDouble(),
                 origins = transactions.map { it.source }.distinct().sortedBy { it.ordinal },
                 transactions = transactions,
+                loanInterest = loanPayments
+                    .filter { (installment, _) -> installment.interestAccountId() == category.id }
+                    .map { (_, payment) -> payment },
             )
         }.sortedWith(
             compareByDescending<BudgetCategoryRow> { row -> row.budget?.takeIf { it > 0 }?.let { row.actual / it } ?: Double.NEGATIVE_INFINITY }
@@ -185,7 +232,12 @@ class BudgetScreenService(
         )
     }
 
-    private fun savingsSummary(savings: Account, from: LocalDate, next: LocalDate): BudgetSavingsSummary {
+    private fun savingsSummary(
+        savings: Account,
+        from: LocalDate,
+        next: LocalDate,
+        loanPayments: List<BudgetLoanPayment>,
+    ): BudgetSavingsSummary {
         val userId = currentUser.id
         val totals = journalLineRepo.findBalanceBefore(userId, savings.id, next)
         return BudgetSavingsSummary(
@@ -194,6 +246,7 @@ class BudgetScreenService(
             icon = savings.icon,
             balance = (totals.totalDebit - totals.totalCredit).toDouble(),
             income = journalLineRepo.findIncomeInto(userId, savings.id, from, next).toDouble(),
+            loanPayments = loanPayments,
         )
     }
 

@@ -38,7 +38,7 @@ class BhdSavingsPdfParserTest {
         assertEquals("BALANCE INICIAL", initial.description)
         assertEquals(BigDecimal("102717.23"), initial.amount)
         assertEquals(null, initial.reference)
-        // Its date is LocalDate.now() today, not the printed 01/08/2026 (fixed in B3), so it isn't pinned
+        assertEquals(LocalDate.of(2026, 8, 1), initial.date) // printed on the statement, not the upload day
     }
 
     @Test

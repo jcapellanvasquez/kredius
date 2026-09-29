@@ -46,9 +46,15 @@ class BhdPdfParserTest {
 
         val charge = rows[1]
         assertEquals(LocalDate.of(2026, 7, 27), charge.date) // transaction date, not posting date
-        assertEquals("1234 BRAVOVA #8787688 SANTODOMINGO-DO", charge.description) // card last-4 kept (fixed in B3)
+        assertEquals("BRAVOVA #8787688 SANTODOMINGO-DO", charge.description)
         assertEquals(BigDecimal("5230.00"), charge.amount)
         assertEquals(RowDirection.DEBIT, charge.direction)
+    }
+
+    @Test
+    fun `card last-4 is not part of the description`() {
+        assertEquals(emptyList(), rows.map { it.description }.filter { it.startsWith("1234 ") })
+        assertEquals("GOOGLE *Google One 855-836-3987-US", rows.first { it.description.contains("Google One") }.description)
     }
 
     @Test

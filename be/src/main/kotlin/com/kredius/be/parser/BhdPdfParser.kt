@@ -51,9 +51,9 @@ class BhdPdfParser {
         // Skip optional posting date immediately following
         BhdStatementText.leadingDate(rest)?.let { rest = rest.removePrefix(it.value).trim() }
 
-        // Strip trailing card-last-4 token (e.g. "7971")
+        // Strip the card-last-4 token that precedes the description on purchases (payments have none)
         val tokens = rest.split(Regex("\\s+"))
-        val trimmed = if (tokens.lastOrNull()?.matches(card4Regex) == true) tokens.dropLast(1) else tokens
+        val trimmed = if (tokens.firstOrNull()?.matches(card4Regex) == true) tokens.drop(1) else tokens
 
         // Amount is the last token matching amount pattern
         val amountIdx = trimmed.indexOfLast { BhdStatementText.amountRegex.matches(it) }

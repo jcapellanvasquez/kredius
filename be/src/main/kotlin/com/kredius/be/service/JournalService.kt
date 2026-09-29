@@ -1,6 +1,8 @@
 package com.kredius.be.service
 
+import com.kredius.be.entity.Account
 import com.kredius.be.entity.AccountType
+import com.kredius.be.entity.CorrectionType
 import com.kredius.be.entity.CurrencyType
 import com.kredius.be.entity.EntrySide
 import com.kredius.be.entity.ExchangeRate
@@ -65,6 +67,41 @@ class JournalService(
             )
         )
         return managedDebitLine
+    }
+
+    /**
+     * Moves [posted]'s amount from its account (the old category) to [newCategory] with a new entry,
+     * dated like the original so it lands in the same month. The original entry is never edited. The
+     * new category takes the side the old one had, and the amounts, currency and rate are copied, so
+     * the old category nets to zero.
+     */
+    fun postRecategorization(posted: JournalLine, oldCategory: Account, newCategory: Account, user: User): JournalEntry {
+        val original = posted.journalEntry
+        val entry = journalEntryRepo.save(
+            JournalEntry(
+                entryDate = original.entryDate,
+                description = "Recategorización: ${oldCategory.name} → ${newCategory.name}",
+                source = original.source,
+                referenceId = original.referenceId,
+                user = user,
+                correctionType = CorrectionType.RECATEGORIZATION,
+                amount = posted.amountRd,
+            )
+        )
+        for ((account, side) in listOf(newCategory to posted.side, oldCategory to posted.side.opposite())) {
+            entry.lines += journalLineRepo.save(
+                JournalLine(
+                    journalEntry = entry,
+                    account = account,
+                    side = side,
+                    currency = posted.currency,
+                    originalAmount = posted.originalAmount,
+                    exchangeRate = posted.exchangeRate,
+                    amountRd = posted.amountRd,
+                )
+            )
+        }
+        return entry
     }
 
     data class PostingSides(val statementAccount: EntrySide, val category: EntrySide)

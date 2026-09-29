@@ -31,6 +31,10 @@ class JournalEntry(
     @JoinColumn(name = "reverses_entry_id")
     var reversesEntry: JournalEntry? = null,
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "correction_type", length = 20)
+    var correctionType: CorrectionType? = null,
+
     @OneToMany(mappedBy = "journalEntry", cascade = [CascadeType.ALL], orphanRemoval = true)
     val lines: MutableList<JournalLine> = mutableListOf(),
 

@@ -488,6 +488,44 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
+  /api/v1/statement-lines/{id}/recategorize:
+    post:
+      tags: [Statements]
+      summary: Move a posted line to another category
+      description: |
+        Adds a correction entry (dated like the original posting) that moves the amount from the
+        line's current category to the new one; the original entry is never edited. The merchant
+        pattern is re-learned for the new category.
+      operationId: recategorizeStatementLine
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecategorizeStatementLineRequest'
+      responses:
+        '204':
+          description: Line recategorized
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: The line isn't posted yet (use PATCH), or its import is reversed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
   /api/v1/statement-imports/{id}/confirm:
     post:
       tags: [Statements]
@@ -1409,6 +1447,14 @@ components:
         isExcluded:
           type: boolean
           nullable: true
+
+    RecategorizeStatementLineRequest:
+      type: object
+      required: [categoryAccountId]
+      properties:
+        categoryAccountId:
+          type: integer
+          format: int64
 
     ConfirmImportResponse:
       type: object

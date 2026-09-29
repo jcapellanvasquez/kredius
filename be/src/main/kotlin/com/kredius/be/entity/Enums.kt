@@ -24,6 +24,14 @@ enum class StatementType { CREDIT_CARD, SAVINGS }
 
 enum class StatementLineType { DEBIT, CREDIT, INITIAL_BALANCE }
 
+/** Why a journal entry exists besides an original posting; null for original postings. */
+enum class CorrectionType {
+    /** Moves a posted line's amount from its old category to the new one. */
+    RECATEGORIZATION,
+    /** Mirrors another entry (`reversesEntry`) to undo it. */
+    REVERSAL,
+}
+
 /** Why a statement line is excluded from posting; set together with `isExcluded`. */
 enum class ExclusionReason {
     /** Card payment row: the savings statement posts this payment. */

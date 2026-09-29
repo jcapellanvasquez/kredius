@@ -8,6 +8,7 @@ import com.kredius.be.entity.StatementLine
 import com.kredius.be.entity.StatementLineType
 import com.kredius.be.entity.StatementType
 import com.kredius.be.model.BudgetCardSummary
+import com.kredius.be.model.BudgetCategoryOption
 import com.kredius.be.model.BudgetCategoryRow
 import com.kredius.be.model.BudgetLastUpload
 import com.kredius.be.model.BudgetSavingsSummary
@@ -49,8 +50,11 @@ class BudgetScreenService(
         )
         val usdRate by lazy { exchangeRateRepo.findTopByContextOrderByRateDateDesc(RateContext.CREDIT_CARD) }
         fun rd(line: StatementLine) = line.journalLine?.amountRd ?: amountRd(line, usdRate)
+        val expenses = accountRepo.findByUserIdAndType(userId, AccountType.EXPENSE)
+        val ranked = rankForSuggestions(expenses)
+        fun transaction(line: StatementLine) = line.toTransaction(rd(line), ranked)
 
-        val categories = categories(from, next, lines, ::rd)
+        val categories = categories(from, next, expenses, lines, ::transaction)
 
         return BudgetScreenResponse(
             period = from,
@@ -68,7 +72,7 @@ class BudgetScreenService(
             uncategorized = lines
                 .filter { it.journalLine == null && !it.isExcluded }
                 .sortedByDescending { it.lineDate }
-                .map { it.toTransaction(rd(it)) },
+                .map(::transaction),
             categories = categories,
         )
     }
@@ -81,11 +85,11 @@ class BudgetScreenService(
     private fun categories(
         from: LocalDate,
         next: LocalDate,
+        expenses: List<Account>,
         lines: List<StatementLine>,
-        rd: (StatementLine) -> BigDecimal,
+        transaction: (StatementLine) -> BudgetTransactionLine,
     ): List<BudgetCategoryRow> {
         val userId = currentUser.id
-        val expenses = accountRepo.findByUserIdAndType(userId, AccountType.EXPENSE)
         if (expenses.isEmpty()) return emptyList()
         val ids = expenses.map { it.id }
         val totals = journalLineRepo.findTotalsByPeriod(userId, from, next, ids).associateBy { it.accountId }
@@ -99,7 +103,7 @@ class BudgetScreenService(
             val budget = budgets[category.id]
             val own = postedByCategory[category.id].orEmpty()
             if (own.isEmpty() && actual.signum() == 0 && budget == null) return@mapNotNull null
-            val transactions = own.sortedByDescending { it.lineDate }.map { it.toTransaction(rd(it)) }
+            val transactions = own.sortedByDescending { it.lineDate }.map(transaction)
             BudgetCategoryRow(
                 accountId = category.id,
                 name = category.name,
@@ -118,8 +122,26 @@ class BudgetScreenService(
         )
     }
 
+    /**
+     * Active expense categories, most posted lines in the last [SUGGESTION_WINDOW_DAYS] days first, then by
+     * account code; with no history this is plain code order.
+     */
+    private fun rankForSuggestions(expenses: List<Account>): List<Account> {
+        val today = LocalDate.now()
+        val uses = lineRepo.findByStatementImportUserIdAndStatementImportStatusNotAndLineDateBetween(
+            currentUser.id, StatementImportStatus.REVERSED, today.minusDays(SUGGESTION_WINDOW_DAYS), today,
+        )
+            .filter { it.journalLine != null }
+            .mapNotNull { it.categoryAccount?.id }
+            .groupingBy { it }
+            .eachCount()
+        return expenses
+            .filter { it.active }
+            .sortedWith(compareByDescending<Account> { uses[it.id] ?: 0 }.thenBy { it.code ?: Int.MAX_VALUE })
+    }
+
     /** Positive = charge or money out, negative = payment, refund or money in. */
-    private fun StatementLine.toTransaction(amountRd: BigDecimal) = BudgetTransactionLine(
+    private fun StatementLine.toTransaction(amountRd: BigDecimal, ranked: List<Account>) = BudgetTransactionLine(
         lineId = id,
         date = lineDate,
         description = description,
@@ -129,7 +151,10 @@ class BudgetScreenService(
         status = if (journalLine != null) BudgetTransactionLine.Status.POSTED else BudgetTransactionLine.Status.PENDING,
         categoryId = categoryAccount?.id,
         categoryName = categoryAccount?.name,
-        suggestions = emptyList(),
+        suggestions = ranked
+            .filter { it.id != categoryAccount?.id }
+            .take(SUGGESTED_CHIPS)
+            .map { BudgetCategoryOption(accountId = it.id, name = it.name, icon = it.icon) },
     )
 
     private fun cardSummary(
@@ -170,5 +195,10 @@ class BudgetScreenService(
             balance = (totals.totalDebit - totals.totalCredit).toDouble(),
             income = journalLineRepo.findIncomeInto(userId, savings.id, from, next).toDouble(),
         )
+    }
+
+    companion object {
+        private const val SUGGESTED_CHIPS = 2
+        private const val SUGGESTION_WINDOW_DAYS = 90L
     }
 }

@@ -25,6 +25,8 @@ import com.kredius.be.repository.StatementLineRepository
 import com.kredius.be.repository.TotalsView
 import com.kredius.be.repository.UserRepository
 import org.junit.jupiter.api.Test
+import org.mockito.Mockito.any
+import org.mockito.Mockito.anyLong
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.`when`
 import java.math.BigDecimal
@@ -77,7 +79,8 @@ class BudgetScreenServiceTest {
     private val transport = expense(10, "Transporte")
     private val expenses = listOf(food, market, leisure, gas, transport)
 
-    private fun expense(id: Long, name: String) = Account(id = id, name = name, type = AccountType.EXPENSE, icon = "category")
+    private fun expense(id: Long, name: String) =
+        Account(id = id, code = 4995 + id.toInt(), name = name, type = AccountType.EXPENSE, icon = "category")
 
     private fun accountTotals(accountId: Long, debit: String, credit: String = "0") = object : AccountBalanceView {
         override val accountId = accountId
@@ -230,5 +233,44 @@ class BudgetScreenServiceTest {
 
         assertEquals(listOf(450.0), uncategorized.map { it.amount })
         assertEquals(BudgetTransactionLine.Status.PENDING, uncategorized.single().status)
+    }
+
+    /** A matcher for a Kotlin non-null parameter; the fallback only avoids Kotlin's null check. */
+    private fun anyDate(): LocalDate = any(LocalDate::class.java) ?: LocalDate.MIN
+
+    /** Posted lines in the last 90 days, one per category id given. */
+    private fun recentUses(vararg categories: Account) {
+        `when`(lineRepo.findByStatementImportUserIdAndStatementImportStatusNotAndLineDateBetween(
+            anyLong(), any(StatementImportStatus::class.java) ?: StatementImportStatus.REVERSED, anyDate(), anyDate(),
+        )).thenReturn(categories.map { cardLine("10.00", postedRd = "10.00").apply { categoryAccount = it } })
+    }
+
+    @Test
+    fun `without history, suggestions follow account code order and skip the current category`() {
+        ledger()
+        val pending = cardLine("450.00")
+        val posted = cardLine("100.00", postedRd = "100.00").apply { categoryAccount = food }
+        monthLines(pending, posted)
+
+        val screen = service.get(august)
+
+        assertEquals(listOf("Comida", "Supermercado"), screen.uncategorized.single().suggestions.map { it.name })
+        val comida = screen.categories.single { it.name == "Comida" }.transactions.single()
+        assertEquals(listOf("Supermercado", "Diversión"), comida.suggestions.map { it.name })
+    }
+
+    @Test
+    fun `suggestions favour the categories used most in the last 90 days`() {
+        ledger()
+        recentUses(leisure, leisure, leisure, gas)
+        val pending = cardLine("450.00")
+        val posted = cardLine("100.00", postedRd = "100.00").apply { categoryAccount = leisure }
+        monthLines(pending, posted)
+
+        val screen = service.get(august)
+
+        assertEquals(listOf("Diversión", "Gasolina"), screen.uncategorized.single().suggestions.map { it.name })
+        val diversion = screen.categories.single { it.name == "Diversión" }.transactions.single()
+        assertEquals(listOf("Gasolina", "Comida"), diversion.suggestions.map { it.name })
     }
 }

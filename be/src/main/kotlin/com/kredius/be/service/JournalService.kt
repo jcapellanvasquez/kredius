@@ -44,7 +44,7 @@ class JournalService(
             )
         )
         val sides = sidesFor(line.type!!, importStatement.account.type)
-        val managedDebitLine = journalLineRepo.save(
+        val managedCategoryLine = journalLineRepo.save(
             JournalLine(
                 journalEntry = savedEntry,
                 account = line.categoryAccount!!,
@@ -55,7 +55,7 @@ class JournalService(
                 amountRd = amountRd,
             )
         )
-        journalLineRepo.saveAndFlush(
+        val managedStatementLine = journalLineRepo.saveAndFlush(
             JournalLine(
                 journalEntry = savedEntry,
                 account = importStatement.account,
@@ -66,7 +66,8 @@ class JournalService(
                 amountRd = amountRd,
             )
         )
-        return managedDebitLine
+        savedEntry.lines += listOf(managedCategoryLine, managedStatementLine)
+        return managedCategoryLine
     }
 
     /**

@@ -563,7 +563,7 @@ paths:
   /api/v1/statement-imports/{id}/reverse:
     post:
       tags: [Statements]
-      summary: Reverse a confirmed import — creates mirrored journal entries
+      summary: Reverse an import — mirrors every entry it posted, recategorizations included
       operationId: reverseStatementImport
       parameters:
         - name: id
@@ -582,7 +582,7 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
         '409':
-          description: Import is not in CONFIRMED status
+          description: Import isn't CONFIRMED or PENDING_REVIEW
           content:
             application/json:
               schema:

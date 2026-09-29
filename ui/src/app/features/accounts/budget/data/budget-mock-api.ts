@@ -188,12 +188,13 @@ export class BudgetMockApi extends BudgetApi {
           icon: cat.icon,
           actual,
           budget,
-          pct: percentOf(actual, budget),
           origins: STATEMENT_KIND_ORDER.filter(kind => own.some(l => l.source === kind)),
           transactions: own.sort((a, b) => b.date.localeCompare(a.date)).map(l => this.toTransaction(db, l)),
         };
       })
-      .sort((a, b) => (b.pct ?? -1) - (a.pct ?? -1) || b.actual - a.actual || a.name.localeCompare(b.name));
+      .sort((a, b) =>
+        (percentOf(b.actual, b.budget) ?? -1) - (percentOf(a.actual, a.budget) ?? -1)
+        || b.actual - a.actual || a.name.localeCompare(b.name));
 
     const cardLines = lines.filter(l => l.source === StatementAccountKind.CreditCard);
     const charges = cardLines.filter(l => l.amount > 0).reduce((s, l) => s + l.amount, 0);
@@ -208,7 +209,6 @@ export class BudgetMockApi extends BudgetApi {
         ...db.card,
         spent: charges,
         budget: cardBudget,
-        pct: percentOf(charges, cardBudget),
         statement: cardLines.length ? { charges, payments, net: charges - payments } : null,
       },
       savings: {

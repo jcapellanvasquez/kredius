@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
 import { IconComponent } from '../../../../../shared/components/icon/icon';
 import { ProgressRingComponent } from '../../../../../shared/components/progress-ring/progress-ring';
 import { MoneyPipe } from '../../../../../shared/pipes/money.pipe';
-import { ProgressLevel } from '../../../../../shared/utils/progress-level';
+import { ProgressLevel, percentOf } from '../../../../../shared/utils/progress-level';
 import { CARD_RING_BANDS } from '../../budget.constants';
 import { StatementAccountKind } from '../../budget.enums';
 import { BUDGET_TEXT } from '../../budget.texts';
@@ -17,7 +17,7 @@ import { CardSummary } from '../../models/budget.models';
   template: `
     <div class="card p-3 h-full">
       <div class="flex items-center gap-2.5">
-        <app-progress-ring [pct]="card().pct" [level]="level()" [size]="40" />
+        <app-progress-ring [pct]="pct()" [level]="level()" [size]="40" />
         <div class="min-w-0">
           <p class="flex items-center gap-1 text-xs text-gray-500">
             <app-icon [name]="card().icon" [size]="12" /> {{ text.kind[kind] }}
@@ -60,8 +60,9 @@ export class CardSummaryComponent {
   /** Label left, amount right; the amount drops under the label when the card is too narrow. */
   protected readonly rowClass = 'flex flex-wrap justify-between gap-x-2';
   /** Ring-specific bands (green / amber / red); category bars keep the gray / amber / red rule. */
+  protected readonly pct = computed(() => percentOf(this.card().spent, this.card().budget));
   protected readonly level = computed(() => {
-    const pct = this.card().pct ?? 0;
+    const pct = this.pct() ?? 0;
     if (pct >= CARD_RING_BANDS.dangerFrom) return ProgressLevel.Danger;
     if (pct >= CARD_RING_BANDS.warningFrom) return ProgressLevel.Warning;
     return ProgressLevel.Good;

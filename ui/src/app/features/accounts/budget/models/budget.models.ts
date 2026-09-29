@@ -40,7 +40,6 @@ export interface CardSummary {
   icon: string;
   spent: number;
   budget: number | null;
-  pct: number | null;
   statement: StatementResult | null;
 }
 
@@ -65,7 +64,6 @@ export interface CategoryRow {
   icon: string;
   actual: number;
   budget: number | null;
-  pct: number | null;
   /** Accounts the spend came from; both when mixed (Decision 1). */
   origins: StatementAccountKind[];
   transactions: TransactionLine[];
@@ -77,7 +75,7 @@ export interface BudgetScreen {
   savings: SavingsSummary;
   lastUploads: LastUpload[];
   uncategorized: TransactionLine[];
-  /** Sorted server-side: highest % first. */
+  /** Sorted server-side: highest actual / budget first, no budget last. */
   categories: CategoryRow[];
 }
 
@@ -115,6 +113,8 @@ export interface ImportDetail extends ImportSummary {
 export interface CategoryRowView extends CategoryRow {
   /** Budget currently shown in the input (draft if edited, else saved value). */
   budgetInput: number | null;
+  /** actual / budgetInput, computed here (the API sends amounts only). */
+  pct: number | null;
   level: ProgressLevel;
   dirty: boolean;
   saveState: SaveState;

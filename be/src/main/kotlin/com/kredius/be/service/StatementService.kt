@@ -266,11 +266,6 @@ class StatementService(
         return pending.size
     }
 
-    /** The line's amount in RD$; USD lines use the latest credit-card rate. */
-    private fun amountRd(line: StatementLine, usdRate: ExchangeRate?): BigDecimal =
-        if (line.currency == CurrencyType.RD) line.amount
-        else line.amount.multiply(usdRate?.value ?: BigDecimal.ONE)
-
     private fun StatementImport.journalSource() =
         if (type == EntityStatementType.CREDIT_CARD) JournalSource.CARD_STATEMENT else JournalSource.SAVINGS_STATEMENT
 

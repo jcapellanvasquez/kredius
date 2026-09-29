@@ -36,6 +36,8 @@ tags:
     description: Bank statement upload, parsing, and categorization
   - name: Reports
     description: Budget reports and budget configuration
+  - name: BudgetScreen
+    description: Data for the monthly budget screen (Presupuesto)
 
 paths:
 
@@ -590,6 +592,35 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
+  /api/v1/budget-screen:
+    get:
+      tags: [BudgetScreen]
+      summary: Everything the budget screen shows for one month
+      description: |
+        Card and savings summaries, the last upload per statement account, the month's
+        uncategorized lines and its category rows (sorted by actual / budget, highest first,
+        categories without a budget last). Lines of reversed imports are left out.
+      operationId: getBudgetScreen
+      parameters:
+        - name: period
+          in: query
+          required: true
+          description: First day of the month (YYYY-MM-01); any day of the month is accepted
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Budget screen data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BudgetScreenResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
   /api/v1/reports/budget:
     get:
       tags: [Reports]
@@ -786,6 +817,198 @@ paths:
 
 components:
   schemas:
+    BudgetScreenResponse:
+      type: object
+      required: [period, lastUploads, uncategorized, categories]
+      properties:
+        period:
+          type: string
+          format: date
+        card:
+          $ref: '#/components/schemas/BudgetCardSummary'
+          nullable: true
+          description: The first active account with statementType CREDIT_CARD; null if there is none
+        savings:
+          $ref: '#/components/schemas/BudgetSavingsSummary'
+          nullable: true
+          description: The first active account with statementType SAVINGS; null if there is none
+        lastUploads:
+          type: array
+          items:
+            $ref: '#/components/schemas/BudgetLastUpload'
+        uncategorized:
+          type: array
+          description: The month's unposted, non-excluded lines, newest first
+          items:
+            $ref: '#/components/schemas/BudgetTransactionLine'
+        categories:
+          type: array
+          items:
+            $ref: '#/components/schemas/BudgetCategoryRow'
+
+    BudgetCardSummary:
+      type: object
+      required: [accountId, name, spent]
+      properties:
+        accountId:
+          type: integer
+          format: int64
+        name:
+          type: string
+        icon:
+          type: string
+          nullable: true
+        spent:
+          type: number
+          format: double
+          description: The month's posted card charges, RD$
+        budget:
+          type: number
+          format: double
+          nullable: true
+          description: Sum of the saved budgets of categories with card spend; null when none
+        statement:
+          $ref: '#/components/schemas/BudgetStatementResult'
+          nullable: true
+          description: From the month's card lines, payments included; null when the month has none
+
+    BudgetStatementResult:
+      type: object
+      required: [charges, payments, net]
+      properties:
+        charges:
+          type: number
+          format: double
+        payments:
+          type: number
+          format: double
+        net:
+          type: number
+          format: double
+          description: charges − payments
+
+    BudgetSavingsSummary:
+      type: object
+      required: [accountId, name, balance, income]
+      properties:
+        accountId:
+          type: integer
+          format: int64
+        name:
+          type: string
+        icon:
+          type: string
+          nullable: true
+        balance:
+          type: number
+          format: double
+          description: Ledger balance at the end of the month, RD$
+        income:
+          type: number
+          format: double
+          description: The month's income-account credits against savings, RD$
+
+    BudgetLastUpload:
+      type: object
+      required: [kind, accountId]
+      properties:
+        kind:
+          $ref: '#/components/schemas/StatementType'
+        accountId:
+          type: integer
+          format: int64
+        uploadedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: The account's latest upload; null if it never had one
+
+    BudgetCategoryRow:
+      type: object
+      required: [accountId, name, actual, origins, transactions]
+      properties:
+        accountId:
+          type: integer
+          format: int64
+        name:
+          type: string
+        icon:
+          type: string
+          nullable: true
+        actual:
+          type: number
+          format: double
+          description: The month's debits − credits on the category, corrections included
+        budget:
+          type: number
+          format: double
+          nullable: true
+          description: The budget saved for the month
+        previousBudget:
+          type: number
+          format: double
+          nullable: true
+          description: The most recent earlier saved budget; only when budget is null (a hint, not a budget)
+        origins:
+          type: array
+          description: Statement accounts the spend came from, card first
+          items:
+            $ref: '#/components/schemas/StatementType'
+        transactions:
+          type: array
+          items:
+            $ref: '#/components/schemas/BudgetTransactionLine'
+
+    BudgetTransactionLine:
+      type: object
+      required: [lineId, date, description, amount, source, status, suggestions]
+      properties:
+        lineId:
+          type: integer
+          format: int64
+        date:
+          type: string
+          format: date
+        description:
+          type: string
+        amount:
+          type: number
+          format: double
+          description: RD$; positive = charge, negative = payment or credit
+        source:
+          $ref: '#/components/schemas/StatementType'
+        sourceIcon:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [POSTED, PENDING]
+        categoryId:
+          type: integer
+          format: int64
+          nullable: true
+        categoryName:
+          type: string
+          nullable: true
+        suggestions:
+          type: array
+          description: Two expense categories to offer as chips, never the current one
+          items:
+            $ref: '#/components/schemas/BudgetCategoryOption'
+
+    BudgetCategoryOption:
+      type: object
+      required: [accountId, name]
+      properties:
+        accountId:
+          type: integer
+          format: int64
+        name:
+          type: string
+        icon:
+          type: string
+          nullable: true
+
 
     BudgetReportResponse:
       type: object

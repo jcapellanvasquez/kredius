@@ -7,4 +7,6 @@ interface StatementImportRepository : JpaRepository<StatementImport, Long> {
     fun findByIdAndUserId(id: Long, userId: Long): StatementImport?
 
     fun findByUserIdOrderByStatementDateDesc(userId: Long): List<StatementImport>
+
+    fun findTopByAccountIdOrderByCreatedAtDesc(accountId: Long): StatementImport?
 }

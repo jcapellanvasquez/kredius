@@ -238,4 +238,26 @@ interface JournalLineRepository : JpaRepository<JournalLine, Long> {
         @Param("m3Start") m3Start: LocalDate,
         @Param("m1Start") m1Start: LocalDate,
     ): List<MonthlyTotalView>
+
+    /** Income-account credits − debits in [from, before) on entries that also touch [accountId]. */
+    @Query(
+        value = """
+            SELECT COALESCE(SUM(CASE WHEN jl.side = 'CREDIT' THEN jl.amount_rd ELSE -jl.amount_rd END), 0)
+            FROM journal_lines jl
+            JOIN journal_entries je ON je.id = jl.journal_entry_id
+            JOIN accounts a ON a.id = jl.account_id
+            WHERE je.user_id = :userId
+              AND a.type = 'INCOME'
+              AND je.entry_date >= :from
+              AND je.entry_date < :before
+              AND EXISTS (SELECT 1 FROM journal_lines o WHERE o.journal_entry_id = je.id AND o.account_id = :accountId)
+        """,
+        nativeQuery = true,
+    )
+    fun findIncomeInto(
+        @Param("userId") userId: Long,
+        @Param("accountId") accountId: Long,
+        @Param("from") from: LocalDate,
+        @Param("before") before: LocalDate,
+    ): BigDecimal
 }

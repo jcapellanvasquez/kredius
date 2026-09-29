@@ -1382,6 +1382,9 @@ components:
           format: double
         isExcluded:
           type: boolean
+        posted:
+          type: boolean
+          description: True once the line has produced a journal entry
         isPayment:
           type: boolean
           description: Auto-excluded payment row (e.g. PAGO DEBITO A CUENTA)
@@ -1424,6 +1427,12 @@ components:
           type: integer
         unresolvedCount:
           type: integer
+        uploadedAt:
+          type: string
+          format: date-time
+        fileName:
+          type: string
+          nullable: true
 
     StatementImportResponse:
       type: object

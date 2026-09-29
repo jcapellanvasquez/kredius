@@ -339,6 +339,8 @@ class StatementService(
         accountName = account.name,
         lineCount = lines.count { it.type != StatementLineType.INITIAL_BALANCE },
         unresolvedCount = lines.count { it.isUncategorized() },
+        uploadedAt = createdAt,
+        fileName = fileName,
     )
 
     private fun StatementImport.toResponse(autoPostedCount: Int? = null) = StatementImportResponse(
@@ -363,6 +365,7 @@ class StatementService(
         currency = StatementLineDto.Currency.valueOf(currency.name),
         amount = amount.toDouble(),
         isExcluded = isExcluded,
+        posted = journalLine != null,
         isPayment = exclusionReason == ExclusionReason.CARD_PAYMENT_AVOID_DOUBLE_ENTRY,
         exclusionReason = exclusionReason?.let { StatementLineDto.ExclusionReason.valueOf(it.name) },
         lineType = type?.name?.let { StatementLineDto.LineType.valueOf(it) },

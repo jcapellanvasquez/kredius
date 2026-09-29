@@ -429,4 +429,19 @@ class StatementServiceTest {
         assertConflict { service.reverse(1) }
         assertEquals(StatementImportStatus.REVERSED, import.status)
     }
+
+    @Test
+    fun `history shows upload time, file name and which lines are posted`() {
+        val import = cardImport(food, null)
+        import.fileName = "tarjeta-agosto.pdf"
+        service.confirm(1)
+        `when`(importRepo.findByUserIdOrderByStatementDateDesc(0L)).thenReturn(listOf(import))
+
+        val summary = service.list().single()
+        val detail = service.get(1)
+
+        assertEquals("tarjeta-agosto.pdf", summary.fileName)
+        assertEquals(import.createdAt, summary.uploadedAt)
+        assertEquals(listOf(true, false), detail.lines!!.map { it.posted })
+    }
 }

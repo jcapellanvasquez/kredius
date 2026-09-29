@@ -2,7 +2,7 @@ import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core'
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { concatMap, from, toArray } from 'rxjs';
 import { AccountApiService } from '../../account-api.service';
-import { Period, currentPeriod } from '../../../../shared/utils/period';
+import { Period, currentPeriod, toIsoDate } from '../../../../shared/utils/period';
 import { percentOf, progressLevel } from '../../../../shared/utils/progress-level';
 import { BUDGET_THRESHOLDS, SAVED_HINT_MS, STATEMENT_KIND_ORDER } from '../budget.constants';
 import { LineStatus, SaveState, StatementAccountKind } from '../budget.enums';
@@ -38,6 +38,8 @@ export class BudgetStore {
   // ── Upload ────────────────────────────────────────────────────────────────
   readonly uploadOpen = signal(false);
   readonly uploadFiles = signal<Partial<Record<StatementAccountKind, File>>>({});
+  /** Statement date sent with the upload (`YYYY-MM-DD`); defaults to today. */
+  readonly uploadDate = signal(toIsoDate());
   readonly uploading = signal(false);
   readonly uploadError = signal(false);
   readonly lastUploadResults = signal<UploadResult[] | null>(null);
@@ -76,7 +78,8 @@ export class BudgetStore {
     return over.sort((a, b) => (b.pct ?? 0) - (a.pct ?? 0))[0]?.accountId ?? null;
   });
 
-  readonly canProcess = computed(() => !this.uploading() && Object.values(this.uploadFiles()).some(Boolean));
+  readonly canProcess = computed(() =>
+    !this.uploading() && !!this.uploadDate() && Object.values(this.uploadFiles()).some(Boolean));
 
   readonly uploadSummary = computed(() => {
     const results = this.lastUploadResults();
@@ -208,16 +211,21 @@ export class BudgetStore {
     this.uploadError.set(false);
   }
 
+  setUploadDate(date: string): void {
+    this.uploadDate.set(date);
+  }
+
   process(): void {
     if (!this.canProcess()) return;
     const files = this.uploadFiles();
+    const statementDate = this.uploadDate();
     const picked = STATEMENT_KIND_ORDER.filter(kind => files[kind]);
 
     this.uploading.set(true);
     this.uploadError.set(false);
     from(picked)
       .pipe(
-        concatMap(kind => this.api.upload(kind, files[kind] as File)),
+        concatMap(kind => this.api.upload(kind, files[kind] as File, statementDate)),
         toArray(),
         takeUntilDestroyed(this.destroyRef),
       )

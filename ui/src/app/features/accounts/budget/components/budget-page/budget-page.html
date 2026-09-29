@@ -12,11 +12,13 @@
     <app-upload-panel
       [lastUploads]="store.screen()?.lastUploads ?? []"
       [files]="store.uploadFiles()"
+      [statementDate]="store.uploadDate()"
       [uploading]="store.uploading()"
       [canProcess]="store.canProcess()"
       [error]="store.uploadError()"
       [historyOpen]="store.historyOpen()"
       (fileChange)="store.setFile($event.kind, $event.file)"
+      (statementDateChange)="store.setUploadDate($event)"
       (process)="store.process()"
       (toggleHistory)="store.toggleHistory()">
       @if (store.historyOpen()) {

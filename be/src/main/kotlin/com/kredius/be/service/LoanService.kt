@@ -105,6 +105,36 @@ class LoanService(
         return entry
     }
 
+    /**
+     * A savings row paying (received loan) or collecting (given loan) an installment: books the bank's
+     * [amount] on the row's date against the loan's oldest pending installment and marks it PAID
+     * (plan Q8a: take what the bank posted). Returns the entry's line on the statement account, which
+     * the statement line links to; null when the row doesn't fit (wrong direction, nothing pending).
+     */
+    @Transactional
+    fun payFromStatement(loan: Loan, line: StatementLine, amount: BigDecimal, source: JournalSource, referenceId: Long): JournalLine? {
+        val expected = if (loan.type == LoanType.RECEIVED) StatementLineType.DEBIT else StatementLineType.CREDIT
+        if (line.type != expected) return null
+        val installment = loan.installments
+            .filter { it.status == InstallmentStatus.PENDING }
+            .minByOrNull { it.number } ?: return null
+        val statementAccount = line.account
+        val entry = payInstallment(loan, installment, amount, line.lineDate, statementAccount, source, referenceId)
+        return entry.lines.first { it.account === statementAccount }
+    }
+
+    /** Back to PENDING for installments paid by these (now reversed) entries. */
+    @Transactional
+    fun reopenInstallmentsPaidBy(entryIds: Collection<Long>) {
+        if (entryIds.isEmpty()) return
+        for (installment in loanInstallmentRepo.findByJournalEntryIdIn(entryIds)) {
+            installment.status = InstallmentStatus.PENDING
+            installment.actualPaymentDate = null
+            installment.journalEntry = null
+            loanInstallmentRepo.save(installment)
+        }
+    }
+
     /** The account savings statements are uploaded for (Account.statementType = SAVINGS). */
     internal fun savingsAccount(): Account =
         accountRepo.findFirstByUserIdAndStatementTypeAndActiveTrueOrderByCodeAsc(currentUser.id, StatementType.SAVINGS)

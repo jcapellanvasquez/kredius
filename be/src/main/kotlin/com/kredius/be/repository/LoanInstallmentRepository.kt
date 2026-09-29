@@ -11,4 +11,6 @@ interface LoanInstallmentRepository : JpaRepository<LoanInstallment, Long> {
     @Modifying(clearAutomatically = true)
     @Query("DELETE FROM LoanInstallment li WHERE li.loan.id = :loanId AND li.status = 'PENDING'")
     fun deletePendingByLoanId(@Param("loanId") loanId: Long)
+
+    fun findByJournalEntryIdIn(entryIds: Collection<Long>): List<LoanInstallment>
 }

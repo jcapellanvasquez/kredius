@@ -36,6 +36,10 @@ class StatementLine(
     @Column(name = "is_excluded", nullable = false)
     var isExcluded: Boolean = false,
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "exclusion_reason", length = 40)
+    var exclusionReason: ExclusionReason? = null,
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_account_id")
     var categoryAccount: Account? = null,
@@ -56,4 +60,10 @@ class StatementLine(
 ) {
     @Column(name = "created_at", nullable = false, updatable = false)
     val createdAt: OffsetDateTime = OffsetDateTime.now()
+
+    /** Excludes the line from posting; the only place that should set `isExcluded` to true. */
+    fun exclude(reason: ExclusionReason) {
+        isExcluded = true
+        exclusionReason = reason
+    }
 }

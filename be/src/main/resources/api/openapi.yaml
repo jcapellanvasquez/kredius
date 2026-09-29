@@ -1304,6 +1304,11 @@ components:
         isPayment:
           type: boolean
           description: Auto-excluded payment row (e.g. PAGO DEBITO A CUENTA)
+        exclusionReason:
+          type: string
+          enum: [CARD_PAYMENT_AVOID_DOUBLE_ENTRY, INITIAL_BALANCE, USER_EXCLUDED, LOAN_PAYMENT_ALREADY_RECORDED]
+          nullable: true
+          description: Why the line is excluded; null when it isn't
         lineType:
           type: string
           enum: [DEBIT, CREDIT, INITIAL_BALANCE]

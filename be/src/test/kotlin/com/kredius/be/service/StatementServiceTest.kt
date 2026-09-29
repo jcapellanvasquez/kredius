@@ -3,6 +3,8 @@ package com.kredius.be.service
 import com.kredius.be.entity.Account
 import com.kredius.be.entity.AccountType
 import com.kredius.be.entity.CurrencyType
+import com.kredius.be.entity.EntrySide
+import com.kredius.be.entity.ExclusionReason
 import com.kredius.be.entity.JournalEntry
 import com.kredius.be.entity.JournalLine
 import com.kredius.be.entity.MerchantDictionary
@@ -41,19 +43,23 @@ import com.kredius.be.model.StatementType as ApiStatementType
 
 class StatementServiceTest {
 
+    private val savings = Account(id = 1, name = "Ahorros", type = AccountType.ASSET)
     private val card = Account(id = 2, name = "Tarjeta", type = AccountType.LIABILITY)
     private val food = Account(name = "Comida", type = AccountType.EXPENSE)
 
     private val savedEntries = mutableListOf<JournalEntry>()
+    private val savedJournalLines = mutableListOf<JournalLine>()
     private val storedLines = mutableListOf<StatementLine>()
     private val importRepo = mock(StatementImportRepository::class.java)
     private val cardParser = mock(BhdPdfParser::class.java)
+    private val savingsParser = mock(BhdSavingsPdfParser::class.java)
     private val merchantRepo = mock(MerchantDictionaryRepository::class.java)
 
     private val service = run {
         val userRepo = mock(UserRepository::class.java)
         `when`(userRepo.findById(0L)).thenReturn(Optional.of(User()))
         val accountRepo = mock(AccountRepository::class.java)
+        `when`(accountRepo.findByIdAndUserId(1L, 0L)).thenReturn(savings)
         `when`(accountRepo.findByIdAndUserId(2L, 0L)).thenReturn(card)
         `when`(importRepo.save(any(StatementImport::class.java))).thenAnswer { it.arguments[0] }
         val statementLineRepo = mock(StatementLineRepository::class.java)
@@ -63,8 +69,10 @@ class StatementServiceTest {
         `when`(entryRepo.save(any(JournalEntry::class.java)))
             .thenAnswer { (it.arguments[0] as JournalEntry).also(savedEntries::add) }
         val lineRepo = mock(JournalLineRepository::class.java)
-        `when`(lineRepo.save(any(JournalLine::class.java))).thenAnswer { it.arguments[0] }
-        `when`(lineRepo.saveAndFlush(any(JournalLine::class.java))).thenAnswer { it.arguments[0] }
+        `when`(lineRepo.save(any(JournalLine::class.java)))
+            .thenAnswer { (it.arguments[0] as JournalLine).also(savedJournalLines::add) }
+        `when`(lineRepo.saveAndFlush(any(JournalLine::class.java)))
+            .thenAnswer { (it.arguments[0] as JournalLine).also(savedJournalLines::add) }
 
         StatementService(
             currentUser = CurrentUserService(userRepo, 0L),
@@ -75,7 +83,7 @@ class StatementServiceTest {
             journalEntryRepo = entryRepo,
             exchangeRateRepo = mock(ExchangeRateRepository::class.java),
             parser = cardParser,
-            savingsParser = mock(BhdSavingsPdfParser::class.java),
+            savingsParser = savingsParser,
             journalService = JournalService(entryRepo, lineRepo),
         )
     }
@@ -99,25 +107,38 @@ class StatementServiceTest {
         return import
     }
 
-    private fun row(day: Int, description: String, amount: String, occurrence: Int = 1) = ParsedStatementRow(
+    private fun row(
+        day: Int,
+        description: String,
+        amount: String,
+        occurrence: Int = 1,
+        direction: RowDirection = RowDirection.DEBIT,
+    ) = ParsedStatementRow(
         date = LocalDate.of(2026, 8, day),
         description = description,
         amount = BigDecimal(amount),
         currency = CurrencyType.RD,
-        direction = RowDirection.DEBIT,
+        direction = direction,
         occurrenceIndex = occurrence,
     )
 
     /** Uploads [rows] as a card statement and keeps its lines as the account's stored lines. */
     private fun uploadCard(vararg rows: ParsedStatementRow): StatementImport {
         `when`(cardParser.parse(any(InputStream::class.java) ?: InputStream.nullInputStream())).thenReturn(rows.toList())
+        return upload(card, ApiStatementType.CREDIT_CARD)
+    }
+
+    private fun uploadSavings(vararg rows: ParsedStatementRow): StatementImport {
+        `when`(savingsParser.parse(any(InputStream::class.java) ?: InputStream.nullInputStream())).thenReturn(rows.toList())
+        return upload(savings, ApiStatementType.SAVINGS)
+    }
+
+    private fun upload(account: Account, type: ApiStatementType): StatementImport {
         var saved: StatementImport? = null
         `when`(importRepo.save(any(StatementImport::class.java)))
             .thenAnswer { (it.arguments[0] as StatementImport).also { i -> saved = i } }
-        service.upload(
-            MockMultipartFile("file", ByteArray(0)), 2L, ApiStatementType.CREDIT_CARD, LocalDate.of(2026, 8, 26)
-        )
-        return saved!!.also { storedLines += it.lines }
+        service.upload(MockMultipartFile("file", ByteArray(0)), account.id, type, LocalDate.of(2026, 8, 26))
+        return saved!!.also { imp -> storedLines += imp.lines.filter { it.account === account } }
     }
 
     private fun knownMerchant(pattern: String, account: Account) {
@@ -218,5 +239,23 @@ class StatementServiceTest {
         assertEquals(StatementImportStatus.FAILED, saved!!.status)
         assertEquals("not a BHD statement", response.errorMessage)
         assertEquals(0, savedEntries.size)
+    }
+
+    @Test
+    fun `a card payment on both statements is posted once, from savings`() {
+        knownMerchant("PAGO DE TC", card)
+
+        val cardImport = uploadCard(
+            row(15, "PAGO DEBITO A CUENTA MBP", "10000.00", direction = RowDirection.CREDIT),
+            row(16, "CAFE", "100.00"),
+        )
+        uploadSavings(row(17, "PAGO DE TC 4641 3300 0032 7971", "10000.00"))
+
+        val payment = cardImport.lines[0]
+        assertEquals(ExclusionReason.CARD_PAYMENT_AVOID_DOUBLE_ENTRY, payment.exclusionReason)
+        assertNull(payment.categoryAccount)
+        assertEquals(1, savedEntries.size)
+        val sides = savedJournalLines.associate { it.account.name to it.side }
+        assertEquals(mapOf("Tarjeta" to EntrySide.DEBIT, "Ahorros" to EntrySide.CREDIT), sides)
     }
 }

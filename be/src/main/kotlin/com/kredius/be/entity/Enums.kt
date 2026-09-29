@@ -24,6 +24,15 @@ enum class StatementType { CREDIT_CARD, SAVINGS }
 
 enum class StatementLineType { DEBIT, CREDIT, INITIAL_BALANCE }
 
+/** Why a statement line is excluded from posting; set together with `isExcluded`. */
+enum class ExclusionReason {
+    /** Card payment row: the savings statement posts this payment. */
+    CARD_PAYMENT_AVOID_DOUBLE_ENTRY,
+    INITIAL_BALANCE,
+    USER_EXCLUDED,
+    LOAN_PAYMENT_ALREADY_RECORDED,
+}
+
 enum class StatementImportStatus {
     UPLOADED, PROCESSING, PENDING_REVIEW, CONFIRMED, FAILED, REVERSED
 }

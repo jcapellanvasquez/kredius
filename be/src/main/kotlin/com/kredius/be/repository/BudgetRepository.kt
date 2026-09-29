@@ -7,4 +7,6 @@ import java.time.LocalDate
 interface BudgetRepository : JpaRepository<Budget, Long> {
     fun findByAccountIdAndPeriod(accountId: Long, period: LocalDate): Budget?
     fun findByAccountIdInAndPeriod(accountIds: Collection<Long>, period: LocalDate): List<Budget>
+
+    fun findTopByAccountIdAndPeriodLessThanOrderByPeriodDesc(accountId: Long, period: LocalDate): Budget?
 }

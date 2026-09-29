@@ -1,6 +1,5 @@
 package com.kredius.be.exception
 
-import com.kredius.be.model.DuplicateImportError
 import com.kredius.be.model.ErrorResponse
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpHeaders
@@ -17,12 +16,6 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 class GlobalExceptionHandler : ResponseEntityExceptionHandler() {
 
     private val log = LoggerFactory.getLogger(GlobalExceptionHandler::class.java)
-
-    @ExceptionHandler(DuplicateImportException::class)
-    fun handleDuplicateImport(ex: DuplicateImportException): ResponseEntity<DuplicateImportError> =
-        ResponseEntity.status(HttpStatus.CONFLICT).body(
-            DuplicateImportError(error = "duplicate_confirmed_import", existingImportId = ex.existingImportId)
-        )
 
     @ExceptionHandler(ApiException::class)
     fun handleApiException(ex: ApiException): ResponseEntity<ErrorResponse> {

@@ -42,7 +42,6 @@ Entity enums and API enums often share names. When both are needed in one file, 
 
 **Layers:** `controller` → `service` → `repository` (Spring Data JPA) → `entity`. PDF parsing lives in `parser/`. Errors go through `exception/GlobalExceptionHandler`:
 - Throw `ApiException(code, message, httpStatus)` for API errors. It is rendered as the generated `ErrorResponse`.
-- `DuplicateImportException` returns 409 with a `DuplicateImportError` body.
 
 **Multi-tenancy by Hibernate filter:**
 - Entities carry `@Filter(name = "userFilter", condition = "user_id = :userId")`. The `@FilterDef` is declared on `Account`.
@@ -62,12 +61,12 @@ Entity enums and API enums often share names. When both are needed in one file, 
 - `JournalSource` records the origin of each entry, and `referenceId` points back to the originating record (for example the statement import id).
 
 **Statement import pipeline (`StatementService`):** this is the core feature. It turns BHD bank PDF statements into journal entries.
-1. **Upload:** the PDF is parsed by `BhdPdfParser` (credit card) or `BhdSavingsPdfParser` (savings). Both use PDFBox with regexes over Spanish-language section headers. Each row becomes a `StatementLine`. Its category account is guessed by matching the description against `MerchantDictionary` patterns. The import is set to `PENDING_REVIEW`, or `FAILED` with `errorMessage` on any exception.
+1. **Upload:** the PDF is parsed by `BhdPdfParser` (credit card) or `BhdSavingsPdfParser` (savings). Both use PDFBox with regexes over Spanish-language section headers. Rows already imported for the account are skipped (see dedup below); each new row becomes a `StatementLine`. Its category account is guessed by matching the description against `MerchantDictionary` patterns. The import is set to `PENDING_REVIEW` (`CONFIRMED` if nothing new needs review), or `FAILED` with `errorMessage` on any exception.
 2. **Review:** `patchLine` sets the category account or `isExcluded` on a line. Setting a category also "learns" a merchant pattern: the part of the description before `#` or `*`.
-3. **Confirm:** each non-excluded, categorized line is posted through `JournalService.saveJournalLine`. That method runs with `REQUIRES_NEW`, so if one line hits a `DataIntegrityViolationException` (a duplicate), the other lines still commit. The import becomes `CONFIRMED` only once every non-excluded line has been posted. Otherwise it stays `PENDING_REVIEW`, and you can confirm again later to post the rest.
+3. **Confirm:** each non-excluded, categorized line is posted through `JournalService.saveJournalLine`. Lines that already have a `journalLine` are skipped, so confirming again never double-posts. The import becomes `CONFIRMED` only once every non-excluded line has been posted. Otherwise it stays `PENDING_REVIEW`, and you can confirm again later to post the rest.
 4. **Reverse:** posts mirrored reversal entries and sets the import to `REVERSED`.
 
-`occurrenceIndex` tells apart identical transactions (same date, description and amount) inside one statement. It is part of the unique constraints on `statement_lines` and `journal_entries`, and it is what makes re-confirming idempotent.
+**Dedup:** a statement line is the same transaction when it has the same account, date, description, amount, currency and `occurrenceIndex`. That is the unique constraint on `statement_lines`; upload loads the account's existing keys and skips matching rows. `occurrenceIndex` tells apart identical transactions inside one statement, so re-uploading the same or a longer statement numbers them the same way.
 
 Other domains follow the same controller/service pattern: loans (`Loan`, `LoanInstallment`, `PrincipalPayment`), income, budgets, merchant dictionary and reports.
 

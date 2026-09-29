@@ -7,12 +7,18 @@ import java.time.OffsetDateTime
 
 @Entity
 @Table(name = "statement_lines", uniqueConstraints = [
-    UniqueConstraint(columnNames = arrayOf("description", "lineDate", "amount", "occurrenceIndex", "currency"))
+    UniqueConstraint(columnNames = [
+        "account_id", "line_date", "description", "amount", "currency", "occurrence_index"])
 ])
 class StatementLine(
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "statement_import_id", nullable = false)
     var statementImport: StatementImport = StatementImport(),
+
+    /** The statement's account, copied from the import so the dedup constraint can be per account. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "account_id", nullable = false, updatable = false)
+    val account: Account = Account(),
 
     @Column(name = "line_date", nullable = false)
     var lineDate: LocalDate = LocalDate.now(),

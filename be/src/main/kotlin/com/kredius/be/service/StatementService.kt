@@ -74,6 +74,7 @@ class StatementService(
             val lines = rows.map { row ->
                 StatementLine(
                     statementImport = import,
+                    account = account,
                     lineDate = row.date,
                     description = row.description,
                     currency = row.currency,
@@ -166,7 +167,6 @@ class StatementService(
             JournalSource.CARD_STATEMENT else JournalSource.SAVINGS_STATEMENT
 
         val usdRate = exchangeRateRepo.findTopByContextOrderByRateDateDesc(RateContext.CREDIT_CARD)
-        val journalEntryList = journalEntryRepo.findByReferenceIdAndSource(importStatement.id, source)
 
         for (line in importStatement.lines.filter { line -> isNewJournalEntry(line) }) {
             try {
@@ -183,8 +183,8 @@ class StatementService(
             }
         }
 
-        val journalLinesCount = journalEntryList.size + postedCount
-        importStatement.status = if (importStatement.lines.filter { !it.isExcluded  }.size == journalLinesCount) StatementImportStatus.CONFIRMED else StatementImportStatus.PENDING_REVIEW
+        val allPosted = importStatement.lines.filter { !it.isExcluded }.all { it.journalLine != null }
+        importStatement.status = if (allPosted) StatementImportStatus.CONFIRMED else StatementImportStatus.PENDING_REVIEW
         importRepo.saveAndFlush(importStatement)
 
         return ResponseEntity.ok(ConfirmImportResponse(id = importStatement.id, status = ApiStatus.CONFIRMED, postedEntries = postedCount))
@@ -277,8 +277,9 @@ class StatementService(
         categoryAccountName = categoryAccount?.name,
     )
 
+    /** A line is posted once: `journalLine` is set when it is, so re-confirming skips it. */
     private fun isNewJournalEntry(row: StatementLine): Boolean {
-        return !row.isExcluded && row.categoryAccount != null
+        return !row.isExcluded && row.categoryAccount != null && row.journalLine == null
     }
 
     companion object {

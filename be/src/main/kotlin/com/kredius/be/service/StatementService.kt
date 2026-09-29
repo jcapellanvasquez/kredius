@@ -283,9 +283,11 @@ class StatementService(
         val originals = journalEntryRepo.findByReferenceIdAndSource(import.id, source)
             .filter { it.correctionType != CorrectionType.REVERSAL }
         for (original in originals) {
+            // Dated like the entry it mirrors, so the month the original landed in nets to zero
+            // instead of this month turning negative.
             val reversal = journalEntryRepo.save(
                 JournalEntry(
-                    entryDate = LocalDate.now(),
+                    entryDate = original.entryDate,
                     description = "REVERSAL: ${original.description}",
                     source = source,
                     referenceId = import.id,

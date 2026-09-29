@@ -416,6 +416,7 @@ class StatementServiceTest {
 
         val reversals = savedEntries.filter { it.correctionType == CorrectionType.REVERSAL }
         assertEquals(2, reversals.size)
+        assertTrue(reversals.all { it.entryDate == it.reversesEntry!!.entryDate })
         assertTrue(netByAccount().values.all { it.signum() == 0 }, "net by account: ${netByAccount()}")
         assertEquals(StatementImportStatus.REVERSED, import.status)
     }

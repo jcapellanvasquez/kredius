@@ -8,6 +8,7 @@ import com.kredius.be.entity.EntrySide
 import com.kredius.be.entity.ExclusionReason
 import com.kredius.be.entity.JournalEntry
 import com.kredius.be.entity.JournalLine
+import com.kredius.be.entity.JournalSource
 import com.kredius.be.entity.MerchantDictionary
 import com.kredius.be.entity.StatementImport
 import com.kredius.be.entity.StatementImportStatus
@@ -65,6 +66,7 @@ class StatementServiceTest {
     private val savingsParser = mock(BhdSavingsPdfParser::class.java)
     private val merchantRepo = mock(MerchantDictionaryRepository::class.java)
     private val statementLineRepo = mock(StatementLineRepository::class.java)
+    private val entryRepo = mock(JournalEntryRepository::class.java)
 
     private val service = run {
         val userRepo = mock(UserRepository::class.java)
@@ -79,9 +81,10 @@ class StatementServiceTest {
         `when`(statementLineRepo.save(any(StatementLine::class.java))).thenAnswer { it.arguments[0] }
         `when`(statementLineRepo.findByAccountIdAndLineDateBetween(anyLong(), anyDate(), anyDate()))
             .thenAnswer { storedLines.toList() }
-        val entryRepo = mock(JournalEntryRepository::class.java)
         `when`(entryRepo.save(any(JournalEntry::class.java)))
-            .thenAnswer { (it.arguments[0] as JournalEntry).also(savedEntries::add) }
+            .thenAnswer { (it.arguments[0] as JournalEntry).also { e -> if (savedEntries.none { it === e }) savedEntries += e } }
+        `when`(entryRepo.findByReferenceIdAndSource(anyLong(), any(JournalSource::class.java) ?: JournalSource.MANUAL))
+            .thenAnswer { inv -> savedEntries.filter { it.referenceId == inv.arguments[0] && it.source == inv.arguments[1] } }
         val lineRepo = mock(JournalLineRepository::class.java)
         `when`(lineRepo.save(any(JournalLine::class.java)))
             .thenAnswer { (it.arguments[0] as JournalLine).also(savedJournalLines::add) }
@@ -175,8 +178,8 @@ class StatementServiceTest {
 
     private fun assertConflict(block: () -> Unit) = assertStatus(HttpStatus.CONFLICT, block)
 
-    /** Each account's DR − CR over every journal line saved so far, keyed by account name. */
-    private fun netByAccount() = savedJournalLines.groupBy { it.account.name }.mapValues { (_, lines) ->
+    /** Each account's DR − CR over the lines of every entry saved so far, keyed by account name. */
+    private fun netByAccount() = savedEntries.flatMap { it.lines }.groupBy { it.account.name }.mapValues { (_, lines) ->
         lines.sumOf { if (it.side == EntrySide.DEBIT) it.amountRd else it.amountRd.negate() }
     }
 
@@ -401,5 +404,29 @@ class StatementServiceTest {
         import.status = StatementImportStatus.REVERSED
         assertConflict { recategorize(import.lines[1], market.id) }
         assertEquals(1, savedEntries.size)
+    }
+
+    @Test
+    fun `reversing after a recategorization nets every account to zero`() {
+        val import = cardImport(food, null)
+        service.confirm(1)
+        recategorize(import.lines[0], market.id)
+
+        service.reverse(1)
+
+        val reversals = savedEntries.filter { it.correctionType == CorrectionType.REVERSAL }
+        assertEquals(2, reversals.size)
+        assertTrue(netByAccount().values.all { it.signum() == 0 }, "net by account: ${netByAccount()}")
+        assertEquals(StatementImportStatus.REVERSED, import.status)
+    }
+
+    @Test
+    fun `reverse refuses an import that is already reversed`() {
+        val import = cardImport(food)
+        service.confirm(1)
+        service.reverse(1)
+
+        assertConflict { service.reverse(1) }
+        assertEquals(StatementImportStatus.REVERSED, import.status)
     }
 }

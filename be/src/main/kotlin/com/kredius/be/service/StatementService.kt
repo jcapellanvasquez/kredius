@@ -278,11 +278,15 @@ class StatementService(
         val import = importRepo.findByIdAndUserId(id, currentUser.id)
             ?: throw ApiException(ApiException.NOT_FOUND, "Statement import not found", HttpStatus.NOT_FOUND)
 
-        if (import.status != StatementImportStatus.CONFIRMED)
-            throw ApiException(ApiException.CONFLICT, "Import is not in CONFIRMED status", HttpStatus.CONFLICT)
+        // PATCH posts line by line, so a PENDING_REVIEW import can already have entries to undo.
+        if (import.status != StatementImportStatus.CONFIRMED && import.status != StatementImportStatus.PENDING_REVIEW)
+            throw ApiException(ApiException.CONFLICT, "Import can't be reversed in ${import.status} status", HttpStatus.CONFLICT)
 
+        // Every entry of the import shares its referenceId: original postings and recategorizations,
+        // so the corrections are undone too and every account touched nets to zero.
         val source = import.journalSource()
         val originals = journalEntryRepo.findByReferenceIdAndSource(import.id, source)
+            .filter { it.correctionType != CorrectionType.REVERSAL }
         for (original in originals) {
             val reversal = journalEntryRepo.save(
                 JournalEntry(

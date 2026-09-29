@@ -136,11 +136,19 @@
       <plugin>
         <groupId>org.jetbrains.kotlin</groupId>
         <artifactId>kotlin-maven-plugin</artifactId>
+        <executions>
+          <!-- sourceDirs only on the main compile: at plugin level they would also replace src/test/kotlin in test-compile -->
+          <execution>
+            <id>compile</id>
+            <configuration>
+              <sourceDirs>
+                <sourceDir>${project.basedir}/src/main/kotlin</sourceDir>
+                <sourceDir>${generated-sources-path}/src/main/kotlin</sourceDir>
+              </sourceDirs>
+            </configuration>
+          </execution>
+        </executions>
         <configuration>
-          <sourceDirs>
-            <sourceDir>${project.basedir}/src/main/kotlin</sourceDir>
-            <sourceDir>${generated-sources-path}/src/main/kotlin</sourceDir>
-          </sourceDirs>
           <args>
             <arg>-Xjsr305=strict</arg>
             <arg>-Xannotation-default-target=param-property</arg>

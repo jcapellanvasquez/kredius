@@ -24,10 +24,11 @@ class BhdSavingsPdfParserTest {
 
     @Test
     fun `debits and credits match the statement totals`() {
-        assertEquals(30, movements.count { !it.isCredit })
-        assertEquals(BigDecimal("204812.67"), movements.sumOf { it.debit })
-        assertEquals(2, movements.count { it.isCredit })
-        assertEquals(BigDecimal("198451.64"), movements.sumOf { it.credit })
+        val (credits, debits) = movements.partition { it.direction == RowDirection.CREDIT }
+        assertEquals(30, debits.size)
+        assertEquals(BigDecimal("204812.67"), debits.sumOf { it.amount })
+        assertEquals(2, credits.size)
+        assertEquals(BigDecimal("198451.64"), credits.sumOf { it.amount })
     }
 
     @Test
@@ -43,18 +44,15 @@ class BhdSavingsPdfParserTest {
     @Test
     fun `row fields`() {
         val first = movements.first()
-        assertEquals(LocalDate.of(2026, 8, 3), first.transactionDate)
+        assertEquals(LocalDate.of(2026, 8, 3), first.date)
         assertEquals("105664", first.reference)
         assertEquals("Ret. VISA ABPHNM", first.description)
-        assertEquals(BigDecimal("4900.00"), first.debit)
-        assertEquals(BigDecimal("0.00"), first.credit)
-        assertEquals(BigDecimal("97817.23"), first.balance)
+        assertEquals(BigDecimal("4900.00"), first.amount)
+        assertEquals(RowDirection.DEBIT, first.direction)
 
-        val income = movements.first { it.isCredit }
+        val income = movements.first { it.direction == RowDirection.CREDIT }
         assertEquals("CR TR INTL: ACME CORP LLC USD TRA", income.description)
         assertEquals(BigDecimal("198450.00"), income.amount)
-
-        assertEquals(BigDecimal("96356.20"), movements.last().balance)
     }
 
     @Test
@@ -79,7 +77,7 @@ class BhdSavingsPdfParserTest {
     fun `the statement's two identical withdrawals are told apart`() {
         // Same date, description and amount; only the bank reference differs
         val withdrawals = movements.filter {
-            it.transactionDate == LocalDate.of(2026, 8, 10) && it.description == "Ret. VISA APAP- SUCURSAL"
+            it.date == LocalDate.of(2026, 8, 10) && it.description == "Ret. VISA APAP- SUCURSAL"
         }
         assertEquals(listOf("2766046", "2790152"), withdrawals.map { it.reference })
         assertEquals(listOf(1, 2), withdrawals.map { it.occurrenceIndex })

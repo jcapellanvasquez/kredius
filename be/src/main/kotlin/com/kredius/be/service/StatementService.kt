@@ -8,7 +8,8 @@ import com.kredius.be.model.*
 import com.kredius.be.model.StatementType
 import com.kredius.be.parser.BhdPdfParser
 import com.kredius.be.parser.BhdSavingsPdfParser
-import com.kredius.be.parser.ParsedSavingsStatementLine
+import com.kredius.be.parser.ParsedStatementRow
+import com.kredius.be.parser.RowDirection
 import com.kredius.be.repository.*
 import org.slf4j.LoggerFactory
 import org.springframework.dao.DataIntegrityViolationException
@@ -66,41 +67,22 @@ class StatementService(
                 .firstOrNull { (pattern, _) -> description.uppercase().contains(pattern) }
                 ?.value?.account
 
-            val lines = when (type) {
+            val rows = when (type) {
                 ApiStatementType.SAVINGS -> savingsParser.parse(file.inputStream)
-                    .map { row ->
-                        val lineType = when {
-                            row.isInitialBalance -> StatementLineType.INITIAL_BALANCE
-                            row.credit > BigDecimal.ZERO -> StatementLineType.CREDIT
-                            else -> StatementLineType.DEBIT
-                        }
-
-                        StatementLine(
-                            statementImport = import,
-                            lineDate = row.transactionDate,
-                            description = row.description,
-                            currency = row.currency,
-                            amount = row.amount,
-                            isExcluded = row.isInitialBalance,
-                            type = lineType,
-                            categoryAccount = if (row.isInitialBalance) null else matchAccount(row.description),
-                            occurrenceIndex = row.occurrenceIndex,
-                        )
-                    }
-
-                else -> parser.parse(file.inputStream).map { row ->
-                    StatementLine(
-                        statementImport = import,
-                        lineDate = row.transactionDate,
-                        description = row.description,
-                        currency = row.currency,
-                        amount = row.amount,
-                        isExcluded = false,
-                        type = if (row.isPayment) StatementLineType.CREDIT else StatementLineType.DEBIT,
-                        categoryAccount = matchAccount(row.description),
-                        occurrenceIndex = row.occurrenceIndex,
-                    )
-                }
+                else -> parser.parse(file.inputStream)
+            }
+            val lines = rows.map { row ->
+                StatementLine(
+                    statementImport = import,
+                    lineDate = row.date,
+                    description = row.description,
+                    currency = row.currency,
+                    amount = row.amount,
+                    isExcluded = row.isInitialBalance,
+                    type = row.lineType(),
+                    categoryAccount = if (row.isInitialBalance) null else matchAccount(row.description),
+                    occurrenceIndex = row.occurrenceIndex,
+                )
             }
             import.lines.addAll(lines)
 
@@ -113,6 +95,12 @@ class StatementService(
             importRepo.save(import)
             import.toResponse()
         }
+    }
+
+    private fun ParsedStatementRow.lineType() = when {
+        isInitialBalance -> StatementLineType.INITIAL_BALANCE
+        direction == RowDirection.CREDIT -> StatementLineType.CREDIT
+        else -> StatementLineType.DEBIT
     }
 
     fun patchLine(id: Long, request: PatchStatementLineRequest): StatementLineDto {

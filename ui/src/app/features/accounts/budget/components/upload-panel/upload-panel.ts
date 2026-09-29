@@ -33,6 +33,13 @@ export interface FilePick {
       </div>
       <p class="text-xs text-gray-400 mb-2.5">{{ text.uploadHint }}</p>
 
+      <div class="flex items-center gap-2 mb-2.5">
+        <label [for]="dateId" class="text-sm text-gray-500 shrink-0">{{ text.statementDate }}</label>
+        <input [id]="dateId" type="date" [value]="statementDate()" [disabled]="uploading()"
+          (change)="onDateChange($event)"
+          class="flex-1 min-w-0 px-3 py-1.5 text-sm text-gray-900 tabular-nums bg-white rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-300 disabled:bg-gray-50" />
+      </div>
+
       @if (error()) {
         <p class="flex items-center gap-1 text-xs text-gray-900 mb-2.5" role="alert">
           <app-icon [name]="icons.Alert" [size]="14" /> {{ text.uploadError }}
@@ -63,18 +70,21 @@ export interface FilePick {
 export class UploadPanelComponent {
   readonly lastUploads = input<LastUpload[]>([]);
   readonly files = input<Partial<Record<StatementAccountKind, File>>>({});
+  readonly statementDate = input('');
   readonly uploading = input(false);
   readonly canProcess = input(false);
   readonly error = input(false);
   readonly historyOpen = input(false);
 
   readonly fileChange = output<FilePick>();
+  readonly statementDateChange = output<string>();
   readonly process = output<void>();
   readonly toggleHistory = output<void>();
 
   protected readonly text = BUDGET_TEXT;
   protected readonly icons = UiIcon;
   protected readonly accept = STATEMENT_FILE_ACCEPT;
+  protected readonly dateId = 'statement-date';
 
   protected readonly slots = computed(() =>
     STATEMENT_KIND_ORDER.map(kind => ({
@@ -82,4 +92,8 @@ export class UploadPanelComponent {
       uploadedAt: this.lastUploads().find(u => u.kind === kind)?.uploadedAt ?? null,
     })),
   );
+
+  protected onDateChange(event: Event): void {
+    this.statementDateChange.emit((event.target as HTMLInputElement).value);
+  }
 }

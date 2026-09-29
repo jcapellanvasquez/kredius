@@ -12,6 +12,13 @@ export function toPeriod(year: number, monthIndex: number): Period {
   return `${d.getFullYear()}-${mm}-01`;
 }
 
+/** A local calendar date as `YYYY-MM-DD` (never via toISOString(), which shifts to UTC). */
+export function toIsoDate(date: Date = new Date()): string {
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  return `${date.getFullYear()}-${mm}-${dd}`;
+}
+
 export function currentPeriod(today: Date = new Date()): Period {
   return toPeriod(today.getFullYear(), today.getMonth());
 }

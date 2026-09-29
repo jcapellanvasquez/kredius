@@ -16,8 +16,11 @@ export abstract class BudgetApi {
   /** Every expense category, for the "Otra" dropdown. */
   abstract getCategoryOptions(): Observable<CategoryOption[]>;
 
-  /** Future `POST /statement-imports` — dedups by bank reference, auto-posts known merchants. */
-  abstract upload(kind: StatementAccountKind, file: File): Observable<UploadResult>;
+  /**
+   * `POST /statement-imports` — skips rows already imported, auto-posts known merchants.
+   * `statementDate` (`YYYY-MM-DD`) is metadata for the history; each row posts on its own date.
+   */
+  abstract upload(kind: StatementAccountKind, file: File, statementDate: string): Observable<UploadResult>;
 
   /** Unposted line. Future `PATCH /statement-lines/{id}`. */
   abstract categorize(lineId: number, categoryId: number): Observable<void>;

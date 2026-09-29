@@ -40,9 +40,9 @@ export class BudgetMockApi extends BudgetApi {
     return this.respond(() => this.data().categories);
   }
 
-  upload(kind: StatementAccountKind, file: File): Observable<UploadResult> {
+  upload(kind: StatementAccountKind, file: File, statementDate: string): Observable<UploadResult> {
     if (this.scenario() === MockScenario.SaveError) return this.fail();
-    return this.respond(() => this.applyUpload(kind, file.name));
+    return this.respond(() => this.applyUpload(kind, file.name, statementDate));
   }
 
   categorize(lineId: number, categoryId: number): Observable<void> {
@@ -123,7 +123,7 @@ export class BudgetMockApi extends BudgetApi {
     });
   }
 
-  private applyUpload(kind: StatementAccountKind, fileName: string): UploadResult {
+  private applyUpload(kind: StatementAccountKind, fileName: string, statementDate: string): UploadResult {
     const db = this.data();
     const uploadedAt = new Date().toISOString();
     const key = `${kind}:${fileName}`;
@@ -155,7 +155,7 @@ export class BudgetMockApi extends BudgetApi {
     db.imports.push({
       id: importId,
       kind,
-      statementDate: today,
+      statementDate,
       uploadedAt,
       fileName,
       status: uncategorizedCount > 0 ? ImportStatus.PendingReview : ImportStatus.Confirmed,

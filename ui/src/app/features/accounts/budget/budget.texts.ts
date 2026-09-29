@@ -10,6 +10,7 @@ export const BUDGET_TEXT = {
   process:          'Procesar',
   processing:       'Procesando…',
   uploadHint:       'Puedes subir uno, el otro, o ambos.',
+  statementDate:    'Fecha del corte',
   uploadError:      'No se pudo procesar el archivo. Intenta de nuevo.',
   history:          'Ver cortes anteriores',
   historyTitle:     'Cortes anteriores',

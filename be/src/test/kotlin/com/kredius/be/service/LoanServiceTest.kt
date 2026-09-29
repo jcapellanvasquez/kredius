@@ -18,6 +18,7 @@ import com.kredius.be.repository.JournalLineRepository
 import com.kredius.be.repository.LoanInstallmentRepository
 import com.kredius.be.repository.LoanRepository
 import com.kredius.be.repository.PrincipalPaymentRepository
+import com.kredius.be.repository.StatementLineRepository
 import com.kredius.be.repository.UserRepository
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -60,6 +61,7 @@ class LoanServiceTest {
         LoanService(
             loanRepo, installmentRepo, accountRepo, entryRepo, lineRepo,
             mock(PrincipalPaymentRepository::class.java), CurrentUserService(userRepo, 0L),
+            mock(StatementLineRepository::class.java),
         )
     }
 

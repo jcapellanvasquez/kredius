@@ -19,6 +19,8 @@ import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.LocalDate
+import java.time.temporal.ChronoUnit
+import kotlin.math.abs
 
 @Service
 @Transactional(readOnly = true)
@@ -30,6 +32,7 @@ class LoanService(
     private val journalLineRepo:         JournalLineRepository,
     private val principalPaymentRepo:    PrincipalPaymentRepository,
     private val currentUser:             CurrentUserService,
+    private val statementLineRepo:       StatementLineRepository,
 ) {
     fun getOne(accountId: Long): LoanDetailResponse {
         val loan = loanRepo.findByAccountIdAndUserId(accountId, currentUser.id)
@@ -105,23 +108,40 @@ class LoanService(
         return entry
     }
 
+    /** The statement account's line of the loan entry a statement line links to. */
+    data class StatementPayment(val journalLine: JournalLine, val alreadyRecorded: Boolean)
+
     /**
-     * A savings row paying (received loan) or collecting (given loan) an installment: books the bank's
-     * [amount] on the row's date against the loan's oldest pending installment and marks it PAID
-     * (plan Q8a: take what the bank posted). Returns the entry's line on the statement account, which
-     * the statement line links to; null when the row doesn't fit (wrong direction, nothing pending).
+     * A savings row paying (received loan) or collecting (given loan) an installment.
+     * - If an installment was already paid by hand ("Pagar") within [HAND_PAYMENT_WINDOW_DAYS] days of the
+     *   row and no statement line is linked to its entry yet, nothing is posted: the row links to that
+     *   entry (`alreadyRecorded`).
+     * - Otherwise books the bank's [amount] on the row's date against the loan's oldest pending
+     *   installment and marks it PAID (plan Q8a: take what the bank posted).
+     * Returns null when the row doesn't fit (wrong direction, nothing pending).
      */
     @Transactional
-    fun payFromStatement(loan: Loan, line: StatementLine, amount: BigDecimal, source: JournalSource, referenceId: Long): JournalLine? {
+    fun payFromStatement(loan: Loan, line: StatementLine, amount: BigDecimal, source: JournalSource, referenceId: Long): StatementPayment? {
         val expected = if (loan.type == LoanType.RECEIVED) StatementLineType.DEBIT else StatementLineType.CREDIT
         if (line.type != expected) return null
+        paidByHand(loan, line)?.let { return StatementPayment(it, alreadyRecorded = true) }
         val installment = loan.installments
             .filter { it.status == InstallmentStatus.PENDING }
             .minByOrNull { it.number } ?: return null
         val statementAccount = line.account
         val entry = payInstallment(loan, installment, amount, line.lineDate, statementAccount, source, referenceId)
-        return entry.lines.first { it.account === statementAccount }
+        return StatementPayment(entry.lines.first { it.account === statementAccount }, alreadyRecorded = false)
     }
+
+    /** The statement account's line of the closest hand payment in the window that no statement line claims yet. */
+    private fun paidByHand(loan: Loan, line: StatementLine): JournalLine? = loan.installments
+        .filter { it.status == InstallmentStatus.PAID && it.journalEntry != null && it.actualPaymentDate != null }
+        .map { it to abs(ChronoUnit.DAYS.between(it.actualPaymentDate, line.lineDate)) }
+        .filter { (_, days) -> days <= HAND_PAYMENT_WINDOW_DAYS }
+        .sortedBy { (_, days) -> days }
+        .map { (installment, _) -> installment.journalEntry!! }
+        .firstOrNull { !statementLineRepo.existsByJournalLineJournalEntryId(it.id) }
+        ?.lines?.firstOrNull { it.account.id == line.account.id }
 
     /** Back to PENDING for installments paid by these (now reversed) entries. */
     @Transactional
@@ -467,5 +487,10 @@ class LoanService(
             remainingPrincipal  = remainingPrincipal,
             principalPayments   = principalPayments,
         )
+    }
+
+    companion object {
+        /** How far a statement row may be from a hand payment ("Pagar") and still be that payment. */
+        private const val HAND_PAYMENT_WINDOW_DAYS = 10L
     }
 }

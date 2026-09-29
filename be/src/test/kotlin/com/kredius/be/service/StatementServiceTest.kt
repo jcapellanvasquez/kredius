@@ -38,6 +38,7 @@ import com.kredius.be.repository.UserRepository
 import com.kredius.be.exception.ApiException
 import com.kredius.be.model.PatchStatementLineRequest
 import com.kredius.be.model.RecategorizeStatementLineRequest
+import com.kredius.be.model.StatementImportResponse
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.springframework.http.HttpStatus
@@ -81,6 +82,7 @@ class StatementServiceTest {
     private val entryRepo = mock(JournalEntryRepository::class.java)
     private val loanRepo = mock(LoanRepository::class.java)
     private val installmentRepo = mock(LoanInstallmentRepository::class.java)
+    private lateinit var loanService: LoanService
 
     private val service = run {
         val userRepo = mock(UserRepository::class.java)
@@ -109,9 +111,11 @@ class StatementServiceTest {
         `when`(lineRepo.saveAll(anyList<JournalLine>()))
             .thenAnswer { (it.arguments[0] as List<*>).filterIsInstance<JournalLine>().also(savedJournalLines::addAll) }
         `when`(installmentRepo.save(any(LoanInstallment::class.java))).thenAnswer { it.arguments[0] }
-        val loanService = LoanService(
+        `when`(accountRepo.findFirstByUserIdAndStatementTypeAndActiveTrueOrderByCodeAsc(0L, StatementType.SAVINGS))
+            .thenReturn(savings)
+        loanService = LoanService(
             loanRepo, installmentRepo, accountRepo, entryRepo, lineRepo,
-            mock(PrincipalPaymentRepository::class.java), CurrentUserService(userRepo, 0L),
+            mock(PrincipalPaymentRepository::class.java), CurrentUserService(userRepo, 0L), statementLineRepo,
         )
 
         StatementService(
@@ -175,11 +179,13 @@ class StatementServiceTest {
         return upload(savings, ApiStatementType.SAVINGS)
     }
 
+    private var lastUpload: StatementImportResponse? = null
+
     private fun upload(account: Account, type: ApiStatementType): StatementImport {
         var saved: StatementImport? = null
         `when`(importRepo.save(any(StatementImport::class.java)))
             .thenAnswer { (it.arguments[0] as StatementImport).also { i -> saved = i } }
-        service.upload(MockMultipartFile("file", ByteArray(0)), account.id, type, LocalDate.of(2026, 8, 26))
+        lastUpload = service.upload(MockMultipartFile("file", ByteArray(0)), account.id, type, LocalDate.of(2026, 8, 26))
         return saved!!.also { imp -> storedLines += imp.lines.filter { it.account === account } }
     }
 
@@ -471,11 +477,11 @@ class StatementServiceTest {
         assertEquals(listOf(true, false), detail.lines!!.map { it.posted })
     }
 
-    /** A loan on [loanAccount] whose installment 1 is 7,338.15 = 1,200.00 interest + 6,138.15 principal. */
-    private fun loan(type: LoanType): Loan {
+    /** A loan on [loanAccount] whose installments are 7,338.15 = 1,200.00 interest + 6,138.15 principal. */
+    private fun loan(type: LoanType, installments: Int = 1): Loan {
         val loan = Loan(account = loanAccount, type = type, counterpartyName = "BHD")
-        loan.installments += LoanInstallment(
-            loan = loan, number = 1, scheduledDate = LocalDate.of(2026, 8, 25),
+        for (n in 1..installments) loan.installments += LoanInstallment(
+            loan = loan, number = n, scheduledDate = LocalDate.of(2026, 7 + n, 25),
             scheduledAmount = BigDecimal("7338.15"),
             scheduledInterest = BigDecimal("1200.00"), scheduledPrincipal = BigDecimal("6138.15"),
         )
@@ -559,5 +565,43 @@ class StatementServiceTest {
         val import = uploadSavings(row(25, "Pago Préstamo /Activas", "7338.15"))
 
         assertConflict { recategorize(import.lines.single(), food.id) }
+    }
+
+    @Test
+    fun `a row for an installment already paid by hand links to that payment and posts nothing`() {
+        val loan = loan(LoanType.RECEIVED)
+        loanService.collectInstallment(loanAccount.id, 1, LocalDate.of(2026, 8, 24))
+        val handPayment = savedEntries.single()
+
+        val import = uploadSavings(row(25, "Pago Préstamo /Activas", "7338.15"))
+
+        val line = import.lines.single()
+        assertEquals(1, savedEntries.size)
+        assertEquals(ExclusionReason.LOAN_PAYMENT_ALREADY_RECORDED, line.exclusionReason)
+        assertEquals(0, lastUpload!!.autoPostedCount)
+        assertTrue(line.journalLine!!.journalEntry === handPayment)
+        assertEquals(savings, line.journalLine!!.account)
+        assertEquals(StatementImportStatus.CONFIRMED, import.status)
+        assertEquals(InstallmentStatus.PAID, loan.installments.single().status)
+    }
+
+    @Test
+    fun `a hand payment outside the 10-day window isn't matched, the row pays the next installment`() {
+        val loan = loan(LoanType.RECEIVED, installments = 2)
+        loanService.collectInstallment(loanAccount.id, 1, LocalDate.of(2026, 8, 1))
+
+        uploadSavings(row(25, "Pago Préstamo /Activas", "7338.15"))
+
+        assertEquals(2, savedEntries.size)
+        assertEquals(listOf(InstallmentStatus.PAID, InstallmentStatus.PAID), loan.installments.map { it.status })
+    }
+
+    @Test
+    fun `paying by hand an installment the statement already paid is a conflict`() {
+        loan(LoanType.RECEIVED)
+        uploadSavings(row(25, "Pago Préstamo /Activas", "7338.15"))
+
+        assertConflict { loanService.collectInstallment(loanAccount.id, 1, LocalDate.of(2026, 8, 25)) }
+        assertEquals(1, savedEntries.size)
     }
 }

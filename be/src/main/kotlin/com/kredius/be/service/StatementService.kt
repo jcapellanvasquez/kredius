@@ -267,14 +267,16 @@ class StatementService(
             // doesn't fit the loan path posts normally against the loan account.
             val loan = line.categoryAccount!!.id.takeIf { it in loanAccountIds }
                 ?.let { loanRepo.findByAccountIdAndUserId(it, currentUser.id) }
-            line.journalLine = loan?.let { loanService.payFromStatement(it, line, amount, import.journalSource(), import.id) }
+            val loanPayment = loan?.let { loanService.payFromStatement(it, line, amount, import.journalSource(), import.id) }
+            if (loanPayment?.alreadyRecorded == true) line.exclude(ExclusionReason.LOAN_PAYMENT_ALREADY_RECORDED)
+            line.journalLine = loanPayment?.journalLine
                 ?: journalService.saveJournalLine(
                     line = line, importStatement = import, source = import.journalSource(),
                     amountRd = amount, usdRate = usdRate, currentUser = currentUser.user)
         }
         val allPosted = import.lines.filter { !it.isExcluded }.all { it.journalLine != null }
         import.status = if (allPosted) StatementImportStatus.CONFIRMED else StatementImportStatus.PENDING_REVIEW
-        return pending.size
+        return pending.count { !it.isExcluded } // a row linked to a hand payment posted nothing
     }
 
     private fun StatementImport.journalSource() =

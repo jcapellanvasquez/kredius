@@ -8,11 +8,7 @@ import java.time.OffsetDateTime
 
 @Filter(name = "userFilter", condition = "user_id = :userId")
 @Entity
-@Table(name = "journal_entries",
-    uniqueConstraints = [
-        UniqueConstraint(columnNames = [
-            "description", "occurrence_index",
-            "reference_id", "entry_date", "amount"])])
+@Table(name = "journal_entries")
 class JournalEntry(
     @Column(name = "entry_date", nullable = false)
     var entryDate: LocalDate = LocalDate.now(),

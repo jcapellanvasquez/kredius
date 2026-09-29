@@ -4,7 +4,6 @@ import com.kredius.be.entity.CurrencyType
 import org.springframework.stereotype.Component
 import java.io.InputStream
 import java.math.BigDecimal
-import java.time.LocalDate
 
 /**
  * BHD savings/checking account statement ("Estado de cuenta"): each row has a reference,
@@ -47,10 +46,12 @@ class BhdSavingsPdfParser {
             val upper = line.uppercase()
 
             if (upper.contains("BALANCE INICIAL")) {
+                // "Balance inicial: 01/08/2026 102,717.23"; the page header repeats the label without values
+                val date    = BhdStatementText.dateRegex.find(line)
                 val amounts = BhdStatementText.amountRegex.findAll(line).toList()
-                if (amounts.isNotEmpty()) {
+                if (date != null && amounts.isNotEmpty()) {
                     result += ParsedStatementRow(
-                        date             = LocalDate.now(),
+                        date             = BhdStatementText.parseDate(date.value),
                         description      = "BALANCE INICIAL",
                         amount           = BhdStatementText.parseAmount(amounts.last().value),
                         currency         = currency,

@@ -8,6 +8,8 @@ import java.time.LocalDate
 interface StatementLineRepository : JpaRepository<StatementLine, Long> {
     fun findByIdAndStatementImportUserId(id: Long, userId: Long): StatementLine?
 
+    fun existsByJournalLineJournalEntryId(journalEntryId: Long): Boolean
+
     fun findByAccountIdAndLineDateBetween(accountId: Long, from: LocalDate, to: LocalDate): List<StatementLine>
 
     fun findByStatementImportUserIdAndStatementImportStatusNotAndLineDateBetween(

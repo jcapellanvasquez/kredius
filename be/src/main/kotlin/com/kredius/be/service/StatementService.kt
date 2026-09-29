@@ -34,6 +34,8 @@ class StatementService(
     private val parser: BhdPdfParser,
     private val savingsParser: BhdSavingsPdfParser,
     private val journalService: JournalService,
+    private val loanRepo: LoanRepository,
+    private val loanService: LoanService,
 ) {
     /**
      * Stores the statement's new rows and posts the ones the merchant dictionary categorizes, in one
@@ -188,6 +190,8 @@ class StatementService(
         val newCategory = accountRepo.findByIdAndUserId(request.categoryAccountId, currentUser.id)
             ?: throw ApiException(ApiException.NOT_FOUND, "Category account not found", HttpStatus.NOT_FOUND)
         val oldCategory = line.categoryAccount!!
+        if (oldCategory.id in loanRepo.findLoanAccountIds(currentUser.id))
+            throw ApiException(ApiException.CONFLICT, "A loan payment line can't be recategorized", HttpStatus.CONFLICT)
         if (newCategory.id == oldCategory.id)
             throw ApiException(ApiException.BAD_REQUEST, "The line already has this category", HttpStatus.BAD_REQUEST)
 
@@ -256,14 +260,23 @@ class StatementService(
         val pending = candidates.filter { isNewJournalEntry(it) }
         val usdRate = if (pending.isEmpty()) null
             else exchangeRateRepo.findTopByContextOrderByRateDateDesc(RateContext.CREDIT_CARD)
+        val loanAccountIds = if (pending.isEmpty()) emptySet() else loanRepo.findLoanAccountIds(currentUser.id)
         for (line in pending) {
-            line.journalLine = journalService.saveJournalLine(
-                line = line, importStatement = import, source = import.journalSource(),
-                amountRd = amountRd(line, usdRate), usdRate = usdRate, currentUser = currentUser.user)
+            val amount = amountRd(line, usdRate)
+            // A row matched to a loan account pays that loan's next installment (plan Q8); a row that
+            // doesn't fit the loan path posts normally against the loan account.
+            val loan = line.categoryAccount!!.id.takeIf { it in loanAccountIds }
+                ?.let { loanRepo.findByAccountIdAndUserId(it, currentUser.id) }
+            val loanPayment = loan?.let { loanService.payFromStatement(it, line, amount, import.journalSource(), import.id) }
+            if (loanPayment?.alreadyRecorded == true) line.exclude(ExclusionReason.LOAN_PAYMENT_ALREADY_RECORDED)
+            line.journalLine = loanPayment?.journalLine
+                ?: journalService.saveJournalLine(
+                    line = line, importStatement = import, source = import.journalSource(),
+                    amountRd = amount, usdRate = usdRate, currentUser = currentUser.user)
         }
         val allPosted = import.lines.filter { !it.isExcluded }.all { it.journalLine != null }
         import.status = if (allPosted) StatementImportStatus.CONFIRMED else StatementImportStatus.PENDING_REVIEW
-        return pending.size
+        return pending.count { !it.isExcluded } // a row linked to a hand payment posted nothing
     }
 
     private fun StatementImport.journalSource() =
@@ -310,6 +323,7 @@ class StatementService(
             reversal.lines.addAll(mirroredLines)
             journalEntryRepo.save(reversal)
         }
+        loanService.reopenInstallmentsPaidBy(originals.map { it.id })
 
         import.status = StatementImportStatus.REVERSED
         importRepo.save(import)

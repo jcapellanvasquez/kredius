@@ -4,6 +4,12 @@ import com.kredius.be.entity.Account
 import com.kredius.be.entity.AccountType
 import com.kredius.be.entity.Budget
 import com.kredius.be.entity.CurrencyType
+import com.kredius.be.entity.EntrySide
+import com.kredius.be.entity.InstallmentStatus
+import com.kredius.be.entity.JournalEntry
+import com.kredius.be.entity.Loan
+import com.kredius.be.entity.LoanInstallment
+import com.kredius.be.entity.LoanType
 import com.kredius.be.entity.ExchangeRate
 import com.kredius.be.entity.ExclusionReason
 import com.kredius.be.entity.JournalLine
@@ -18,6 +24,8 @@ import com.kredius.be.model.BudgetTransactionLine
 import com.kredius.be.repository.AccountBalanceView
 import com.kredius.be.repository.AccountRepository
 import com.kredius.be.repository.BudgetRepository
+import com.kredius.be.repository.LoanInstallmentRepository
+import com.kredius.be.repository.LoanRepository
 import com.kredius.be.repository.ExchangeRateRepository
 import com.kredius.be.repository.JournalLineRepository
 import com.kredius.be.repository.StatementImportRepository
@@ -50,6 +58,8 @@ class BudgetScreenServiceTest {
     private val journalLineRepo = mock(JournalLineRepository::class.java)
     private val exchangeRateRepo = mock(ExchangeRateRepository::class.java)
     private val budgetRepo = mock(BudgetRepository::class.java)
+    private val loanRepo = mock(LoanRepository::class.java)
+    private val installmentRepo = mock(LoanInstallmentRepository::class.java)
 
     private val service = run {
         val userRepo = mock(UserRepository::class.java)
@@ -64,6 +74,7 @@ class BudgetScreenServiceTest {
             .thenReturn(ExchangeRate(value = BigDecimal("60.00")))
         BudgetScreenService(
             CurrentUserService(userRepo, 0L), accountRepo, importRepo, lineRepo, journalLineRepo, exchangeRateRepo, budgetRepo,
+            loanRepo, installmentRepo,
         )
     }
 
@@ -272,5 +283,45 @@ class BudgetScreenServiceTest {
         assertEquals(listOf("Diversión", "Gasolina"), screen.uncategorized.single().suggestions.map { it.name })
         val diversion = screen.categories.single { it.name == "Diversión" }.transactions.single()
         assertEquals(listOf("Gasolina", "Comida"), diversion.suggestions.map { it.name })
+    }
+
+    @Test
+    fun `paid loan installments show on savings, their interest under its category, and loans as options`() {
+        ledger()
+        monthLines()
+        val financial = expense(11, "Gastos Financieros")
+        val withFinancial = expenses + financial
+        `when`(accountRepo.findByUserIdAndType(0L, AccountType.EXPENSE)).thenReturn(withFinancial)
+        `when`(journalLineRepo.findTotalsByPeriod(0L, august, august.plusMonths(1), withFinancial.map { it.id }))
+            .thenReturn(listOf(accountTotals(11, "1200.00")))
+        val loanAccount = Account(id = 20, name = "Préstamo BHD", type = AccountType.LIABILITY, icon = "building-bank")
+        val loan = Loan(account = loanAccount, type = LoanType.RECEIVED, counterpartyName = "BHD", numInstallments = 48)
+        val entry = JournalEntry(amount = BigDecimal("7338.15"))
+        entry.lines += listOf(
+            JournalLine(journalEntry = entry, account = financial, side = EntrySide.DEBIT, amountRd = BigDecimal("1200.00")),
+            JournalLine(journalEntry = entry, account = loanAccount, side = EntrySide.DEBIT, amountRd = BigDecimal("6138.15")),
+            JournalLine(journalEntry = entry, account = savings, side = EntrySide.CREDIT, amountRd = BigDecimal("7338.15")),
+        )
+        val installment = LoanInstallment(loan = loan, number = 5, status = InstallmentStatus.PAID,
+            actualPaymentDate = LocalDate.of(2026, 8, 25), journalEntry = entry)
+        `when`(installmentRepo.findByLoanUserIdAndStatusAndActualPaymentDateBetween(
+            0L, InstallmentStatus.PAID, august, LocalDate.of(2026, 8, 31),
+        )).thenReturn(listOf(installment))
+        `when`(loanRepo.findByUserId(0L)).thenReturn(listOf(
+            loan, Loan(account = Account(id = 21, name = "Préstamo viejo"), active = false),
+        ))
+
+        val screen = service.get(august)
+
+        val payment = screen.savings!!.loanPayments!!.single()
+        assertEquals(LocalDate.of(2026, 8, 25), payment.date)
+        assertEquals("Préstamo BHD", payment.loanName)
+        assertEquals(5 to 48, payment.installmentNumber to payment.totalInstallments)
+        assertEquals(7338.15, payment.amount)
+        assertEquals(1200.0, payment.interest)
+        val financialRow = screen.categories.single { it.name == "Gastos Financieros" }
+        assertEquals(listOf(payment), financialRow.loanInterest)
+        assertEquals(1200.0, financialRow.actual)
+        assertEquals(listOf("Préstamo BHD"), screen.loanOptions!!.map { it.name })
     }
 }

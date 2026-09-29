@@ -34,9 +34,11 @@ class DataInitializer(
         accountRepo.save(Account(user = jcapellan, code = 5002, name = "Gasolina",        type = AccountType.EXPENSE, icon = "gas-station", thresholdPct = BigDecimal("10.00"), showInAlerts = true))
         accountRepo.save(Account(user = jcapellan, code = 5003, name = "Restaurantes",    type = AccountType.EXPENSE, icon = "tools-kitchen-2", thresholdPct = BigDecimal("15.00"), showInAlerts = true))
         accountRepo.save(Account(user = jcapellan, code = 5004, name = "Servicios",       type = AccountType.EXPENSE, icon = "bolt", showInAlerts = false))
-        accountRepo.save(Account(user = jcapellan, code = 5005, name = "Gastos Financieros", type = AccountType.EXPENSE, icon = "receipt"))
+        val financialExpenses = accountRepo.save(Account(user = jcapellan, code = 5005, name = "Gastos Financieros", type = AccountType.EXPENSE, icon = "receipt"))
 
         // Card payments are posted from the savings statement ("PAGO DE TC …"); the card's own payment row is excluded.
         merchantRepo.save(MerchantDictionary(user = jcapellan, textPattern = "PAGO DE TC", account = card))
+        // The transfer tax charged next to every card and loan payment on the savings statement.
+        merchantRepo.save(MerchantDictionary(user = jcapellan, textPattern = "Imp. transferencia", account = financialExpenses))
     }
 }

@@ -19,6 +19,8 @@ import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.LocalDate
+import java.time.temporal.ChronoUnit
+import kotlin.math.abs
 
 @Service
 @Transactional(readOnly = true)
@@ -30,6 +32,7 @@ class LoanService(
     private val journalLineRepo:         JournalLineRepository,
     private val principalPaymentRepo:    PrincipalPaymentRepository,
     private val currentUser:             CurrentUserService,
+    private val statementLineRepo:       StatementLineRepository,
 ) {
     fun getOne(accountId: Long): LoanDetailResponse {
         val loan = loanRepo.findByAccountIdAndUserId(accountId, currentUser.id)
@@ -37,8 +40,9 @@ class LoanService(
         return loan.toDetailResponse()
     }
 
+    /** "Pagar" / "Cobrar": pays installment [num] for its scheduled amount on [date] (today by default). */
     @Transactional
-    fun collectInstallment(accountId: Long, num: Int): LoanDetailResponse {
+    fun collectInstallment(accountId: Long, num: Int, date: LocalDate? = null): LoanDetailResponse {
         val loan = loanRepo.findByAccountIdAndUserId(accountId, currentUser.id)
             ?: throw ApiException("NOT_FOUND", "Loan not found", HttpStatus.NOT_FOUND)
         val installment = loan.installments.find { it.number == num }
@@ -46,67 +50,125 @@ class LoanService(
         if (installment.status == InstallmentStatus.PAID)
             throw ApiException("CONFLICT", "Installment $num already paid", HttpStatus.CONFLICT)
 
-        val userId  = currentUser.id
-        val savings = accountRepo.findByUserIdAndType(userId, AccountType.ASSET)
-            .filter { !it.name.startsWith("Préstamo") }
-            .firstOrNull() ?: error("No savings account for user")
+        payInstallment(loan, installment, installment.scheduledAmount, date ?: LocalDate.now(), savingsAccount())
 
+        return loanRepo.findByAccountIdAndUserId(accountId, currentUser.id)!!.toDetailResponse()
+    }
+
+    /**
+     * Posts [amount] as a payment of [installment] and marks it PAID. Interest is the scheduled
+     * interest (capped at [amount]) and the rest is principal, so the entry always balances.
+     * A received loan: DR interest expense + DR loan / CR savings. A given loan: DR savings /
+     * CR loan + CR interest income. Returns the entry.
+     */
+    internal fun payInstallment(
+        loan: Loan,
+        installment: LoanInstallment,
+        amount: BigDecimal,
+        date: LocalDate,
+        savings: Account,
+        source: JournalSource = JournalSource.LOAN,
+        referenceId: Long? = null,
+    ): JournalEntry {
+        val userId = currentUser.id
+        val interest = (installment.scheduledInterest ?: BigDecimal.ZERO).min(amount)
+        val principal = amount - interest
+        val verb = if (loan.type == LoanType.GIVEN) "Cobro" else "Pago"
         val entry = journalEntryRepo.save(JournalEntry(
-            entryDate   = LocalDate.now(),
-            description = "Cobro cuota ${installment.number} – ${loan.counterpartyName}",
-            source      = JournalSource.LOAN,
+            entryDate   = date,
+            description = "$verb cuota ${installment.number} – ${loan.counterpartyName}",
+            source      = source,
+            referenceId = referenceId,
             user        = currentUser.user,
+            amount      = amount,
         ))
-
-        val lines: List<JournalLine> = when (loan.type) {
-            LoanType.GIVEN -> {
-                val intAmt   = installment.scheduledInterest  ?: BigDecimal.ZERO
-                val princAmt = installment.scheduledPrincipal ?: installment.scheduledAmount
-                if (intAmt > BigDecimal.ZERO) {
-                    val interestIncomeAcc = accountRepo.findByUserIdAndType(userId, AccountType.INCOME)
-                        .firstOrNull { it.name.contains("Interés", ignoreCase = true) }
-                        ?: error("No interest income account for user")
-                    listOf(
-                        JournalLine(journalEntry = entry, account = savings,          side = EntrySide.DEBIT,  currency = CurrencyType.RD, originalAmount = installment.scheduledAmount, amountRd = installment.scheduledAmount),
-                        JournalLine(journalEntry = entry, account = loan.account,     side = EntrySide.CREDIT, currency = CurrencyType.RD, originalAmount = princAmt,                   amountRd = princAmt),
-                        JournalLine(journalEntry = entry, account = interestIncomeAcc, side = EntrySide.CREDIT, currency = CurrencyType.RD, originalAmount = intAmt,                    amountRd = intAmt),
-                    )
-                } else {
-                    listOf(
-                        JournalLine(journalEntry = entry, account = savings,      side = EntrySide.DEBIT,  currency = CurrencyType.RD, originalAmount = installment.scheduledAmount, amountRd = installment.scheduledAmount),
-                        JournalLine(journalEntry = entry, account = loan.account, side = EntrySide.CREDIT, currency = CurrencyType.RD, originalAmount = installment.scheduledAmount, amountRd = installment.scheduledAmount),
-                    )
-                }
-            }
-            LoanType.RECEIVED -> {
-                val intAmt   = installment.scheduledInterest  ?: BigDecimal.ZERO
-                val princAmt = installment.scheduledPrincipal ?: installment.scheduledAmount
-                if (intAmt > BigDecimal.ZERO) {
-                    val interestExpenseAcc = accountRepo.findByUserIdAndType(userId, AccountType.EXPENSE)
-                        .firstOrNull { it.name.contains("Financiero", ignoreCase = true) || it.name.contains("Interés", ignoreCase = true) }
-                        ?: error("No financial expense account for user")
-                    listOf(
-                        JournalLine(journalEntry = entry, account = interestExpenseAcc, side = EntrySide.DEBIT,  currency = CurrencyType.RD, originalAmount = intAmt,                    amountRd = intAmt),
-                        JournalLine(journalEntry = entry, account = loan.account,       side = EntrySide.DEBIT,  currency = CurrencyType.RD, originalAmount = princAmt,                   amountRd = princAmt),
-                        JournalLine(journalEntry = entry, account = savings,            side = EntrySide.CREDIT, currency = CurrencyType.RD, originalAmount = installment.scheduledAmount, amountRd = installment.scheduledAmount),
-                    )
-                } else {
-                    listOf(
-                        JournalLine(journalEntry = entry, account = loan.account, side = EntrySide.DEBIT,  currency = CurrencyType.RD, originalAmount = installment.scheduledAmount, amountRd = installment.scheduledAmount),
-                        JournalLine(journalEntry = entry, account = savings,      side = EntrySide.CREDIT, currency = CurrencyType.RD, originalAmount = installment.scheduledAmount, amountRd = installment.scheduledAmount),
-                    )
-                }
-            }
+        fun line(account: Account, side: EntrySide, value: BigDecimal) = JournalLine(
+            journalEntry = entry, account = account, side = side,
+            currency = CurrencyType.RD, originalAmount = value, amountRd = value,
+        )
+        val hasInterest = interest.signum() > 0
+        val lines = when (loan.type) {
+            LoanType.GIVEN -> listOfNotNull(
+                line(savings, EntrySide.DEBIT, amount),
+                line(loan.account, EntrySide.CREDIT, principal).takeIf { principal.signum() > 0 },
+                if (hasInterest) line(interestIncomeAccount(userId), EntrySide.CREDIT, interest) else null,
+            )
+            LoanType.RECEIVED -> listOfNotNull(
+                if (hasInterest) line(interestExpenseAccount(userId), EntrySide.DEBIT, interest) else null,
+                line(loan.account, EntrySide.DEBIT, principal).takeIf { principal.signum() > 0 },
+                line(savings, EntrySide.CREDIT, amount),
+            )
         }
-        journalLineRepo.saveAll(lines)
+        entry.lines += journalLineRepo.saveAll(lines)
 
         installment.status = InstallmentStatus.PAID
-        installment.actualPaymentDate = LocalDate.now()
+        installment.actualPaymentDate = date
         installment.journalEntry = entry
         loanInstallmentRepo.save(installment)
-
-        return loanRepo.findByAccountIdAndUserId(accountId, userId)!!.toDetailResponse()
+        return entry
     }
+
+    /** The statement account's line of the loan entry a statement line links to. */
+    data class StatementPayment(val journalLine: JournalLine, val alreadyRecorded: Boolean)
+
+    /**
+     * A savings row paying (received loan) or collecting (given loan) an installment.
+     * - If an installment was already paid by hand ("Pagar") within [HAND_PAYMENT_WINDOW_DAYS] days of the
+     *   row and no statement line is linked to its entry yet, nothing is posted: the row links to that
+     *   entry (`alreadyRecorded`).
+     * - Otherwise books the bank's [amount] on the row's date against the loan's oldest pending
+     *   installment and marks it PAID (plan Q8a: take what the bank posted).
+     * Returns null when the row doesn't fit (wrong direction, nothing pending).
+     */
+    @Transactional
+    fun payFromStatement(loan: Loan, line: StatementLine, amount: BigDecimal, source: JournalSource, referenceId: Long): StatementPayment? {
+        val expected = if (loan.type == LoanType.RECEIVED) StatementLineType.DEBIT else StatementLineType.CREDIT
+        if (line.type != expected) return null
+        paidByHand(loan, line)?.let { return StatementPayment(it, alreadyRecorded = true) }
+        val installment = loan.installments
+            .filter { it.status == InstallmentStatus.PENDING }
+            .minByOrNull { it.number } ?: return null
+        val statementAccount = line.account
+        val entry = payInstallment(loan, installment, amount, line.lineDate, statementAccount, source, referenceId)
+        return StatementPayment(entry.lines.first { it.account === statementAccount }, alreadyRecorded = false)
+    }
+
+    /** The statement account's line of the closest hand payment in the window that no statement line claims yet. */
+    private fun paidByHand(loan: Loan, line: StatementLine): JournalLine? = loan.installments
+        .filter { it.status == InstallmentStatus.PAID && it.journalEntry != null && it.actualPaymentDate != null }
+        .map { it to abs(ChronoUnit.DAYS.between(it.actualPaymentDate, line.lineDate)) }
+        .filter { (_, days) -> days <= HAND_PAYMENT_WINDOW_DAYS }
+        .sortedBy { (_, days) -> days }
+        .map { (installment, _) -> installment.journalEntry!! }
+        .firstOrNull { !statementLineRepo.existsByJournalLineJournalEntryId(it.id) }
+        ?.lines?.firstOrNull { it.account.id == line.account.id }
+
+    /** Back to PENDING for installments paid by these (now reversed) entries. */
+    @Transactional
+    fun reopenInstallmentsPaidBy(entryIds: Collection<Long>) {
+        if (entryIds.isEmpty()) return
+        for (installment in loanInstallmentRepo.findByJournalEntryIdIn(entryIds)) {
+            installment.status = InstallmentStatus.PENDING
+            installment.actualPaymentDate = null
+            installment.journalEntry = null
+            loanInstallmentRepo.save(installment)
+        }
+    }
+
+    /** The account savings statements are uploaded for (Account.statementType = SAVINGS). */
+    internal fun savingsAccount(): Account =
+        accountRepo.findFirstByUserIdAndStatementTypeAndActiveTrueOrderByCodeAsc(currentUser.id, StatementType.SAVINGS)
+            ?: throw ApiException("UNPROCESSABLE_ENTITY", "No active savings account (statementType SAVINGS)",
+                HttpStatus.UNPROCESSABLE_ENTITY)
+
+    // Found by name; fragile, but matches the seed (plan Q8, point 6).
+    private fun interestIncomeAccount(userId: Long) = accountRepo.findByUserIdAndType(userId, AccountType.INCOME)
+        .firstOrNull { it.name.contains("Interés", ignoreCase = true) || it.name.contains("Intereses", ignoreCase = true) }
+        ?: error("No interest income account for user")
+
+    private fun interestExpenseAccount(userId: Long) = accountRepo.findByUserIdAndType(userId, AccountType.EXPENSE)
+        .firstOrNull { it.name.contains("Financiero", ignoreCase = true) || it.name.contains("Interés", ignoreCase = true) }
+        ?: error("No financial expense account for user")
 
     @Transactional
     fun applyPrincipalPayment(accountId: Long, req: PrincipalPaymentRequest): LoanDetailResponse {
@@ -125,9 +187,7 @@ class LoanService(
         if (paymentAmt >= remainingPrincipal)
             throw ApiException("BAD_REQUEST", "Payment amount exceeds remaining principal", HttpStatus.BAD_REQUEST)
 
-        val savings = accountRepo.findByUserIdAndType(userId, AccountType.ASSET)
-            .filter { !it.name.startsWith("Préstamo") }.firstOrNull()
-            ?: error("No savings account for user")
+        val savings = savingsAccount()
 
         val entry = journalEntryRepo.save(JournalEntry(
             entryDate   = req.date,
@@ -227,8 +287,7 @@ class LoanService(
         val numInst   = if (instLong <= 0) 1 else Math.ceil(totalLong.toDouble() / instLong).toInt()
         val remainder = totalLong % instLong
 
-        val savings = accountRepo.findByUserIdAndType(userId, AccountType.ASSET).firstOrNull()
-            ?: error("No asset account for user")
+        val savings = savingsAccount()
         val nextCode = (accountRepo.findByUserIdAndType(userId, AccountType.ASSET).mapNotNull { it.code }.maxOrNull() ?: 1000) + 1
         val loanAccount = accountRepo.save(Account(
             user = user, code = nextCode,
@@ -304,8 +363,7 @@ class LoanService(
         }
         val pmtBd = BigDecimal.valueOf(pmt).setScale(2, RoundingMode.HALF_UP)
 
-        val savings = accountRepo.findByUserIdAndType(userId, AccountType.ASSET).firstOrNull()
-            ?: error("No asset account for user")
+        val savings = savingsAccount()
         val nextCode = (accountRepo.findByUserIdAndType(userId, AccountType.LIABILITY).mapNotNull { it.code }.maxOrNull() ?: 2000) + 1
         val loanAccount = accountRepo.save(Account(
             user = user, code = nextCode,
@@ -429,5 +487,10 @@ class LoanService(
             remainingPrincipal  = remainingPrincipal,
             principalPayments   = principalPayments,
         )
+    }
+
+    companion object {
+        /** How far a statement row may be from a hand payment ("Pagar") and still be that payment. */
+        private const val HAND_PAYMENT_WINDOW_DAYS = 10L
     }
 }

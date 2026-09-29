@@ -8,7 +8,11 @@ import com.kredius.be.entity.EntrySide
 import com.kredius.be.entity.ExclusionReason
 import com.kredius.be.entity.JournalEntry
 import com.kredius.be.entity.JournalLine
+import com.kredius.be.entity.InstallmentStatus
 import com.kredius.be.entity.JournalSource
+import com.kredius.be.entity.Loan
+import com.kredius.be.entity.LoanInstallment
+import com.kredius.be.entity.LoanType
 import com.kredius.be.entity.MerchantDictionary
 import com.kredius.be.entity.StatementImport
 import com.kredius.be.entity.StatementImportStatus
@@ -24,6 +28,9 @@ import com.kredius.be.repository.AccountRepository
 import com.kredius.be.repository.ExchangeRateRepository
 import com.kredius.be.repository.JournalEntryRepository
 import com.kredius.be.repository.JournalLineRepository
+import com.kredius.be.repository.LoanInstallmentRepository
+import com.kredius.be.repository.LoanRepository
+import com.kredius.be.repository.PrincipalPaymentRepository
 import com.kredius.be.repository.MerchantDictionaryRepository
 import com.kredius.be.repository.StatementImportRepository
 import com.kredius.be.repository.StatementLineRepository
@@ -31,10 +38,15 @@ import com.kredius.be.repository.UserRepository
 import com.kredius.be.exception.ApiException
 import com.kredius.be.model.PatchStatementLineRequest
 import com.kredius.be.model.RecategorizeStatementLineRequest
+import com.kredius.be.model.StatementImportResponse
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.springframework.http.HttpStatus
 import org.mockito.Mockito.any
+import org.mockito.ArgumentMatchers.argThat
+import org.mockito.Mockito.anyCollection
+import org.mockito.Mockito.verify
+import org.mockito.Mockito.anyList
 import org.mockito.Mockito.anyLong
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.`when`
@@ -57,6 +69,9 @@ class StatementServiceTest {
     private val food = Account(id = 6, name = "Comida", type = AccountType.EXPENSE)
     private val market = Account(id = 7, name = "Supermercado", type = AccountType.EXPENSE)
     private val leisure = Account(id = 8, name = "Diversión", type = AccountType.EXPENSE)
+    private val financialExpenses = Account(id = 10, name = "Gastos Financieros", type = AccountType.EXPENSE)
+    private val interestIncome = Account(id = 11, name = "Intereses Ganados", type = AccountType.INCOME)
+    private val loanAccount = Account(id = 20, name = "Préstamo BHD", type = AccountType.LIABILITY)
 
     private val savedEntries = mutableListOf<JournalEntry>()
     private val savedJournalLines = mutableListOf<JournalLine>()
@@ -67,6 +82,9 @@ class StatementServiceTest {
     private val merchantRepo = mock(MerchantDictionaryRepository::class.java)
     private val statementLineRepo = mock(StatementLineRepository::class.java)
     private val entryRepo = mock(JournalEntryRepository::class.java)
+    private val loanRepo = mock(LoanRepository::class.java)
+    private val installmentRepo = mock(LoanInstallmentRepository::class.java)
+    private lateinit var loanService: LoanService
 
     private val service = run {
         val userRepo = mock(UserRepository::class.java)
@@ -77,6 +95,9 @@ class StatementServiceTest {
         `when`(accountRepo.findByIdAndUserId(6L, 0L)).thenReturn(food)
         `when`(accountRepo.findByIdAndUserId(7L, 0L)).thenReturn(market)
         `when`(accountRepo.findByIdAndUserId(8L, 0L)).thenReturn(leisure)
+        `when`(accountRepo.findByIdAndUserId(20L, 0L)).thenReturn(loanAccount)
+        `when`(accountRepo.findByUserIdAndType(0L, AccountType.EXPENSE)).thenReturn(listOf(financialExpenses))
+        `when`(accountRepo.findByUserIdAndType(0L, AccountType.INCOME)).thenReturn(listOf(interestIncome))
         `when`(importRepo.save(any(StatementImport::class.java))).thenAnswer { it.arguments[0] }
         `when`(statementLineRepo.save(any(StatementLine::class.java))).thenAnswer { it.arguments[0] }
         `when`(statementLineRepo.findByAccountIdAndLineDateBetween(anyLong(), anyDate(), anyDate()))
@@ -90,6 +111,15 @@ class StatementServiceTest {
             .thenAnswer { (it.arguments[0] as JournalLine).also(savedJournalLines::add) }
         `when`(lineRepo.saveAndFlush(any(JournalLine::class.java)))
             .thenAnswer { (it.arguments[0] as JournalLine).also(savedJournalLines::add) }
+        `when`(lineRepo.saveAll(anyList<JournalLine>()))
+            .thenAnswer { (it.arguments[0] as List<*>).filterIsInstance<JournalLine>().also(savedJournalLines::addAll) }
+        `when`(installmentRepo.save(any(LoanInstallment::class.java))).thenAnswer { it.arguments[0] }
+        `when`(accountRepo.findFirstByUserIdAndStatementTypeAndActiveTrueOrderByCodeAsc(0L, StatementType.SAVINGS))
+            .thenReturn(savings)
+        loanService = LoanService(
+            loanRepo, installmentRepo, accountRepo, entryRepo, lineRepo,
+            mock(PrincipalPaymentRepository::class.java), CurrentUserService(userRepo, 0L), statementLineRepo,
+        )
 
         StatementService(
             currentUser = CurrentUserService(userRepo, 0L),
@@ -102,6 +132,8 @@ class StatementServiceTest {
             parser = cardParser,
             savingsParser = savingsParser,
             journalService = JournalService(entryRepo, lineRepo),
+            loanRepo = loanRepo,
+            loanService = loanService,
         )
     }
 
@@ -150,11 +182,13 @@ class StatementServiceTest {
         return upload(savings, ApiStatementType.SAVINGS)
     }
 
+    private var lastUpload: StatementImportResponse? = null
+
     private fun upload(account: Account, type: ApiStatementType): StatementImport {
         var saved: StatementImport? = null
         `when`(importRepo.save(any(StatementImport::class.java)))
             .thenAnswer { (it.arguments[0] as StatementImport).also { i -> saved = i } }
-        service.upload(MockMultipartFile("file", ByteArray(0)), account.id, type, LocalDate.of(2026, 8, 26))
+        lastUpload = service.upload(MockMultipartFile("file", ByteArray(0)), account.id, type, LocalDate.of(2026, 8, 26))
         return saved!!.also { imp -> storedLines += imp.lines.filter { it.account === account } }
     }
 
@@ -444,5 +478,172 @@ class StatementServiceTest {
         assertEquals("tarjeta-agosto.pdf", summary.fileName)
         assertEquals(import.createdAt, summary.uploadedAt)
         assertEquals(listOf(true, false), detail.lines!!.map { it.posted })
+    }
+
+    /** A loan on [loanAccount] whose installments are 7,338.15 = 1,200.00 interest + 6,138.15 principal. */
+    private fun loan(type: LoanType, installments: Int = 1): Loan {
+        val loan = Loan(account = loanAccount, type = type, counterpartyName = "BHD")
+        for (n in 1..installments) loan.installments += LoanInstallment(
+            loan = loan, number = n, scheduledDate = LocalDate.of(2026, 7 + n, 25),
+            scheduledAmount = BigDecimal("7338.15"),
+            scheduledInterest = BigDecimal("1200.00"), scheduledPrincipal = BigDecimal("6138.15"),
+        )
+        `when`(loanRepo.findLoanAccountIds(0L)).thenReturn(setOf(loanAccount.id))
+        `when`(loanRepo.findByAccountIdAndUserId(loanAccount.id, 0L)).thenReturn(loan)
+        // Entry ids are all 0 here, so match installments to reversed entries by identity instead.
+        `when`(installmentRepo.findByJournalEntryIdIn(anyCollection<Long>())).thenAnswer {
+            loan.installments.filter { i -> savedEntries.any { it.reversesEntry === i.journalEntry } }
+        }
+        knownMerchant("Pago Préstamo", loanAccount)
+        return loan
+    }
+
+    private fun JournalEntry.sides() = lines.associate { it.account.name to (it.side to it.amountRd) }
+
+    @Test
+    fun `a savings row paying a received loan books the installment and marks it paid`() {
+        val loan = loan(LoanType.RECEIVED)
+
+        val import = uploadSavings(row(25, "Pago Préstamo /Activas", "7338.15"))
+
+        val entry = savedEntries.single()
+        assertEquals(LocalDate.of(2026, 8, 25), entry.entryDate)
+        assertEquals(JournalSource.SAVINGS_STATEMENT, entry.source)
+        assertEquals(mapOf(
+            "Gastos Financieros" to (EntrySide.DEBIT to BigDecimal("1200.00")),
+            "Préstamo BHD" to (EntrySide.DEBIT to BigDecimal("6138.15")),
+            "Ahorros" to (EntrySide.CREDIT to BigDecimal("7338.15")),
+        ), entry.sides())
+        val installment = loan.installments.single()
+        assertEquals(InstallmentStatus.PAID, installment.status)
+        assertEquals(LocalDate.of(2026, 8, 25), installment.actualPaymentDate)
+        assertEquals(savings, import.lines.single().journalLine!!.account)
+        assertEquals(StatementImportStatus.CONFIRMED, import.status)
+    }
+
+    @Test
+    fun `the bank's amount is booked even when it differs from the installment`() {
+        loan(LoanType.RECEIVED)
+
+        uploadSavings(row(28, "Pago Préstamo /Activas", "7400.00"))
+
+        assertEquals(mapOf(
+            "Gastos Financieros" to (EntrySide.DEBIT to BigDecimal("1200.00")),
+            "Préstamo BHD" to (EntrySide.DEBIT to BigDecimal("6200.00")),
+            "Ahorros" to (EntrySide.CREDIT to BigDecimal("7400.00")),
+        ), savedEntries.single().sides())
+    }
+
+    @Test
+    fun `a savings credit collecting a given loan books savings, principal and interest income`() {
+        val loan = loan(LoanType.GIVEN)
+
+        uploadSavings(row(25, "Pago Préstamo /Activas", "7338.15", direction = RowDirection.CREDIT))
+
+        assertEquals(mapOf(
+            "Ahorros" to (EntrySide.DEBIT to BigDecimal("7338.15")),
+            "Préstamo BHD" to (EntrySide.CREDIT to BigDecimal("6138.15")),
+            "Intereses Ganados" to (EntrySide.CREDIT to BigDecimal("1200.00")),
+        ), savedEntries.single().sides())
+        assertEquals(InstallmentStatus.PAID, loan.installments.single().status)
+    }
+
+    @Test
+    fun `reversing the savings import reopens the installment`() {
+        val loan = loan(LoanType.RECEIVED)
+        val import = uploadSavings(row(25, "Pago Préstamo /Activas", "7338.15"))
+        `when`(importRepo.findByIdAndUserId(0L, 0L)).thenReturn(import)
+
+        service.reverse(0)
+
+        assertTrue(netByAccount().values.all { it.signum() == 0 }, "net by account: ${netByAccount()}")
+        val installment = loan.installments.single()
+        assertEquals(InstallmentStatus.PENDING, installment.status)
+        assertNull(installment.journalEntry)
+    }
+
+    @Test
+    fun `a loan payment line can't be recategorized`() {
+        loan(LoanType.RECEIVED)
+        val import = uploadSavings(row(25, "Pago Préstamo /Activas", "7338.15"))
+
+        assertConflict { recategorize(import.lines.single(), food.id) }
+    }
+
+    @Test
+    fun `a row for an installment already paid by hand links to that payment and posts nothing`() {
+        val loan = loan(LoanType.RECEIVED)
+        loanService.collectInstallment(loanAccount.id, 1, LocalDate.of(2026, 8, 24))
+        val handPayment = savedEntries.single()
+
+        val import = uploadSavings(row(25, "Pago Préstamo /Activas", "7338.15"))
+
+        val line = import.lines.single()
+        assertEquals(1, savedEntries.size)
+        assertEquals(ExclusionReason.LOAN_PAYMENT_ALREADY_RECORDED, line.exclusionReason)
+        assertEquals(0, lastUpload!!.autoPostedCount)
+        assertTrue(line.journalLine!!.journalEntry === handPayment)
+        assertEquals(savings, line.journalLine!!.account)
+        assertEquals(StatementImportStatus.CONFIRMED, import.status)
+        assertEquals(InstallmentStatus.PAID, loan.installments.single().status)
+    }
+
+    @Test
+    fun `a hand payment outside the 10-day window isn't matched, the row pays the next installment`() {
+        val loan = loan(LoanType.RECEIVED, installments = 2)
+        loanService.collectInstallment(loanAccount.id, 1, LocalDate.of(2026, 8, 1))
+
+        uploadSavings(row(25, "Pago Préstamo /Activas", "7338.15"))
+
+        assertEquals(2, savedEntries.size)
+        assertEquals(listOf(InstallmentStatus.PAID, InstallmentStatus.PAID), loan.installments.map { it.status })
+    }
+
+    @Test
+    fun `paying by hand an installment the statement already paid is a conflict`() {
+        loan(LoanType.RECEIVED)
+        uploadSavings(row(25, "Pago Préstamo /Activas", "7338.15"))
+
+        assertConflict { loanService.collectInstallment(loanAccount.id, 1, LocalDate.of(2026, 8, 25)) }
+        assertEquals(1, savedEntries.size)
+    }
+
+    /** A pending savings import (id 1) with one uncategorized "Pago Préstamo" debit row of [amount]. */
+    private fun savingsLoanRow(amount: String): StatementLine {
+        val import = StatementImport(id = 1, account = savings, type = StatementType.SAVINGS)
+        import.lines += StatementLine(
+            statementImport = import, account = savings, lineDate = LocalDate.of(2026, 8, 25),
+            description = "Pago Préstamo /Activas", amount = BigDecimal(amount), type = StatementLineType.DEBIT,
+        )
+        return import.lines.single()
+    }
+
+    @Test
+    fun `picking a loan for a row pays the installment with the bank's amount and learns the pattern`() {
+        val loan = loan(LoanType.RECEIVED)
+        `when`(merchantRepo.findByUserIdOrderByTextPatternAsc(0L)).thenReturn(emptyList())
+        val line = savingsLoanRow("7000.00")
+
+        patch(line, categoryAccountId = loanAccount.id)
+
+        assertEquals(mapOf(
+            "Gastos Financieros" to (EntrySide.DEBIT to BigDecimal("1200.00")),
+            "Préstamo BHD" to (EntrySide.DEBIT to BigDecimal("5800.00")),
+            "Ahorros" to (EntrySide.CREDIT to BigDecimal("7000.00")),
+        ), savedEntries.single().sides())
+        assertEquals(InstallmentStatus.PAID, loan.installments.single().status)
+        assertEquals(savings, line.journalLine!!.account)
+        assertEquals(StatementImportStatus.CONFIRMED, line.statementImport.status)
+        verify(merchantRepo).save(argThat<MerchantDictionary> { it.textPattern == "Pago Préstamo /Activas" && it.account === loanAccount })
+    }
+
+    @Test
+    fun `picking a loan with an amount above the installment books the extra as principal`() {
+        loan(LoanType.RECEIVED)
+        val line = savingsLoanRow("8000.00")
+
+        patch(line, categoryAccountId = loanAccount.id)
+
+        assertEquals(BigDecimal("6800.00"), savedEntries.single().sides().getValue("Préstamo BHD").second)
     }
 }

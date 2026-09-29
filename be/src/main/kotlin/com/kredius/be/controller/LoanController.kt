@@ -11,6 +11,7 @@ import com.kredius.be.service.LoanService
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.RestController
+import java.time.LocalDate
 
 @RestController
 class LoanController(private val loanService: LoanService) : LoansApi {
@@ -21,8 +22,8 @@ class LoanController(private val loanService: LoanService) : LoansApi {
     override fun getLoan(accountId: Long): ResponseEntity<LoanDetailResponse> =
         ResponseEntity.ok(loanService.getOne(accountId))
 
-    override fun collectInstallment(accountId: Long, num: Int): ResponseEntity<LoanDetailResponse> =
-        ResponseEntity.ok(loanService.collectInstallment(accountId, num))
+    override fun collectInstallment(accountId: Long, num: Int, date: LocalDate?): ResponseEntity<LoanDetailResponse> =
+        ResponseEntity.ok(loanService.collectInstallment(accountId, num, date))
 
     override fun getLoans(type: LoanType?): ResponseEntity<List<LoanResponse>> =
         ResponseEntity.ok(loanService.getAll(type))

@@ -64,6 +64,8 @@ export interface CategoryRow {
   icon: string;
   actual: number;
   budget: number | null;
+  /** Most recent earlier saved budget, only when `budget` is null. A hint, never the budget (plan Q4). */
+  previousBudget: number | null;
   /** Accounts the spend came from; both when mixed (Decision 1). */
   origins: StatementAccountKind[];
   transactions: TransactionLine[];

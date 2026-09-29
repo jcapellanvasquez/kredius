@@ -76,6 +76,7 @@ class StatementService(
 
         val existingKeys = existingKeys(account.id, rows)
         val lines = rows.filter { it.dedupKey() !in existingKeys }.map { row ->
+            val exclusion = row.exclusionReason(import.type)
             StatementLine(
                 statementImport = import,
                 account = account,
@@ -83,11 +84,10 @@ class StatementService(
                 description = row.description,
                 currency = row.currency,
                 amount = row.amount,
-                isExcluded = row.isInitialBalance,
                 type = row.lineType(),
-                categoryAccount = if (row.isInitialBalance) null else matchAccount(row.description),
+                categoryAccount = if (exclusion != null) null else matchAccount(row.description),
                 occurrenceIndex = row.occurrenceIndex,
-            )
+            ).apply { exclusion?.let(::exclude) }
         }
         import.lines.addAll(lines)
         importRepo.save(import)
@@ -115,6 +115,17 @@ class StatementService(
         if (rows.isEmpty()) return emptySet()
         return lineRepo.findByAccountIdAndLineDateBetween(accountId, rows.minOf { it.date }, rows.maxOf { it.date })
             .mapTo(HashSet()) { it.dedupKey() }
+    }
+
+    /**
+     * Rows stored but never posted. A card payment (the card's only CREDIT row) is posted from the
+     * savings statement, where the dictionary maps `PAGO DE TC` to the card; posting both would count it twice.
+     */
+    private fun ParsedStatementRow.exclusionReason(type: EntityStatementType) = when {
+        isInitialBalance -> ExclusionReason.INITIAL_BALANCE
+        type == EntityStatementType.CREDIT_CARD && direction == RowDirection.CREDIT ->
+            ExclusionReason.CARD_PAYMENT_AVOID_DOUBLE_ENTRY
+        else -> null
     }
 
     private fun ParsedStatementRow.lineType() = when {
@@ -294,6 +305,8 @@ class StatementService(
         currency = StatementLineDto.Currency.valueOf(currency.name),
         amount = amount.toDouble(),
         isExcluded = isExcluded,
+        isPayment = exclusionReason == ExclusionReason.CARD_PAYMENT_AVOID_DOUBLE_ENTRY,
+        exclusionReason = exclusionReason?.let { StatementLineDto.ExclusionReason.valueOf(it.name) },
         lineType = type?.name?.let { StatementLineDto.LineType.valueOf(it) },
         categoryAccountId = categoryAccount?.id,
         categoryAccountName = categoryAccount?.name,

@@ -10,8 +10,6 @@ import com.kredius.be.parser.BhdSavingsPdfParser
 import com.kredius.be.parser.ParsedStatementRow
 import com.kredius.be.parser.RowDirection
 import com.kredius.be.repository.*
-import org.slf4j.LoggerFactory
-import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.stereotype.Service
@@ -37,62 +35,65 @@ class StatementService(
     private val savingsParser: BhdSavingsPdfParser,
     private val journalService: JournalService,
 ) {
+    /**
+     * Stores the statement's new rows and posts the ones the merchant dictionary categorizes, in one
+     * transaction: a posting failure rolls back the whole upload. Only a parse error is recorded, as FAILED.
+     */
     @Transactional
     fun upload(file: MultipartFile, accountId: Long, type: StatementType, statementDate: LocalDate): StatementImportResponse {
         val userId = currentUser.id
         val account = accountRepo.findByIdAndUserId(accountId, userId)
             ?: throw ApiException(ApiException.NOT_FOUND, "Account not found", HttpStatus.NOT_FOUND)
 
-        val import = StatementImport(
-            account = account,
-            type = com.kredius.be.entity.StatementType.valueOf(type.value),
-            statementDate = statementDate,
-            fileName = file.originalFilename,
-            status = StatementImportStatus.UPLOADED,
-            user = currentUser.user,
+        val import = importRepo.save(
+            StatementImport(
+                account = account,
+                type = com.kredius.be.entity.StatementType.valueOf(type.value),
+                statementDate = statementDate,
+                fileName = file.originalFilename,
+                status = StatementImportStatus.UPLOADED,
+                user = currentUser.user,
+            )
         )
-        importRepo.save(import)
 
-        return try {
-            importRepo.save(import)
-
-            val merchants = merchantRepo.findByUserIdOrderByTextPatternAsc(userId)
-                .associateBy { it.textPattern.uppercase() }
-
-            fun matchAccount(description: String) = merchants.entries
-                .firstOrNull { (pattern, _) -> description.uppercase().contains(pattern) }
-                ?.value?.account
-
-            val rows = when (type) {
+        val rows = try {
+            when (type) {
                 ApiStatementType.SAVINGS -> savingsParser.parse(file.inputStream)
                 else -> parser.parse(file.inputStream)
             }
-            val existingKeys = existingKeys(account.id, rows)
-            val lines = rows.filter { it.dedupKey() !in existingKeys }.map { row ->
-                StatementLine(
-                    statementImport = import,
-                    account = account,
-                    lineDate = row.date,
-                    description = row.description,
-                    currency = row.currency,
-                    amount = row.amount,
-                    isExcluded = row.isInitialBalance,
-                    type = row.lineType(),
-                    categoryAccount = if (row.isInitialBalance) null else matchAccount(row.description),
-                    occurrenceIndex = row.occurrenceIndex,
-                )
-            }
-            import.lines.addAll(lines)
-
-            import.status = if (lines.all { it.isExcluded }) StatementImportStatus.CONFIRMED else StatementImportStatus.PENDING_REVIEW
-            importRepo.save(import)
-            import.toResponse()
         } catch (ex: Exception) {
             import.status = StatementImportStatus.FAILED
             import.errorMessage = ex.message?.take(500)
-            importRepo.save(import)
-            import.toResponse()
+            return importRepo.save(import).toResponse()
         }
+
+        val merchants = merchantRepo.findByUserIdOrderByTextPatternAsc(userId)
+            .associateBy { it.textPattern.uppercase() }
+
+        fun matchAccount(description: String) = merchants.entries
+            .firstOrNull { (pattern, _) -> description.uppercase().contains(pattern) }
+            ?.value?.account
+
+        val existingKeys = existingKeys(account.id, rows)
+        val lines = rows.filter { it.dedupKey() !in existingKeys }.map { row ->
+            StatementLine(
+                statementImport = import,
+                account = account,
+                lineDate = row.date,
+                description = row.description,
+                currency = row.currency,
+                amount = row.amount,
+                isExcluded = row.isInitialBalance,
+                type = row.lineType(),
+                categoryAccount = if (row.isInitialBalance) null else matchAccount(row.description),
+                occurrenceIndex = row.occurrenceIndex,
+            )
+        }
+        import.lines.addAll(lines)
+        importRepo.save(import)
+
+        val autoPosted = postPending(import)
+        return importRepo.save(import).toResponse(autoPostedCount = autoPosted)
     }
 
     /** What makes a row the same transaction; mirrors the unique constraint on `statement_lines`. */
@@ -174,34 +175,40 @@ class StatementService(
         val importStatement = importRepo.findByIdAndUserId(id, currentUser.id)
             ?: throw ApiException(ApiException.NOT_FOUND, "Statement import not found", HttpStatus.NOT_FOUND)
 
-        var postedCount = 0
-
-        val source = if (importStatement.type == EntityStatementType.CREDIT_CARD)
-            JournalSource.CARD_STATEMENT else JournalSource.SAVINGS_STATEMENT
-
-        val usdRate = exchangeRateRepo.findTopByContextOrderByRateDateDesc(RateContext.CREDIT_CARD)
-
-        for (line in importStatement.lines.filter { line -> isNewJournalEntry(line) }) {
-            try {
-                val amountRd = if (line.currency == CurrencyType.RD) line.amount
-                else line.amount.multiply(usdRate?.value ?: BigDecimal.ONE)
-
-                line.journalLine = journalService.saveJournalLine(
-                    line = line, importStatement = importStatement, source = source, amountRd = amountRd,
-                    usdRate = usdRate, currentUser = currentUser.user)
-                postedCount++
-            } catch (ex: DataIntegrityViolationException) {
-                LOGGER.warn("Skipping duplicate entry for line occurrence ${line.occurrenceIndex}: ${ex.message}")
-                continue
-            }
-        }
-
-        val allPosted = importStatement.lines.filter { !it.isExcluded }.all { it.journalLine != null }
-        importStatement.status = if (allPosted) StatementImportStatus.CONFIRMED else StatementImportStatus.PENDING_REVIEW
+        val postedCount = postPending(importStatement)
         importRepo.saveAndFlush(importStatement)
 
-        return ResponseEntity.ok(ConfirmImportResponse(id = importStatement.id, status = ApiStatus.CONFIRMED, postedEntries = postedCount))
+        return ResponseEntity.ok(ConfirmImportResponse(
+            id = importStatement.id,
+            status = ApiStatus.valueOf(importStatement.status.name),
+            postedEntries = postedCount,
+        ))
     }
+
+    /**
+     * Posts every categorized line that isn't posted yet, then sets the import to CONFIRMED when no
+     * non-excluded line is left unposted, PENDING_REVIEW otherwise. Returns how many lines were posted.
+     */
+    private fun postPending(import: StatementImport): Int {
+        val usdRate = exchangeRateRepo.findTopByContextOrderByRateDateDesc(RateContext.CREDIT_CARD)
+        val pending = import.lines.filter { isNewJournalEntry(it) }
+        for (line in pending) {
+            line.journalLine = journalService.saveJournalLine(
+                line = line, importStatement = import, source = import.journalSource(),
+                amountRd = amountRd(line, usdRate), usdRate = usdRate, currentUser = currentUser.user)
+        }
+        val allPosted = import.lines.filter { !it.isExcluded }.all { it.journalLine != null }
+        import.status = if (allPosted) StatementImportStatus.CONFIRMED else StatementImportStatus.PENDING_REVIEW
+        return pending.size
+    }
+
+    /** The line's amount in RD$; USD lines use the latest credit-card rate. */
+    private fun amountRd(line: StatementLine, usdRate: ExchangeRate?): BigDecimal =
+        if (line.currency == CurrencyType.RD) line.amount
+        else line.amount.multiply(usdRate?.value ?: BigDecimal.ONE)
+
+    private fun StatementImport.journalSource() =
+        if (type == EntityStatementType.CREDIT_CARD) JournalSource.CARD_STATEMENT else JournalSource.SAVINGS_STATEMENT
 
     fun reverse(id: Long): StatementImportResponse {
         val import = importRepo.findByIdAndUserId(id, currentUser.id)
@@ -210,9 +217,7 @@ class StatementService(
         if (import.status != StatementImportStatus.CONFIRMED)
             throw ApiException(ApiException.CONFLICT, "Import is not in CONFIRMED status", HttpStatus.CONFLICT)
 
-        val source = if (import.type == EntityStatementType.CREDIT_CARD)
-            JournalSource.CARD_STATEMENT else JournalSource.SAVINGS_STATEMENT
-
+        val source = import.journalSource()
         val originals = journalEntryRepo.findByReferenceIdAndSource(import.id, source)
         for (original in originals) {
             val reversal = journalEntryRepo.save(
@@ -267,7 +272,7 @@ class StatementService(
         unresolvedCount = lines.count { it.isUncategorized() },
     )
 
-    private fun StatementImport.toResponse() = StatementImportResponse(
+    private fun StatementImport.toResponse(autoPostedCount: Int? = null) = StatementImportResponse(
         id = id,
         status = ApiStatus.valueOf(status.name),
         type = ApiStatementType.valueOf(type.name),
@@ -278,6 +283,7 @@ class StatementService(
         uploadedAt = createdAt,
         newCount = lines.count { it.type != StatementLineType.INITIAL_BALANCE },
         uncategorizedCount = lines.count { it.isUncategorized() },
+        autoPostedCount = autoPostedCount,
         lines = lines.map { it.toDto() },
     )
 
@@ -299,9 +305,5 @@ class StatementService(
 
     private fun isNewJournalEntry(row: StatementLine): Boolean {
         return !row.isExcluded && row.categoryAccount != null && row.journalLine == null
-    }
-
-    companion object {
-        private val LOGGER = LoggerFactory.getLogger(StatementService::class.java)
     }
 }

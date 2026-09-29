@@ -334,8 +334,10 @@ paths:
   /api/v1/loans/account/{accountId}/installments/{num}/collect:
     post:
       tags: [Loans]
-      summary: Collect an installment
-      description: Marks a given-loan installment as PAID and posts the collection journal entry
+      summary: Pay or collect an installment
+      description: |
+        Marks the installment PAID and posts its scheduled amount against the savings account
+        (the active account with statementType SAVINGS): interest per schedule, the rest principal.
       operationId: collectInstallment
       parameters:
         - name: accountId
@@ -349,6 +351,13 @@ paths:
           required: true
           schema:
             type: integer
+        - name: date
+          in: query
+          required: false
+          description: Payment date; today when omitted
+          schema:
+            type: string
+            format: date
       responses:
         '200':
           description: Updated loan detail
@@ -364,6 +373,12 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '409':
           description: Installment already paid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: No savings account (statementType SAVINGS)
           content:
             application/json:
               schema:

@@ -35,6 +35,15 @@ class Account(
     @Column(nullable = false)
     var active: Boolean = true,
 
+    /** Tabler icon name, e.g. `credit-card`; the UI falls back to a per-type default when null. */
+    @Column(length = 40)
+    var icon: String? = null,
+
+    /** Set on the accounts statements are uploaded for; the budget screen uses the first active one of each type. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "statement_type", length = 20)
+    var statementType: StatementType? = null,
+
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long = 0,
 ) {

@@ -17,24 +17,24 @@ class DataInitializer(
         val jcapellan = userRepo.save(User(name = "jcapellan", email = "jcapellan@kredius.local"))
 
         // Assets
-        accountRepo.save(Account(user = jcapellan, code = 1001, name = "Cuenta Ahorros BHD",    type = AccountType.ASSET))
+        accountRepo.save(Account(user = jcapellan, code = 1001, name = "Cuenta Ahorros BHD",    type = AccountType.ASSET, icon = "building-bank", statementType = StatementType.SAVINGS))
 
         // Liabilities
-        val card = accountRepo.save(Account(user = jcapellan, code = 2001, name = "Tarjeta de Crédito BHD", type = AccountType.LIABILITY))
+        val card = accountRepo.save(Account(user = jcapellan, code = 2001, name = "Tarjeta de Crédito BHD", type = AccountType.LIABILITY, icon = "credit-card", statementType = StatementType.CREDIT_CARD))
 
         // Equity
-        accountRepo.save(Account(user = jcapellan, code = 3001, name = "Capital Inicial",        type = AccountType.EQUITY))
+        accountRepo.save(Account(user = jcapellan, code = 3001, name = "Capital Inicial",        type = AccountType.EQUITY, icon = "coins"))
 
         // Income
-        accountRepo.save(Account(user = jcapellan, code = 4001, name = "Salario",                type = AccountType.INCOME))
-        accountRepo.save(Account(user = jcapellan, code = 4002, name = "Intereses Ganados",      type = AccountType.INCOME))
+        accountRepo.save(Account(user = jcapellan, code = 4001, name = "Salario",                type = AccountType.INCOME, icon = "briefcase"))
+        accountRepo.save(Account(user = jcapellan, code = 4002, name = "Intereses Ganados",      type = AccountType.INCOME, icon = "coins"))
 
         // Expenses
-        accountRepo.save(Account(user = jcapellan, code = 5001, name = "Supermercado",    type = AccountType.EXPENSE, thresholdPct = BigDecimal("20.00"), showInAlerts = true))
-        accountRepo.save(Account(user = jcapellan, code = 5002, name = "Gasolina",        type = AccountType.EXPENSE, thresholdPct = BigDecimal("10.00"), showInAlerts = true))
-        accountRepo.save(Account(user = jcapellan, code = 5003, name = "Restaurantes",    type = AccountType.EXPENSE, thresholdPct = BigDecimal("15.00"), showInAlerts = true))
-        accountRepo.save(Account(user = jcapellan, code = 5004, name = "Servicios",       type = AccountType.EXPENSE, showInAlerts = false))
-        accountRepo.save(Account(user = jcapellan, code = 5005, name = "Gastos Financieros", type = AccountType.EXPENSE))
+        accountRepo.save(Account(user = jcapellan, code = 5001, name = "Supermercado",    type = AccountType.EXPENSE, icon = "shopping-cart", thresholdPct = BigDecimal("20.00"), showInAlerts = true))
+        accountRepo.save(Account(user = jcapellan, code = 5002, name = "Gasolina",        type = AccountType.EXPENSE, icon = "gas-station", thresholdPct = BigDecimal("10.00"), showInAlerts = true))
+        accountRepo.save(Account(user = jcapellan, code = 5003, name = "Restaurantes",    type = AccountType.EXPENSE, icon = "tools-kitchen-2", thresholdPct = BigDecimal("15.00"), showInAlerts = true))
+        accountRepo.save(Account(user = jcapellan, code = 5004, name = "Servicios",       type = AccountType.EXPENSE, icon = "bolt", showInAlerts = false))
+        accountRepo.save(Account(user = jcapellan, code = 5005, name = "Gastos Financieros", type = AccountType.EXPENSE, icon = "receipt"))
 
         // Card payments are posted from the savings statement ("PAGO DE TC …"); the card's own payment row is excluded.
         merchantRepo.save(MerchantDictionary(user = jcapellan, textPattern = "PAGO DE TC", account = card))

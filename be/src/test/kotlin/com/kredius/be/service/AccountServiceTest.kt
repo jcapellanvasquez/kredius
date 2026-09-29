@@ -22,6 +22,7 @@ import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.http.HttpStatus
 import kotlin.test.assertEquals
 import com.kredius.be.model.AccountType as ApiAccountType
+import com.kredius.be.model.StatementType as ApiStatementType
 
 class AccountServiceTest {
 
@@ -95,5 +96,20 @@ class AccountServiceTest {
 
         assertThrows<DataIntegrityViolationException> { createAsset() }
         verify(accountRepo, times(2)).saveAndFlush(any(Account::class.java))
+    }
+
+    @Test
+    fun `create keeps the icon and statement type`() {
+        val created = service.create(
+            CreateAccountRequest(
+                name = "Tarjeta Visa",
+                type = ApiAccountType.LIABILITY,
+                icon = "credit-card",
+                statementType = ApiStatementType.CREDIT_CARD,
+            )
+        )
+
+        assertEquals("credit-card", created.icon)
+        assertEquals(ApiStatementType.CREDIT_CARD, created.statementType)
     }
 }

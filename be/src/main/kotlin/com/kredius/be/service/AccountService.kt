@@ -3,6 +3,7 @@ package com.kredius.be.service
 import com.kredius.be.entity.Account
 import com.kredius.be.entity.AccountType
 import com.kredius.be.entity.InstallmentStatus
+import com.kredius.be.entity.StatementType
 import com.kredius.be.exception.ApiException
 import com.kredius.be.model.AccountDetailResponse
 import com.kredius.be.model.AccountResponse
@@ -28,6 +29,7 @@ import com.kredius.be.entity.LoanFrequency
 import com.kredius.be.model.AccountType as ApiAccountType
 import com.kredius.be.model.LoanFrequency as ApiLoanFrequency
 import com.kredius.be.model.LoanType as ApiLoanType
+import com.kredius.be.model.StatementType as ApiStatementType
 
 @Service
 @Transactional(readOnly = true)
@@ -75,6 +77,8 @@ class AccountService(
                     name                       = account.name,
                     type                       = ApiAccountType.valueOf(account.type.name),
                     showInAlerts               = account.showInAlerts,
+                    icon                       = account.icon,
+                    statementType              = account.statementType?.let { ApiStatementType.valueOf(it.name) },
                     thresholdPct               = account.thresholdPct?.toDouble(),
                     loanAccount                = loan != null,
                     balance                    = balance.toDouble(),
@@ -208,6 +212,8 @@ class AccountService(
                 type = type,
                 thresholdPct = request.thresholdPct?.let { BigDecimal.valueOf(it) },
                 showInAlerts = request.showInAlerts ?: false,
+                icon = request.icon,
+                statementType = request.statementType?.let { StatementType.valueOf(it.name) },
             )
         )
         val saved = try {
@@ -240,6 +246,8 @@ class AccountService(
         thresholdPct = thresholdPct?.toDouble(),
         showInAlerts = showInAlerts,
         active = active,
+        icon = icon,
+        statementType = statementType?.let { ApiStatementType.valueOf(it.name) },
         loanAccount = loanAccount,
         createdAt = createdAt,
     )

@@ -893,6 +893,15 @@ components:
           $ref: '#/components/schemas/AccountType'
         showInAlerts:
           type: boolean
+        icon:
+          type: string
+          maxLength: 40
+          nullable: true
+          description: Tabler icon name (e.g. credit-card)
+        statementType:
+          $ref: '#/components/schemas/StatementType'
+          nullable: true
+          description: Set on accounts bank statements are uploaded for
         loanAccount:
           type: boolean
         balance:
@@ -981,6 +990,15 @@ components:
           type: boolean
         active:
           type: boolean
+        icon:
+          type: string
+          maxLength: 40
+          nullable: true
+          description: Tabler icon name (e.g. credit-card)
+        statementType:
+          $ref: '#/components/schemas/StatementType'
+          nullable: true
+          description: Set on accounts bank statements are uploaded for
         loanAccount:
           type: boolean
           description: True when this account is managed by a Loan record — shown in the Loans section, not the regular account list
@@ -1010,6 +1028,15 @@ components:
         showInAlerts:
           type: boolean
           default: false
+        icon:
+          type: string
+          maxLength: 40
+          nullable: true
+          description: Tabler icon name (e.g. credit-card)
+        statementType:
+          $ref: '#/components/schemas/StatementType'
+          nullable: true
+          description: Set on accounts bank statements are uploaded for
 
     AccountDetailResponse:
       type: object

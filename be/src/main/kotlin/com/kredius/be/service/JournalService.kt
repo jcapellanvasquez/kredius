@@ -14,8 +14,6 @@ import com.kredius.be.entity.User
 import com.kredius.be.repository.JournalEntryRepository
 import com.kredius.be.repository.JournalLineRepository
 import org.springframework.stereotype.Service
-import org.springframework.transaction.annotation.Propagation
-import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
 
 @Service
@@ -24,7 +22,6 @@ class JournalService(
     private val journalLineRepo: JournalLineRepository,
 ) {
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
     fun saveJournalLine(
         line: StatementLine,
         importStatement: StatementImport,

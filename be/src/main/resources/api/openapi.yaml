@@ -390,7 +390,8 @@ paths:
       summary: Upload and parse a bank statement
       description: |
         Accepts a PDF file, parses it synchronously, matches merchant dictionary,
-        and returns the import with categorized lines ready for review.
+        and posts the matched lines to the ledger. Unmatched lines wait for a category
+        (the import stays PENDING_REVIEW until they are all posted or excluded).
         Rows already imported for the account (same date, description, amount,
         currency and occurrence) are skipped; the import holds only the new ones.
       operationId: uploadStatement
@@ -1368,6 +1369,10 @@ components:
         uncategorizedCount:
           type: integer
           description: Lines of this import still waiting for a category
+        autoPostedCount:
+          type: integer
+          nullable: true
+          description: Lines posted during this upload because the merchant dictionary matched them; only on the upload response
         lines:
           type: array
           items:

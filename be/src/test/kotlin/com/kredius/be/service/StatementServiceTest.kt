@@ -5,6 +5,7 @@ import com.kredius.be.entity.AccountType
 import com.kredius.be.entity.CurrencyType
 import com.kredius.be.entity.JournalEntry
 import com.kredius.be.entity.JournalLine
+import com.kredius.be.entity.MerchantDictionary
 import com.kredius.be.entity.StatementImport
 import com.kredius.be.entity.StatementImportStatus
 import com.kredius.be.entity.StatementLine
@@ -34,6 +35,8 @@ import java.math.BigDecimal
 import java.time.LocalDate
 import java.util.Optional
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import com.kredius.be.model.StatementType as ApiStatementType
 
 class StatementServiceTest {
@@ -45,6 +48,7 @@ class StatementServiceTest {
     private val storedLines = mutableListOf<StatementLine>()
     private val importRepo = mock(StatementImportRepository::class.java)
     private val cardParser = mock(BhdPdfParser::class.java)
+    private val merchantRepo = mock(MerchantDictionaryRepository::class.java)
 
     private val service = run {
         val userRepo = mock(UserRepository::class.java)
@@ -67,7 +71,7 @@ class StatementServiceTest {
             accountRepo = accountRepo,
             importRepo = importRepo,
             lineRepo = statementLineRepo,
-            merchantRepo = mock(MerchantDictionaryRepository::class.java),
+            merchantRepo = merchantRepo,
             journalEntryRepo = entryRepo,
             exchangeRateRepo = mock(ExchangeRateRepository::class.java),
             parser = cardParser,
@@ -114,6 +118,11 @@ class StatementServiceTest {
             MockMultipartFile("file", ByteArray(0)), 2L, ApiStatementType.CREDIT_CARD, LocalDate.of(2026, 8, 26)
         )
         return saved!!.also { storedLines += it.lines }
+    }
+
+    private fun knownMerchant(pattern: String, account: Account) {
+        `when`(merchantRepo.findByUserIdOrderByTextPatternAsc(0L))
+            .thenReturn(listOf(MerchantDictionary(textPattern = pattern, account = account)))
     }
 
     @Test
@@ -170,5 +179,44 @@ class StatementServiceTest {
             listOf("CAFE" to 2, "GASOLINA" to 1),
             longer.lines.map { it.description to it.occurrenceIndex },
         )
+    }
+
+    @Test
+    fun `upload posts matched lines and leaves the rest pending`() {
+        knownMerchant("CAFE", food)
+
+        val import = uploadCard(row(1, "CAFE SANTO DOMINGO", "100.00"), row(2, "TIENDA NUEVA", "300.00"))
+
+        assertEquals(1, savedEntries.size)
+        assertNotNull(import.lines[0].journalLine)
+        assertNull(import.lines[1].journalLine)
+        assertEquals(StatementImportStatus.PENDING_REVIEW, import.status)
+    }
+
+    @Test
+    fun `upload where every row matches is confirmed`() {
+        knownMerchant("CAFE", food)
+
+        val import = uploadCard(row(1, "CAFE A", "100.00"), row(2, "CAFE B", "150.00"))
+
+        assertEquals(2, savedEntries.size)
+        assertEquals(StatementImportStatus.CONFIRMED, import.status)
+    }
+
+    @Test
+    fun `a parse error records the import as failed`() {
+        `when`(cardParser.parse(any(InputStream::class.java) ?: InputStream.nullInputStream()))
+            .thenThrow(IllegalStateException("not a BHD statement"))
+        var saved: StatementImport? = null
+        `when`(importRepo.save(any(StatementImport::class.java)))
+            .thenAnswer { (it.arguments[0] as StatementImport).also { i -> saved = i } }
+
+        val response = service.upload(
+            MockMultipartFile("file", ByteArray(0)), 2L, ApiStatementType.CREDIT_CARD, LocalDate.of(2026, 8, 26)
+        )
+
+        assertEquals(StatementImportStatus.FAILED, saved!!.status)
+        assertEquals("not a BHD statement", response.errorMessage)
+        assertEquals(0, savedEntries.size)
     }
 }

@@ -15,7 +15,7 @@ class BhdPdfParserTest {
     private val rows = BhdPdfParser().parseText(fixture("bhd-card-2026-08.txt"))
 
     private fun total(currency: CurrencyType, payments: Boolean) =
-        rows.filter { it.currency == currency && it.isPayment == payments }.sumOf { it.amount }
+        rows.filter { it.currency == currency && (it.direction == RowDirection.CREDIT) == payments }.sumOf { it.amount }
 
     @Test
     fun `parses every transaction row of both currency sections`() {
@@ -34,21 +34,21 @@ class BhdPdfParserTest {
         // The statement's RD$ credit total (72,748.79) also includes AHORRO MI PAIS 110.85, which is skipped
         assertEquals(BigDecimal("72637.94"), total(CurrencyType.RD, payments = true))
         assertEquals(BigDecimal("567.44"), total(CurrencyType.USD, payments = true))
-        assertEquals(3, rows.count { it.isPayment })
+        assertEquals(3, rows.count { it.direction == RowDirection.CREDIT })
     }
 
     @Test
     fun `row fields`() {
         val payment = rows.first()
-        assertEquals(LocalDate.of(2026, 7, 27), payment.transactionDate)
+        assertEquals(LocalDate.of(2026, 7, 27), payment.date)
         assertEquals("PAGO DEBITO A CUENTA MBP", payment.description)
         assertEquals(BigDecimal("62637.94"), payment.amount)
 
         val charge = rows[1]
-        assertEquals(LocalDate.of(2026, 7, 27), charge.transactionDate) // transaction date, not posting date
+        assertEquals(LocalDate.of(2026, 7, 27), charge.date) // transaction date, not posting date
         assertEquals("1234 BRAVOVA #8787688 SANTODOMINGO-DO", charge.description) // card last-4 kept (fixed in B3)
         assertEquals(BigDecimal("5230.00"), charge.amount)
-        assertEquals(false, charge.isPayment)
+        assertEquals(RowDirection.DEBIT, charge.direction)
     }
 
     @Test

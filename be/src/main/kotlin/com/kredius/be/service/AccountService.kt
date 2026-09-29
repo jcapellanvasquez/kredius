@@ -15,7 +15,10 @@ import com.kredius.be.model.TransactionPageResponse
 import com.kredius.be.repository.AccountRepository
 import com.kredius.be.repository.JournalLineRepository
 import com.kredius.be.repository.LoanRepository
+import org.springframework.dao.DataIntegrityViolationException
+import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
 import java.time.LocalDate
@@ -192,17 +195,27 @@ class AccountService(
         inflow      = signedTxValue(type, side, amountRd) > 0,
     )
 
-    @Transactional
+    // No surrounding transaction: each insert commits or rolls back on its own, so a code
+    // collision (unique user_id + code) can be retried once with a fresh read.
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     fun create(request: CreateAccountRequest): AccountResponse {
-        val account = Account(
-            user = currentUser.user,
-            code = generateNextAccountCode(AccountType.valueOf(request.type.value)),
-            name = request.name,
-            type = AccountType.valueOf(request.type.value),
-            thresholdPct = request.thresholdPct?.let { BigDecimal.valueOf(it) },
-            showInAlerts = request.showInAlerts ?: false,
+        val type = AccountType.valueOf(request.type.value)
+        fun insert() = accountRepo.saveAndFlush(
+            Account(
+                user = currentUser.user,
+                code = nextAccountCode(type),
+                name = request.name,
+                type = type,
+                thresholdPct = request.thresholdPct?.let { BigDecimal.valueOf(it) },
+                showInAlerts = request.showInAlerts ?: false,
+            )
         )
-        return accountRepo.save(account).toResponse()
+        val saved = try {
+            insert()
+        } catch (ex: DataIntegrityViolationException) {
+            insert()
+        }
+        return saved.toResponse()
     }
 
     // Positive = beneficial to user's wealth, negative = harmful.
@@ -231,14 +244,17 @@ class AccountService(
         createdAt = createdAt,
     )
 
-    private fun generateNextAccountCode(type: AccountType): Int {
-        val existingCodes = accountRepo
-            .findByCodeBetween(type.codeRange.first, type.codeRange.last)
-            .map { it.code }
-        return if (existingCodes.isEmpty()) {
-            type.codeRange.first
-        } else {
-            existingCodes.last()?.plus(1) ?: type.codeRange.first
+    // The user's highest code in the type's range + 1. Gaps left by deleted accounts aren't reused.
+    private fun nextAccountCode(type: AccountType): Int {
+        val range = type.codeRange
+        val highest = accountRepo
+            .findTopByUserIdAndCodeBetweenOrderByCodeDesc(currentUser.id, range.first, range.last)
+            ?.code ?: return range.first
+        if (highest >= range.last) {
+            throw ApiException(
+                "VALIDATION_ERROR", "No account codes left for type ${type.name}", HttpStatus.UNPROCESSABLE_ENTITY
+            )
         }
+        return highest + 1
     }
 }

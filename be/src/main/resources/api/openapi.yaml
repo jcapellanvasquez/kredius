@@ -452,6 +452,10 @@ paths:
     patch:
       tags: [Statements]
       summary: Update a single statement line (category or exclusion)
+      description: |
+        Setting a category on an unposted line posts it right away (and learns the merchant
+        pattern); the import becomes CONFIRMED when its last pending line is posted or excluded.
+        Returns 409 when the line is already posted (use recategorize) or the import is reversed.
       operationId: patchStatementLine
       parameters:
         - name: id
@@ -475,6 +479,12 @@ paths:
                 $ref: '#/components/schemas/StatementLineDto'
         '404':
           $ref: '#/components/responses/NotFound'
+        '409':
+          description: The line is already posted, or its import is reversed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '500':
           $ref: '#/components/responses/InternalServerError'
 
@@ -497,6 +507,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ConfirmImportResponse'
+        '409':
+          description: The import is reversed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '422':
           description: Some lines still unresolved
           content:

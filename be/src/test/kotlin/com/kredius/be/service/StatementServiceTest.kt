@@ -26,7 +26,11 @@ import com.kredius.be.repository.MerchantDictionaryRepository
 import com.kredius.be.repository.StatementImportRepository
 import com.kredius.be.repository.StatementLineRepository
 import com.kredius.be.repository.UserRepository
+import com.kredius.be.exception.ApiException
+import com.kredius.be.model.PatchStatementLineRequest
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
+import org.springframework.http.HttpStatus
 import org.mockito.Mockito.any
 import org.mockito.Mockito.anyLong
 import org.mockito.Mockito.mock
@@ -37,6 +41,8 @@ import java.math.BigDecimal
 import java.time.LocalDate
 import java.util.Optional
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import com.kredius.be.model.StatementType as ApiStatementType
@@ -45,7 +51,8 @@ class StatementServiceTest {
 
     private val savings = Account(id = 1, name = "Ahorros", type = AccountType.ASSET)
     private val card = Account(id = 2, name = "Tarjeta", type = AccountType.LIABILITY)
-    private val food = Account(name = "Comida", type = AccountType.EXPENSE)
+    private val food = Account(id = 6, name = "Comida", type = AccountType.EXPENSE)
+    private val market = Account(id = 7, name = "Supermercado", type = AccountType.EXPENSE)
 
     private val savedEntries = mutableListOf<JournalEntry>()
     private val savedJournalLines = mutableListOf<JournalLine>()
@@ -54,6 +61,7 @@ class StatementServiceTest {
     private val cardParser = mock(BhdPdfParser::class.java)
     private val savingsParser = mock(BhdSavingsPdfParser::class.java)
     private val merchantRepo = mock(MerchantDictionaryRepository::class.java)
+    private val statementLineRepo = mock(StatementLineRepository::class.java)
 
     private val service = run {
         val userRepo = mock(UserRepository::class.java)
@@ -61,8 +69,10 @@ class StatementServiceTest {
         val accountRepo = mock(AccountRepository::class.java)
         `when`(accountRepo.findByIdAndUserId(1L, 0L)).thenReturn(savings)
         `when`(accountRepo.findByIdAndUserId(2L, 0L)).thenReturn(card)
+        `when`(accountRepo.findByIdAndUserId(6L, 0L)).thenReturn(food)
+        `when`(accountRepo.findByIdAndUserId(7L, 0L)).thenReturn(market)
         `when`(importRepo.save(any(StatementImport::class.java))).thenAnswer { it.arguments[0] }
-        val statementLineRepo = mock(StatementLineRepository::class.java)
+        `when`(statementLineRepo.save(any(StatementLine::class.java))).thenAnswer { it.arguments[0] }
         `when`(statementLineRepo.findByAccountIdAndLineDateBetween(anyLong(), anyDate(), anyDate()))
             .thenAnswer { storedLines.toList() }
         val entryRepo = mock(JournalEntryRepository::class.java)
@@ -145,6 +155,14 @@ class StatementServiceTest {
         `when`(merchantRepo.findByUserIdOrderByTextPatternAsc(0L))
             .thenReturn(listOf(MerchantDictionary(textPattern = pattern, account = account)))
     }
+
+    private fun patch(line: StatementLine, categoryAccountId: Long? = null, isExcluded: Boolean? = null) {
+        `when`(statementLineRepo.findByIdAndStatementImportUserId(anyLong(), anyLong())).thenReturn(line)
+        service.patchLine(line.id, PatchStatementLineRequest(categoryAccountId = categoryAccountId, isExcluded = isExcluded))
+    }
+
+    private fun assertConflict(block: () -> Unit) =
+        assertEquals(HttpStatus.CONFLICT, assertThrows<ApiException> { block() }.httpStatus)
 
     @Test
     fun `confirming twice posts each line once`() {
@@ -257,5 +275,57 @@ class StatementServiceTest {
         assertEquals(1, savedEntries.size)
         val sides = savedJournalLines.associate { it.account.name to it.side }
         assertEquals(mapOf("Tarjeta" to EntrySide.DEBIT, "Ahorros" to EntrySide.CREDIT), sides)
+    }
+
+    @Test
+    fun `categorizing an unposted line posts it and confirms the import on the last one`() {
+        val import = cardImport(null, null)
+
+        patch(import.lines[0], categoryAccountId = food.id)
+        assertEquals(1, savedEntries.size)
+        assertEquals(StatementImportStatus.PENDING_REVIEW, import.status)
+
+        patch(import.lines[1], categoryAccountId = market.id)
+        assertEquals(2, savedEntries.size)
+        assertEquals(market, import.lines[1].categoryAccount)
+        assertEquals(StatementImportStatus.CONFIRMED, import.status)
+    }
+
+    @Test
+    fun `excluding the last pending line confirms the import, and including it clears the reason`() {
+        val import = cardImport(food, null)
+        service.confirm(1)
+
+        patch(import.lines[1], isExcluded = true)
+        assertTrue(import.lines[1].isExcluded)
+        assertEquals(ExclusionReason.USER_EXCLUDED, import.lines[1].exclusionReason)
+        assertEquals(StatementImportStatus.CONFIRMED, import.status)
+
+        patch(import.lines[1], isExcluded = false)
+        assertFalse(import.lines[1].isExcluded)
+        assertNull(import.lines[1].exclusionReason)
+        assertEquals(StatementImportStatus.PENDING_REVIEW, import.status)
+    }
+
+    @Test
+    fun `a posted line can't be recategorized or excluded through patch`() {
+        val import = cardImport(food)
+        service.confirm(1)
+        val posted = import.lines[0]
+
+        assertConflict { patch(posted, categoryAccountId = market.id) }
+        assertConflict { patch(posted, isExcluded = true) }
+        patch(posted, categoryAccountId = food.id) // same category: nothing to do
+        assertEquals(1, savedEntries.size)
+    }
+
+    @Test
+    fun `lines of a reversed import can't be patched or confirmed`() {
+        val import = cardImport(null)
+        import.status = StatementImportStatus.REVERSED
+
+        assertConflict { patch(import.lines[0], categoryAccountId = food.id) }
+        assertConflict { service.confirm(1) }
+        assertEquals(0, savedEntries.size)
     }
 }

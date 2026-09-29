@@ -134,22 +134,50 @@ class StatementService(
         else -> StatementLineType.DEBIT
     }
 
+    /**
+     * Sets a line's category or exclusion. An unposted line that ends up categorized and not excluded
+     * is posted right away. A posted line can't be changed here: use recategorize.
+     */
     fun patchLine(id: Long, request: PatchStatementLineRequest): StatementLineDto {
         val line = lineRepo.findByIdAndStatementImportUserId(id, currentUser.id)
             ?: throw ApiException(ApiException.NOT_FOUND, "Statement line not found", HttpStatus.NOT_FOUND)
-
-        request.isExcluded?.let { line.isExcluded = it }
-        request.categoryAccountId?.let { accId ->
-            val account = accountRepo.findByIdAndUserId(accId, currentUser.id)
-                ?: throw ApiException(ApiException.NOT_FOUND, "Category account not found", HttpStatus.NOT_FOUND)
-            line.categoryAccount = account
-            learnMerchant(line.description, account)
-        }
         if (request.categoryAccountId == null && request.isExcluded == null) {
             throw ApiException(ApiException.BAD_REQUEST, "Nothing to update", HttpStatus.BAD_REQUEST)
         }
+        requireNotReversed(line.statementImport)
+
+        val category = request.categoryAccountId?.let { accId ->
+            accountRepo.findByIdAndUserId(accId, currentUser.id)
+                ?: throw ApiException(ApiException.NOT_FOUND, "Category account not found", HttpStatus.NOT_FOUND)
+        }
+        if (line.journalLine != null) {
+            if (category != null && category.id != line.categoryAccount?.id)
+                throw ApiException(ApiException.CONFLICT, "Line is already posted; recategorize it instead", HttpStatus.CONFLICT)
+            if (request.isExcluded == true)
+                throw ApiException(ApiException.CONFLICT, "A posted line can't be excluded", HttpStatus.CONFLICT)
+            return line.toDto()
+        }
+
+        when (request.isExcluded) {
+            true -> line.exclude(ExclusionReason.USER_EXCLUDED)
+            false -> {
+                line.isExcluded = false
+                line.exclusionReason = null
+            }
+            null -> {}
+        }
+        if (category != null) {
+            line.categoryAccount = category
+            learnMerchant(line.description, category)
+        }
+        postPending(line.statementImport, listOf(line))
 
         return lineRepo.save(line).toDto()
+    }
+
+    private fun requireNotReversed(import: StatementImport) {
+        if (import.status == StatementImportStatus.REVERSED)
+            throw ApiException(ApiException.CONFLICT, "Import is reversed", HttpStatus.CONFLICT)
     }
 
     private fun learnMerchant(description: String, account: Account) {
@@ -185,6 +213,7 @@ class StatementService(
     fun confirm(id: Long): ResponseEntity<*> {
         val importStatement = importRepo.findByIdAndUserId(id, currentUser.id)
             ?: throw ApiException(ApiException.NOT_FOUND, "Statement import not found", HttpStatus.NOT_FOUND)
+        requireNotReversed(importStatement)
 
         val postedCount = postPending(importStatement)
         importRepo.saveAndFlush(importStatement)
@@ -197,12 +226,14 @@ class StatementService(
     }
 
     /**
-     * Posts every categorized line that isn't posted yet, then sets the import to CONFIRMED when no
-     * non-excluded line is left unposted, PENDING_REVIEW otherwise. Returns how many lines were posted.
+     * Posts the categorized lines among [candidates] that aren't posted yet, then sets the import to
+     * CONFIRMED when no non-excluded line is left unposted, PENDING_REVIEW otherwise. Returns how many
+     * lines were posted.
      */
-    private fun postPending(import: StatementImport): Int {
-        val usdRate = exchangeRateRepo.findTopByContextOrderByRateDateDesc(RateContext.CREDIT_CARD)
-        val pending = import.lines.filter { isNewJournalEntry(it) }
+    private fun postPending(import: StatementImport, candidates: List<StatementLine> = import.lines): Int {
+        val pending = candidates.filter { isNewJournalEntry(it) }
+        val usdRate = if (pending.isEmpty()) null
+            else exchangeRateRepo.findTopByContextOrderByRateDateDesc(RateContext.CREDIT_CARD)
         for (line in pending) {
             line.journalLine = journalService.saveJournalLine(
                 line = line, importStatement = import, source = import.journalSource(),

@@ -28,7 +28,8 @@
   }
 </p>
 
-<app-budget-input [value]="r.budgetInput" [state]="r.saveState" (valueChange)="budgetChange.emit($event)" />
+<app-budget-input [value]="r.budgetInput" [hint]="r.previousBudget" [state]="r.saveState"
+  (valueChange)="budgetChange.emit($event)" />
 
 @if (r.transactions.length > 0) {
   <button type="button" (click)="expanded.set(!expanded())" [attr.aria-expanded]="expanded()" [attr.aria-controls]="listId"

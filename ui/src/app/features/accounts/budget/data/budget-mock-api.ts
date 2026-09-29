@@ -188,6 +188,7 @@ export class BudgetMockApi extends BudgetApi {
           icon: cat.icon,
           actual,
           budget,
+          previousBudget: budget === null ? this.previousBudget(db, period, cat.accountId) : null,
           origins: STATEMENT_KIND_ORDER.filter(kind => own.some(l => l.source === kind)),
           transactions: own.sort((a, b) => b.date.localeCompare(a.date)).map(l => this.toTransaction(db, l)),
         };
@@ -229,6 +230,15 @@ export class BudgetMockApi extends BudgetApi {
         .map(l => this.toTransaction(db, l)),
       categories,
     };
+  }
+
+  /** The latest budget saved for the category before `period`. */
+  private previousBudget(db: MockDb, period: Period, accountId: number): number | null {
+    const earlier = Object.keys(db.budgets)
+      .filter(p => p < period && db.budgets[p][accountId] != null)
+      .sort();
+    const latest = earlier.at(-1);
+    return latest ? db.budgets[latest][accountId] : null;
   }
 
   private toTransaction(db: MockDb, l: MockLine): TransactionLine {

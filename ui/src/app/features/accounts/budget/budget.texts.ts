@@ -29,6 +29,8 @@ export const BUDGET_TEXT = {
   percent:          '%',
   of:               'de',
   unsaved:          'sin guardar',
+  usePrevious:      'Usar',
+  usePreviousLabel: 'Usar el presupuesto del mes anterior',
   saved:            'Guardado',
   saveFailed:       'No se pudo guardar',
   other:            'Otra',
@@ -68,6 +70,7 @@ export const BUDGET_TEXT = {
     [ImportStatus.Failed]:        'Fallido',
   } satisfies Record<ImportStatus, string>,
 
+  previousBudget: (amount: string) => `${amount} (mes anterior)`,
   transactions: (n: number) => `${n} ${n === 1 ? 'transacción' : 'transacciones'}`,
   lines:        (n: number) => `${n} ${n === 1 ? 'línea' : 'líneas'}`,
   unresolved:   (n: number) => `${n} sin categorizar`,

@@ -123,7 +123,8 @@ export function buildMockDb(scenario: MockScenario, now: Date = new Date()): Moc
     card: { ...CARD },
     savings: { ...SAVINGS_ACCOUNT, balance: 62300, incomeByPeriod: { [cur]: 197890, [prev]: 195400 } },
     categories: CATEGORIES.map(c => ({ ...c })),
-    budgets: { [cur]: { ...BUDGETS }, [prev]: { ...BUDGETS } },
+    // Restaurantes had a budget last month only, so it shows the "mes anterior" hint.
+    budgets: { [cur]: { ...BUDGETS }, [prev]: { ...BUDGETS, [CAT.Restaurantes]: 5000 } },
     lines: [],
     imports: [],
     nextLineId: 1000,

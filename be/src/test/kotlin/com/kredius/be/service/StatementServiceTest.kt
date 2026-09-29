@@ -2,6 +2,7 @@ package com.kredius.be.service
 
 import com.kredius.be.entity.Account
 import com.kredius.be.entity.AccountType
+import com.kredius.be.entity.CurrencyType
 import com.kredius.be.entity.JournalEntry
 import com.kredius.be.entity.JournalLine
 import com.kredius.be.entity.StatementImport
@@ -12,6 +13,8 @@ import com.kredius.be.entity.StatementType
 import com.kredius.be.entity.User
 import com.kredius.be.parser.BhdPdfParser
 import com.kredius.be.parser.BhdSavingsPdfParser
+import com.kredius.be.parser.ParsedStatementRow
+import com.kredius.be.parser.RowDirection
 import com.kredius.be.repository.AccountRepository
 import com.kredius.be.repository.ExchangeRateRepository
 import com.kredius.be.repository.JournalEntryRepository
@@ -22,20 +25,36 @@ import com.kredius.be.repository.StatementLineRepository
 import com.kredius.be.repository.UserRepository
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.any
+import org.mockito.Mockito.anyLong
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.`when`
+import org.springframework.mock.web.MockMultipartFile
+import java.io.InputStream
 import java.math.BigDecimal
+import java.time.LocalDate
 import java.util.Optional
 import kotlin.test.assertEquals
+import com.kredius.be.model.StatementType as ApiStatementType
 
 class StatementServiceTest {
 
+    private val card = Account(id = 2, name = "Tarjeta", type = AccountType.LIABILITY)
+    private val food = Account(name = "Comida", type = AccountType.EXPENSE)
+
     private val savedEntries = mutableListOf<JournalEntry>()
+    private val storedLines = mutableListOf<StatementLine>()
     private val importRepo = mock(StatementImportRepository::class.java)
+    private val cardParser = mock(BhdPdfParser::class.java)
 
     private val service = run {
         val userRepo = mock(UserRepository::class.java)
         `when`(userRepo.findById(0L)).thenReturn(Optional.of(User()))
+        val accountRepo = mock(AccountRepository::class.java)
+        `when`(accountRepo.findByIdAndUserId(2L, 0L)).thenReturn(card)
+        `when`(importRepo.save(any(StatementImport::class.java))).thenAnswer { it.arguments[0] }
+        val statementLineRepo = mock(StatementLineRepository::class.java)
+        `when`(statementLineRepo.findByAccountIdAndLineDateBetween(anyLong(), anyDate(), anyDate()))
+            .thenAnswer { storedLines.toList() }
         val entryRepo = mock(JournalEntryRepository::class.java)
         `when`(entryRepo.save(any(JournalEntry::class.java)))
             .thenAnswer { (it.arguments[0] as JournalEntry).also(savedEntries::add) }
@@ -45,20 +64,22 @@ class StatementServiceTest {
 
         StatementService(
             currentUser = CurrentUserService(userRepo, 0L),
-            accountRepo = mock(AccountRepository::class.java),
+            accountRepo = accountRepo,
             importRepo = importRepo,
-            lineRepo = mock(StatementLineRepository::class.java),
+            lineRepo = statementLineRepo,
             merchantRepo = mock(MerchantDictionaryRepository::class.java),
             journalEntryRepo = entryRepo,
             exchangeRateRepo = mock(ExchangeRateRepository::class.java),
-            parser = mock(BhdPdfParser::class.java),
+            parser = cardParser,
             savingsParser = mock(BhdSavingsPdfParser::class.java),
             journalService = JournalService(entryRepo, lineRepo),
         )
     }
 
+    /** A matcher for a Kotlin non-null parameter; the fallback only avoids Kotlin's null check. */
+    private fun anyDate(): LocalDate = any(LocalDate::class.java) ?: LocalDate.MIN
+
     private fun cardImport(vararg categories: Account?): StatementImport {
-        val card = Account(name = "Tarjeta", type = AccountType.LIABILITY)
         val import = StatementImport(id = 1, account = card, type = StatementType.CREDIT_CARD)
         categories.forEachIndexed { i, category ->
             import.lines += StatementLine(
@@ -74,9 +95,29 @@ class StatementServiceTest {
         return import
     }
 
+    private fun row(day: Int, description: String, amount: String, occurrence: Int = 1) = ParsedStatementRow(
+        date = LocalDate.of(2026, 8, day),
+        description = description,
+        amount = BigDecimal(amount),
+        currency = CurrencyType.RD,
+        direction = RowDirection.DEBIT,
+        occurrenceIndex = occurrence,
+    )
+
+    /** Uploads [rows] as a card statement and keeps its lines as the account's stored lines. */
+    private fun uploadCard(vararg rows: ParsedStatementRow): StatementImport {
+        `when`(cardParser.parse(any(InputStream::class.java) ?: InputStream.nullInputStream())).thenReturn(rows.toList())
+        var saved: StatementImport? = null
+        `when`(importRepo.save(any(StatementImport::class.java)))
+            .thenAnswer { (it.arguments[0] as StatementImport).also { i -> saved = i } }
+        service.upload(
+            MockMultipartFile("file", ByteArray(0)), 2L, ApiStatementType.CREDIT_CARD, LocalDate.of(2026, 8, 26)
+        )
+        return saved!!.also { storedLines += it.lines }
+    }
+
     @Test
     fun `confirming twice posts each line once`() {
-        val food = Account(name = "Comida", type = AccountType.EXPENSE)
         val import = cardImport(food, food)
 
         service.confirm(1)
@@ -88,7 +129,6 @@ class StatementServiceTest {
 
     @Test
     fun `uncategorized lines keep the import pending until they are posted`() {
-        val food = Account(name = "Comida", type = AccountType.EXPENSE)
         val import = cardImport(food, null)
 
         service.confirm(1)
@@ -100,5 +140,35 @@ class StatementServiceTest {
 
         assertEquals(2, savedEntries.size)
         assertEquals(StatementImportStatus.CONFIRMED, import.status)
+    }
+
+    @Test
+    fun `uploading the same rows twice adds nothing the second time`() {
+        val rows = arrayOf(row(1, "SUPERMERCADO", "1500.00"), row(1, "CAFE", "100.00"), row(1, "CAFE", "100.00", 2))
+
+        val first = uploadCard(*rows)
+        val second = uploadCard(*rows)
+
+        assertEquals(3, first.lines.size)
+        assertEquals(StatementImportStatus.PENDING_REVIEW, first.status)
+        assertEquals(0, second.lines.size)
+        assertEquals(StatementImportStatus.CONFIRMED, second.status)
+    }
+
+    @Test
+    fun `a longer statement adds only the extra rows`() {
+        uploadCard(row(1, "SUPERMERCADO", "1500.00"), row(1, "CAFE", "100.00"))
+
+        val longer = uploadCard(
+            row(1, "SUPERMERCADO", "1500.00"),
+            row(1, "CAFE", "100.00"),
+            row(1, "CAFE", "100.00", 2),
+            row(3, "GASOLINA", "2000.00"),
+        )
+
+        assertEquals(
+            listOf("CAFE" to 2, "GASOLINA" to 1),
+            longer.lines.map { it.description to it.occurrenceIndex },
+        )
     }
 }

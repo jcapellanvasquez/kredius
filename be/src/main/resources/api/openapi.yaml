@@ -391,7 +391,8 @@ paths:
       description: |
         Accepts a PDF file, parses it synchronously, matches merchant dictionary,
         and returns the import with categorized lines ready for review.
-        Returns 409 if a confirmed import already exists for this account + date.
+        Rows already imported for the account (same date, description, amount,
+        currency and occurrence) are skipped; the import holds only the new ones.
       operationId: uploadStatement
       requestBody:
         required: true
@@ -419,12 +420,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/StatementImportResponse'
-        '409':
-          description: A confirmed import already exists for this account + date
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DuplicateImportError'
         '500':
           $ref: '#/components/responses/InternalServerError'
 
@@ -501,12 +496,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ConfirmImportResponse'
-        '409':
-          description: Duplicate confirmed import (race condition)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DuplicateImportError'
         '422':
           description: Some lines still unresolved
           content:
@@ -1370,20 +1359,19 @@ components:
         errorMessage:
           type: string
           nullable: true
+        uploadedAt:
+          type: string
+          format: date-time
+        newCount:
+          type: integer
+          description: Transactions this upload added; rows already imported are skipped
+        uncategorizedCount:
+          type: integer
+          description: Lines of this import still waiting for a category
         lines:
           type: array
           items:
             $ref: '#/components/schemas/StatementLineDto'
-
-    DuplicateImportError:
-      type: object
-      properties:
-        error:
-          type: string
-          example: duplicate_confirmed_import
-        existingImportId:
-          type: integer
-          format: int64
 
     PatchStatementLineRequest:
       type: object

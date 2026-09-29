@@ -3,7 +3,6 @@ package com.kredius.be.service
 import com.kredius.be.entity.*
 import com.kredius.be.entity.StatementImportStatus
 import com.kredius.be.exception.ApiException
-import com.kredius.be.exception.DuplicateImportException
 import com.kredius.be.model.*
 import com.kredius.be.model.StatementType
 import com.kredius.be.parser.BhdPdfParser
@@ -44,9 +43,6 @@ class StatementService(
         val account = accountRepo.findByIdAndUserId(accountId, userId)
             ?: throw ApiException(ApiException.NOT_FOUND, "Account not found", HttpStatus.NOT_FOUND)
 
-        val existingStatementOfMonth = importRepo.findByAccountIdAndStatementDateMonth(accountId, statementDate.monthValue)
-        if (existingStatementOfMonth != null) return existingStatementOfMonth.toResponse()
-
         val import = StatementImport(
             account = account,
             type = com.kredius.be.entity.StatementType.valueOf(type.value),
@@ -71,7 +67,8 @@ class StatementService(
                 ApiStatementType.SAVINGS -> savingsParser.parse(file.inputStream)
                 else -> parser.parse(file.inputStream)
             }
-            val lines = rows.map { row ->
+            val existingKeys = existingKeys(account.id, rows)
+            val lines = rows.filter { it.dedupKey() !in existingKeys }.map { row ->
                 StatementLine(
                     statementImport = import,
                     account = account,
@@ -87,7 +84,7 @@ class StatementService(
             }
             import.lines.addAll(lines)
 
-            import.status = StatementImportStatus.PENDING_REVIEW
+            import.status = if (lines.all { it.isExcluded }) StatementImportStatus.CONFIRMED else StatementImportStatus.PENDING_REVIEW
             importRepo.save(import)
             import.toResponse()
         } catch (ex: Exception) {
@@ -96,6 +93,27 @@ class StatementService(
             importRepo.save(import)
             import.toResponse()
         }
+    }
+
+    /** What makes a row the same transaction; mirrors the unique constraint on `statement_lines`. */
+    private data class DedupKey(
+        val date: LocalDate,
+        val description: String,
+        val amount: BigDecimal,
+        val currency: CurrencyType,
+        val occurrenceIndex: Int,
+    )
+
+    private fun ParsedStatementRow.dedupKey() =
+        DedupKey(date, description, amount.setScale(2), currency, occurrenceIndex)
+
+    private fun StatementLine.dedupKey() =
+        DedupKey(lineDate, description, amount.setScale(2), currency, occurrenceIndex)
+
+    private fun existingKeys(accountId: Long, rows: List<ParsedStatementRow>): Set<DedupKey> {
+        if (rows.isEmpty()) return emptySet()
+        return lineRepo.findByAccountIdAndLineDateBetween(accountId, rows.minOf { it.date }, rows.maxOf { it.date })
+            .mapTo(HashSet()) { it.dedupKey() }
     }
 
     private fun ParsedStatementRow.lineType() = when {
@@ -157,11 +175,6 @@ class StatementService(
             ?: throw ApiException(ApiException.NOT_FOUND, "Statement import not found", HttpStatus.NOT_FOUND)
 
         var postedCount = 0
-        // Race-condition duplicate check
-        val existing = importRepo.findByAccountIdAndStatementDateAndStatus(
-            importStatement.account.id, importStatement.statementDate, StatementImportStatus.CONFIRMED
-        )
-        if (existing != null && existing.id != id) throw DuplicateImportException(existing.id)
 
         val source = if (importStatement.type == EntityStatementType.CREDIT_CARD)
             JournalSource.CARD_STATEMENT else JournalSource.SAVINGS_STATEMENT
@@ -251,7 +264,7 @@ class StatementService(
         accountId = account.id,
         accountName = account.name,
         lineCount = lines.count { it.type != StatementLineType.INITIAL_BALANCE },
-        unresolvedCount = lines.count { !it.isExcluded && it.categoryAccount == null && it.type != StatementLineType.INITIAL_BALANCE },
+        unresolvedCount = lines.count { it.isUncategorized() },
     )
 
     private fun StatementImport.toResponse() = StatementImportResponse(
@@ -262,6 +275,9 @@ class StatementService(
         accountId = account.id,
         accountName = account.name,
         errorMessage = errorMessage,
+        uploadedAt = createdAt,
+        newCount = lines.count { it.type != StatementLineType.INITIAL_BALANCE },
+        uncategorizedCount = lines.count { it.isUncategorized() },
         lines = lines.map { it.toDto() },
     )
 
@@ -278,6 +294,9 @@ class StatementService(
     )
 
     /** A line is posted once: `journalLine` is set when it is, so re-confirming skips it. */
+    private fun StatementLine.isUncategorized() =
+        !isExcluded && categoryAccount == null && type != StatementLineType.INITIAL_BALANCE
+
     private fun isNewJournalEntry(row: StatementLine): Boolean {
         return !row.isExcluded && row.categoryAccount != null && row.journalLine == null
     }

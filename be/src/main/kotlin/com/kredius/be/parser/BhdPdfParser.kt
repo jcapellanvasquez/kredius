@@ -42,7 +42,7 @@ class BhdPdfParser {
         }
     }
 
-    private fun parseText(text: String): List<ParsedStatementLine> {
+    internal fun parseText(text: String): List<ParsedStatementLine> {
         val rawLines = text.lines().map { it.trim() }.filter { it.isNotBlank() }
         val result   = mutableListOf<ParsedStatementLine>()
 

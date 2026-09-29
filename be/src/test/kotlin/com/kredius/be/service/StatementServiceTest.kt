@@ -43,7 +43,9 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.springframework.http.HttpStatus
 import org.mockito.Mockito.any
+import org.mockito.ArgumentMatchers.argThat
 import org.mockito.Mockito.anyCollection
+import org.mockito.Mockito.verify
 import org.mockito.Mockito.anyList
 import org.mockito.Mockito.anyLong
 import org.mockito.Mockito.mock
@@ -93,6 +95,7 @@ class StatementServiceTest {
         `when`(accountRepo.findByIdAndUserId(6L, 0L)).thenReturn(food)
         `when`(accountRepo.findByIdAndUserId(7L, 0L)).thenReturn(market)
         `when`(accountRepo.findByIdAndUserId(8L, 0L)).thenReturn(leisure)
+        `when`(accountRepo.findByIdAndUserId(20L, 0L)).thenReturn(loanAccount)
         `when`(accountRepo.findByUserIdAndType(0L, AccountType.EXPENSE)).thenReturn(listOf(financialExpenses))
         `when`(accountRepo.findByUserIdAndType(0L, AccountType.INCOME)).thenReturn(listOf(interestIncome))
         `when`(importRepo.save(any(StatementImport::class.java))).thenAnswer { it.arguments[0] }
@@ -603,5 +606,44 @@ class StatementServiceTest {
 
         assertConflict { loanService.collectInstallment(loanAccount.id, 1, LocalDate.of(2026, 8, 25)) }
         assertEquals(1, savedEntries.size)
+    }
+
+    /** A pending savings import (id 1) with one uncategorized "Pago Préstamo" debit row of [amount]. */
+    private fun savingsLoanRow(amount: String): StatementLine {
+        val import = StatementImport(id = 1, account = savings, type = StatementType.SAVINGS)
+        import.lines += StatementLine(
+            statementImport = import, account = savings, lineDate = LocalDate.of(2026, 8, 25),
+            description = "Pago Préstamo /Activas", amount = BigDecimal(amount), type = StatementLineType.DEBIT,
+        )
+        return import.lines.single()
+    }
+
+    @Test
+    fun `picking a loan for a row pays the installment with the bank's amount and learns the pattern`() {
+        val loan = loan(LoanType.RECEIVED)
+        `when`(merchantRepo.findByUserIdOrderByTextPatternAsc(0L)).thenReturn(emptyList())
+        val line = savingsLoanRow("7000.00")
+
+        patch(line, categoryAccountId = loanAccount.id)
+
+        assertEquals(mapOf(
+            "Gastos Financieros" to (EntrySide.DEBIT to BigDecimal("1200.00")),
+            "Préstamo BHD" to (EntrySide.DEBIT to BigDecimal("5800.00")),
+            "Ahorros" to (EntrySide.CREDIT to BigDecimal("7000.00")),
+        ), savedEntries.single().sides())
+        assertEquals(InstallmentStatus.PAID, loan.installments.single().status)
+        assertEquals(savings, line.journalLine!!.account)
+        assertEquals(StatementImportStatus.CONFIRMED, line.statementImport.status)
+        verify(merchantRepo).save(argThat<MerchantDictionary> { it.textPattern == "Pago Préstamo /Activas" && it.account === loanAccount })
+    }
+
+    @Test
+    fun `picking a loan with an amount above the installment books the extra as principal`() {
+        loan(LoanType.RECEIVED)
+        val line = savingsLoanRow("8000.00")
+
+        patch(line, categoryAccountId = loanAccount.id)
+
+        assertEquals(BigDecimal("6800.00"), savedEntries.single().sides().getValue("Préstamo BHD").second)
     }
 }

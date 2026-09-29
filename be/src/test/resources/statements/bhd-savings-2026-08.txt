@@ -1,0 +1,88 @@
+Ave. Winston Churchill Esq. 27 de Febrero, Sto. Dgo., Rep. Dom.
+Apartado Postal 21721 . Tel: 809-243-3232
+Fax: (809) 541 4949 . RNC: 1-01-13679-2
+Número de cuenta
+XXXXXXX-001-9
+Número de cuenta regional
+DO40BCBH000000000XXXXXXX0019
+PEREZ GOMEZ, JUAN 1000000 / 0001
+Moneda
+CALLE 1, No. 1, CENTRO
+SECTOR EJEMPLO RD$
+SANTIAGO Fecha de corte
+31/08/2026
+Escanéame para validar Balance inicial
+Documento emitido por el Banco Múltiple BHD S.A.
+102,717.23
+Cheques en tránsito
+0.00
+Balance final
+96,356.20
+Estado de cuenta
+Confirme la validez de este documento escaneando el código QR de arriba o ingrese a https://
+verificador.bhd.com.do/validate/ y coloque este código: 00000000-0000-0000-0000-000000000000. Si al
+revisar este estado de cuenta tiene dudas, llame al 809-243-5000
+Fecha Ref. Detalles Débitos Créditos Balance
+Balance inicial: 01/08/2026 102,717.23
+03/08/2026 105664 Ret. VISA ABPHNM 4,900.00 0.00 97,817.23
+03/08/2026 1834688 Cargo Mensual Uso VD 5678 AGO/2026 70.00 0.00 97,747.23
+03/08/2026 5739031 Pago al Instante Transf. Ñ 800000001 6,000.00 0.00 91,747.23
+03/08/2026 5739032 Pago al Instante Transf. Ñ 800000001 100.00 0.00 91,647.23
+04/08/2026 1433505 CR TR INTL: ACME CORP LLC USD TRA 0.00 198,450.00 290,097.23
+04/08/2026 1433506 CR TR INTL: ACME CORP LLC USD TRA 560.00 0.00 289,537.23
+04/08/2026 6311000 Pago al Instante Transf. # 800000002 5,800.00 0.00 283,737.23
+04/08/2026 6311001 Pago al Instante Transf. # 800000002 11.60 0.00 283,725.63
+04/08/2026 6311003 Pago al Instante Transf. # 800000002 100.00 0.00 283,625.63
+05/08/2026 6644682 Pago al Instante Transf. # 800000001 40,800.00 0.00 242,825.63
+05/08/2026 6644685 Pago al Instante Transf. # 800000001 100.00 0.00 242,725.63
+06/08/2026 2778051 PEREZ GOMEZ- 5,000.00 0.00 237,725.63
+10/08/2026 2766046 Ret. VISA APAP- SUCURSAL 10,000.00 0.00 227,725.63
+10/08/2026 2790152 Ret. VISA APAP- SUCURSAL 10,000.00 0.00 217,725.63
+11/08/2026 3234167 PEREZ GOMEZ- 1,000.00 0.00 216,725.63
+11/08/2026 3234167 PEREZ GOMEZ- 2.00 0.00 216,723.63
+17/08/2026 1297695 Imp. transferencia o cheque 20.00 0.00 216,703.63
+17/08/2026 1297695 PAGO DE TC 4000 0000 0000 1234 10,000.00 0.00 206,703.63
+21/08/2026 4354469 Pago al Instante Transf. # 800000003 1,200.00 0.00 205,503.63
+<CONTINUA>
+El banco siempre cerca de ti, a través de Móvil Banking BHD.
+Ave. Winston Churchill Esq. 27 de Febrero, Sto. Dgo., Rep. Dom.
+Apartado Postal 21721 . Tel: 809-243-3232
+Fax: (809) 541 4949 . RNC: 1-01-13679-2
+Número de cuenta
+XXXXXXX-001-9
+Número de cuenta regional
+DO40BCBH000000000XXXXXXX0019
+PEREZ GOMEZ, JUAN 1000000 / 0001
+Moneda
+CALLE 1, No. 1, CENTRO
+SECTOR EJEMPLO RD$
+SANTIAGO Fecha de corte
+31/08/2026
+Escanéame para validar Balance inicial
+Documento emitido por el Banco Múltiple BHD S.A.
+102,717.23
+Cheques en tránsito
+0.00
+Balance final
+96,356.20
+Estado de cuenta
+Confirme la validez de este documento escaneando el código QR de arriba o ingrese a https://
+verificador.bhd.com.do/validate/ y coloque este código: 00000000-0000-0000-0000-000000000000. Si al
+revisar este estado de cuenta tiene dudas, llame al 809-243-5000
+Fecha Ref. Detalles Débitos Créditos Balance
+21/08/2026 4354470 Pago al Instante Transf. # 800000003 2.40 0.00 205,501.23
+21/08/2026 4354471 Pago al Instante Transf. # 800000003 100.00 0.00 205,401.23
+25/08/2026 4774628 Imp. transferencia o cheque 14.67 0.00 205,386.56
+25/08/2026 4774628 Pago Préstamo /Activas 7,338.15 0.00 198,048.41
+25/08/2026 3107354 Ret. VISA APAP- SUCURSAL 20,000.00 0.00 178,048.41
+27/08/2026 6576336 Imp. transferencia o cheque 133.68 0.00 177,914.73
+27/08/2026 6576336 PAGO DE TC 4000 0000 0000 1234 66,840.21 0.00 111,074.52
+27/08/2026 6576350 Imp. transferencia o cheque 23.79 0.00 111,050.73
+27/08/2026 6576350 PAGO DE TC 4000 0000 0000 1234 11,896.01 0.00 99,154.72
+28/08/2026 7807424 PROD002 300.00 0.00 98,854.72
+31/08/2026 443548 Ret. VISA ABPHNM 2,500.00 0.00 96,354.72
+31/08/2026 5850065 Reten.ley 253-12 10% DGII RD$ 0.16 0.00 96,354.56
+31/08/2026 5850065 Pago Intereses CA 0.00 1.64 96,356.20
+0 CKS 30 DEBITOS 204,812.67
+2 CREDITOS 198,451.64
+El banco siempre cerca de ti, a través de Móvil Banking BHD.

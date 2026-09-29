@@ -1,0 +1,88 @@
+package com.kredius.be.parser
+
+import com.kredius.be.entity.CurrencyType
+import org.junit.jupiter.api.Test
+import java.math.BigDecimal
+import java.time.LocalDate
+import kotlin.test.assertEquals
+
+/**
+ * Baseline for the parser refactor: pins what the parser returns today for the sanitized
+ * August 2026 savings statement (text as PDFTextStripper extracts it, sorted by position).
+ */
+class BhdSavingsPdfParserTest {
+
+    private val rows = BhdSavingsPdfParser().parseText(fixture("bhd-savings-2026-08.txt"))
+    private val movements = rows.filter { !it.isInitialBalance }
+
+    @Test
+    fun `parses the initial balance and every movement across pages`() {
+        assertEquals(1, rows.count { it.isInitialBalance })
+        assertEquals(32, movements.size)
+        assertEquals(setOf(CurrencyType.RD), rows.map { it.currency }.toSet())
+    }
+
+    @Test
+    fun `debits and credits match the statement totals`() {
+        assertEquals(30, movements.count { !it.isCredit })
+        assertEquals(BigDecimal("204812.67"), movements.sumOf { it.debit })
+        assertEquals(2, movements.count { it.isCredit })
+        assertEquals(BigDecimal("198451.64"), movements.sumOf { it.credit })
+    }
+
+    @Test
+    fun `initial balance`() {
+        val initial = rows.first()
+        assertEquals(true, initial.isInitialBalance)
+        assertEquals("BALANCE INICIAL", initial.description)
+        assertEquals(BigDecimal("102717.23"), initial.amount)
+        assertEquals(null, initial.reference)
+        // Its date is LocalDate.now() today, not the printed 01/08/2026 (fixed in B3), so it isn't pinned
+    }
+
+    @Test
+    fun `row fields`() {
+        val first = movements.first()
+        assertEquals(LocalDate.of(2026, 8, 3), first.transactionDate)
+        assertEquals("105664", first.reference)
+        assertEquals("Ret. VISA ABPHNM", first.description)
+        assertEquals(BigDecimal("4900.00"), first.debit)
+        assertEquals(BigDecimal("0.00"), first.credit)
+        assertEquals(BigDecimal("97817.23"), first.balance)
+
+        val income = movements.first { it.isCredit }
+        assertEquals("CR TR INTL: ACME CORP LLC USD TRA", income.description)
+        assertEquals(BigDecimal("198450.00"), income.amount)
+
+        assertEquals(BigDecimal("96356.20"), movements.last().balance)
+    }
+
+    @Test
+    fun `rows sharing a reference stay separate`() {
+        val shared = movements.filter { it.reference == "1297695" }
+        assertEquals(listOf("Imp. transferencia o cheque", "PAGO DE TC 4000 0000 0000 1234"), shared.map { it.description })
+    }
+
+    @Test
+    fun `identical rows get increasing occurrence indexes`() {
+        val text = """
+            Fecha Ref. Detalles Débitos Créditos Balance
+            01/08/2026 111 CAFE 100.00 0.00 900.00
+            01/08/2026 112 CAFE 100.00 0.00 800.00
+            01/08/2026 113 CAFE 250.00 0.00 550.00
+        """.trimIndent()
+
+        assertEquals(listOf(1, 2, 1), BhdSavingsPdfParser().parseText(text).map { it.occurrenceIndex })
+    }
+
+    @Test
+    fun `the statement's two identical withdrawals are told apart`() {
+        // Same date, description and amount; only the bank reference differs
+        val withdrawals = movements.filter {
+            it.transactionDate == LocalDate.of(2026, 8, 10) && it.description == "Ret. VISA APAP- SUCURSAL"
+        }
+        assertEquals(listOf("2766046", "2790152"), withdrawals.map { it.reference })
+        assertEquals(listOf(1, 2), withdrawals.map { it.occurrenceIndex })
+        assertEquals(1, movements.count { it.occurrenceIndex == 2 })
+    }
+}

@@ -28,7 +28,7 @@ export interface BudgetEdit {
           <span class="text-sm font-normal text-gray-500">({{ uncategorized().length }})</span>
         </p>
         @for (line of uncategorized(); track line.lineId) {
-          <app-transaction-row [line]="line" [options]="options()" [loanOptions]="loanOptions()" [uiState]="lineStates().get(line.lineId)"
+          <app-transaction-row animate.leave="line-leave" [line]="line" [options]="options()" [loanOptions]="loanOptions()" [uiState]="lineStates().get(line.lineId)"
             (choose)="choose.emit({ line, categoryId: $event })" />
         }
       </div>

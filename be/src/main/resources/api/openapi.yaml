@@ -1029,10 +1029,30 @@ components:
           description: Loan installments paid or collected in the month, oldest first
           items:
             $ref: '#/components/schemas/BudgetLoanPayment'
+        cardPayments:
+          type: array
+          description: The month's payments from savings to the credit card (posted savings lines on the card account), oldest first
+          items:
+            $ref: '#/components/schemas/BudgetCardPayment'
         bankBalance:
           $ref: '#/components/schemas/BudgetBankBalance'
           nullable: true
           description: The bank's balance from the latest savings statement up to the month; null without one
+
+    BudgetCardPayment:
+      type: object
+      required: [lineId, date, amount]
+      properties:
+        lineId:
+          type: integer
+          format: int64
+        date:
+          type: string
+          format: date
+        amount:
+          type: number
+          format: double
+          description: RD$ paid to the card
 
     BudgetBankBalance:
       type: object

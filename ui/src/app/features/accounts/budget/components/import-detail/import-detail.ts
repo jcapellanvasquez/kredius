@@ -19,7 +19,7 @@ import { ImportDetail } from '../../models/budget.models';
   host: { class: 'block' },
   template: `
     <div class="max-w-2xl mx-auto flex flex-col gap-4">
-      <a [routerLink]="routes.root"
+      <a [routerLink]="routes.root" queryParamsHandling="preserve"
         class="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-900 transition-colors w-fit">
         <app-icon [name]="icons.ArrowLeft" [size]="16" /> {{ text.back }}
       </a>

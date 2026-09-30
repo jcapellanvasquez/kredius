@@ -1,10 +1,11 @@
 import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ActivatedRoute, Router } from '@angular/router';
 import { concatMap, from, toArray } from 'rxjs';
 import { AccountApiService } from '../../account-api.service';
-import { Period, currentPeriod, toIsoDate } from '../../../../shared/utils/period';
+import { Period, currentPeriod, fromMonthParam, toIsoDate, toMonthParam } from '../../../../shared/utils/period';
 import { percentOf, progressLevel } from '../../../../shared/utils/progress-level';
-import { BUDGET_THRESHOLDS, SAVED_HINT_MS, STATEMENT_KIND_ORDER } from '../budget.constants';
+import { BUDGET_QUERY, BUDGET_THRESHOLDS, SAVED_HINT_MS, STATEMENT_KIND_ORDER } from '../budget.constants';
 import { LineStatus, SaveState, StatementAccountKind } from '../budget.enums';
 import { BUDGET_TEXT } from '../budget.texts';
 import { BudgetApi } from '../data/budget-api';
@@ -18,6 +19,8 @@ export class BudgetStore {
   private readonly api = inject(BudgetApi);
   private readonly accounts = inject(AccountApiService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
 
   // ── Screen data ───────────────────────────────────────────────────────────
   readonly period = signal<Period>(currentPeriod());
@@ -106,7 +109,10 @@ export class BudgetStore {
 
   // ── Loading ───────────────────────────────────────────────────────────────
 
+  /** Opens the month in the URL (`?month=YYYY-MM`), else the current one. */
   init(): void {
+    const fromUrl = fromMonthParam(this.route.snapshot.queryParamMap.get(BUDGET_QUERY.month));
+    if (fromUrl) this.period.set(fromUrl);
     this.load();
     this.api.getCategoryOptions()
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -137,6 +143,13 @@ export class BudgetStore {
     this.discardDrafts();
     this.lineStates.set(new Map());
     this.period.set(period);
+    // replaceUrl: switching months shouldn't fill the back button's history.
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { [BUDGET_QUERY.month]: toMonthParam(period) },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
     this.load();
     return true;
   }

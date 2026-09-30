@@ -27,7 +27,7 @@ import { ImportSummary } from '../../models/budget.models';
       <ul class="flex flex-col">
         @for (imp of imports(); track imp.id) {
           <li>
-            <a [routerLink]="[routes.importDetail, imp.id]"
+            <a [routerLink]="[routes.importDetail, imp.id]" queryParamsHandling="preserve"
               class="flex items-center gap-2.5 py-2 -mx-1 px-1 rounded-lg hover:bg-gray-50 transition-colors">
               <app-account-icon [icon]="kindIcon[imp.kind]" [size]="iconSize" />
               <div class="flex-1 min-w-0">

@@ -258,6 +258,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/LoanResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '422':
           description: Validation error
           content:
@@ -1633,6 +1635,14 @@ components:
         startDate:
           type: string
           format: date
+        disbursedToAccountId:
+          type: integer
+          format: int64
+          nullable: true
+          description: |
+            Where the money went. Omitted: into the savings account (a cash loan). Otherwise the account
+            the loan paid for, e.g. an expense or asset for a financed purchase (a phone bought in
+            installments), so savings isn't touched. Asset, expense or liability accounts only.
 
     LoanType:
       type: string

@@ -155,6 +155,19 @@ class LoanService(
         }
     }
 
+    /**
+     * The user's account a received loan's money went to. A debit there must mean "received" or "paid for":
+     * an asset (goes up), an expense (a purchase) or a liability (paid off); never income or equity.
+     */
+    private fun disbursementAccount(accountId: Long): Account {
+        val account = accountRepo.findByIdAndUserId(accountId, currentUser.id)
+            ?: throw ApiException("NOT_FOUND", "Account $accountId not found", HttpStatus.NOT_FOUND)
+        if (account.type !in DISBURSEMENT_TYPES)
+            throw ApiException("VALIDATION_ERROR", "A loan can't be disbursed to a ${account.type} account",
+                HttpStatus.UNPROCESSABLE_ENTITY)
+        return account
+    }
+
     /** The account savings statements are uploaded for (Account.statementType = SAVINGS). */
     internal fun savingsAccount(): Account =
         accountRepo.findFirstByUserIdAndStatementTypeAndActiveTrueOrderByCodeAsc(currentUser.id, StatementType.SAVINGS)
@@ -363,7 +376,8 @@ class LoanService(
         }
         val pmtBd = BigDecimal.valueOf(pmt).setScale(2, RoundingMode.HALF_UP)
 
-        val savings = savingsAccount()
+        // Where the money went: savings for a cash loan, or the account a financed purchase belongs to.
+        val destination = req.disbursedToAccountId?.let { disbursementAccount(it) } ?: savingsAccount()
         val nextCode = (accountRepo.findByUserIdAndType(userId, AccountType.LIABILITY).mapNotNull { it.code }.maxOrNull() ?: 2000) + 1
         val loanAccount = accountRepo.save(Account(
             user = user, code = nextCode,
@@ -373,12 +387,14 @@ class LoanService(
 
         val disbursement = journalEntryRepo.save(JournalEntry(
             entryDate   = req.startDate,
-            description = "Desembolso préstamo recibido – ${req.counterpartyName}",
+            description = if (destination.statementType == StatementType.SAVINGS)
+                "Desembolso préstamo recibido – ${req.counterpartyName}"
+            else "Compra financiada – ${req.counterpartyName} (${destination.name})",
             source      = JournalSource.LOAN,
             user        = user,
         ))
         journalLineRepo.saveAll(listOf(
-            JournalLine(journalEntry = disbursement, account = savings,     side = EntrySide.DEBIT,  currency = CurrencyType.RD, originalAmount = principal, amountRd = principal),
+            JournalLine(journalEntry = disbursement, account = destination, side = EntrySide.DEBIT,  currency = CurrencyType.RD, originalAmount = principal, amountRd = principal),
             JournalLine(journalEntry = disbursement, account = loanAccount, side = EntrySide.CREDIT, currency = CurrencyType.RD, originalAmount = principal, amountRd = principal),
         ))
 
@@ -492,5 +508,7 @@ class LoanService(
     companion object {
         /** How far a statement row may be from a hand payment ("Pagar") and still be that payment. */
         private const val HAND_PAYMENT_WINDOW_DAYS = 10L
+
+        private val DISBURSEMENT_TYPES = setOf(AccountType.ASSET, AccountType.EXPENSE, AccountType.LIABILITY)
     }
 }

@@ -476,6 +476,7 @@ class StatementServiceTest {
         val detail = service.get(1)
 
         assertEquals("tarjeta-agosto.pdf", summary.fileName)
+        assertEquals("tarjeta-agosto.pdf", detail.fileName)
         assertEquals(import.createdAt, summary.uploadedAt)
         assertEquals(listOf(true, false), detail.lines!!.map { it.posted })
     }

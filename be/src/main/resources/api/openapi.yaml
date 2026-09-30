@@ -1739,6 +1739,9 @@ components:
         uploadedAt:
           type: string
           format: date-time
+        fileName:
+          type: string
+          nullable: true
         newCount:
           type: integer
           description: Transactions this upload added; rows already imported are skipped

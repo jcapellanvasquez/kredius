@@ -13,6 +13,7 @@ export interface StatementImportResponse {
    */
   autoPostedCount?: number | null;
   errorMessage?: string | null;
+  fileName?: string | null;
   id?: number;
   lines?: Array<StatementLineDto>;
 

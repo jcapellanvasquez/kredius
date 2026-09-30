@@ -12,6 +12,7 @@ import com.kredius.be.entity.LoanType
 import com.kredius.be.entity.StatementType
 import com.kredius.be.entity.User
 import com.kredius.be.exception.ApiException
+import com.kredius.be.model.CreateReceivedLoanRequest
 import com.kredius.be.repository.AccountRepository
 import com.kredius.be.repository.JournalEntryRepository
 import com.kredius.be.repository.JournalLineRepository
@@ -42,6 +43,7 @@ class LoanServiceTest {
     private val loanRepo = mock(LoanRepository::class.java)
     private val accountRepo = mock(AccountRepository::class.java)
     private val savedEntries = mutableListOf<JournalEntry>()
+    private val savedLines = mutableListOf<JournalLine>()
 
     private val service = run {
         val userRepo = mock(UserRepository::class.java)
@@ -54,7 +56,10 @@ class LoanServiceTest {
         `when`(entryRepo.save(any(JournalEntry::class.java)))
             .thenAnswer { (it.arguments[0] as JournalEntry).also(savedEntries::add) }
         val lineRepo = mock(JournalLineRepository::class.java)
-        `when`(lineRepo.saveAll(anyList<JournalLine>())).thenAnswer { it.arguments[0] }
+        `when`(lineRepo.saveAll(anyList<JournalLine>()))
+            .thenAnswer { (it.arguments[0] as List<*>).filterIsInstance<JournalLine>().also(savedLines::addAll) }
+        `when`(accountRepo.save(any(Account::class.java))).thenAnswer { it.arguments[0] }
+        `when`(loanRepo.save(any(Loan::class.java))).thenAnswer { it.arguments[0] }
         val installmentRepo = mock(LoanInstallmentRepository::class.java)
         `when`(installmentRepo.save(any(LoanInstallment::class.java))).thenAnswer { it.arguments[0] }
 
@@ -135,5 +140,48 @@ class LoanServiceTest {
         val ex = assertThrows<ApiException> { service.collectInstallment(20, 1) }
 
         assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, ex.httpStatus)
+    }
+
+    private fun receiveLoan(disbursedTo: Long? = null) = service.createReceivedLoan(
+        CreateReceivedLoanRequest(
+            counterpartyName = "Celular", principal = 21328.0, monthlyRate = 0.0, numInstallments = 3,
+            startDate = LocalDate.of(2026, 7, 30), disbursedToAccountId = disbursedTo,
+        )
+    )
+
+    private fun disbursement() = savedLines.associate { it.account.name to (it.side to it.amountRd) }
+
+    @Test
+    fun `a cash loan's money goes into savings`() {
+        receiveLoan()
+
+        assertEquals(mapOf(
+            "Cuenta Ahorros BHD" to (EntrySide.DEBIT to BigDecimal("21328.00")),
+            "Préstamo Recibido – Celular" to (EntrySide.CREDIT to BigDecimal("21328.00")),
+        ), disbursement())
+    }
+
+    @Test
+    fun `a financed purchase books the purchase account and leaves savings alone`() {
+        val phone = Account(id = 40, name = "Celular", type = AccountType.ASSET)
+        `when`(accountRepo.findByIdAndUserId(40L, 0L)).thenReturn(phone)
+
+        receiveLoan(disbursedTo = 40L)
+
+        assertEquals(mapOf(
+            "Celular" to (EntrySide.DEBIT to BigDecimal("21328.00")),
+            "Préstamo Recibido – Celular" to (EntrySide.CREDIT to BigDecimal("21328.00")),
+        ), disbursement())
+        assertEquals("Compra financiada – Celular (Celular)", savedEntries.single().description)
+    }
+
+    @Test
+    fun `a loan can't be disbursed to an income account`() {
+        `when`(accountRepo.findByIdAndUserId(4L, 0L)).thenReturn(Account(id = 4, name = "Salario", type = AccountType.INCOME))
+
+        val ex = assertThrows<ApiException> { receiveLoan(disbursedTo = 4L) }
+
+        assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, ex.httpStatus)
+        assertEquals(0, savedEntries.size)
     }
 }

@@ -58,3 +58,11 @@
     border: 0.5px solid theme('colors.gray.200');
   }
 }
+
+/* A categorized line fading out of "Sin categorizar" (Angular `animate.leave`). */
+@keyframes line-leave {
+  to { opacity: 0; transform: translateY(-4px); }
+}
+.line-leave {
+  animation: line-leave 150ms ease-in forwards;
+}

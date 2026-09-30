@@ -34,6 +34,11 @@ export class BudgetStore {
 
   // ── Chip selections, per line ─────────────────────────────────────────────
   readonly lineStates = signal<ReadonlyMap<number, LineUiState>>(new Map());
+  /**
+   * Lines just categorized from "Sin categorizar": kept in place (showing "Guardado") until the hint
+   * ends, although the refreshed data no longer lists them. Keyed by line id, with their old position.
+   */
+  private readonly settling = signal<ReadonlyMap<number, { line: TransactionLine; index: number }>>(new Map());
 
   // ── Upload ────────────────────────────────────────────────────────────────
   readonly uploadOpen = signal(false);
@@ -50,6 +55,16 @@ export class BudgetStore {
   readonly historyLoading = signal(false);
 
   // ── Derived ───────────────────────────────────────────────────────────────
+  /** "Sin categorizar" as shown: the server's list plus the lines still settling, at their old position. */
+  readonly uncategorized = computed<TransactionLine[]>(() => {
+    const list = [...(this.screen()?.uncategorized ?? [])];
+    const settling = [...this.settling().entries()].sort(([, a], [, b]) => a.index - b.index);
+    for (const [lineId, { line, index }] of settling) {
+      if (!list.some(l => l.lineId === lineId)) list.splice(Math.min(index, list.length), 0, line);
+    }
+    return list;
+  });
+
   /** Categories with drafts applied. Order stays as the server sent it so rows don't jump while typing. */
   readonly categories = computed<CategoryRowView[]>(() => {
     const drafts = this.drafts();
@@ -106,7 +121,7 @@ export class BudgetStore {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: screen => {
-          this.screen.set(screen);
+          this.screen.set(silent ? this.keepCategoryOrder(screen) : screen);
           this.loading.set(false);
         },
         error: () => {
@@ -184,10 +199,12 @@ export class BudgetStore {
     call.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
         this.setLineState(line.lineId, { state: SaveState.Saved, pendingCategoryId: categoryId });
+        this.keepSettling(line);
         this.load(true);
         this.refreshSidebar();
         this.afterHint(() => {
           if (this.lineState(line.lineId)?.state === SaveState.Saved) this.clearLineState(line.lineId);
+          this.dropSettling(line.lineId);
         });
       },
       error: () => this.setLineState(line.lineId, { state: SaveState.Error, pendingCategoryId: null }),
@@ -270,6 +287,33 @@ export class BudgetStore {
   private refreshSidebar(): void {
     // Best effort: the sidebar keeps its current data if the reload fails.
     this.accounts.load().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({ error: () => undefined });
+  }
+
+  /**
+   * A background refresh keeps the categories in their current order, so rows don't jump while the
+   * user works; new rows go last. The server's order applies on a full load (e.g. changing month).
+   */
+  private keepCategoryOrder(fresh: BudgetScreen): BudgetScreen {
+    const current = this.screen()?.categories ?? [];
+    const position = new Map(current.map((row, i) => [row.accountId, i]));
+    const categories = [...fresh.categories].sort((a, b) =>
+      (position.get(a.accountId) ?? Number.MAX_SAFE_INTEGER) - (position.get(b.accountId) ?? Number.MAX_SAFE_INTEGER));
+    return { ...fresh, categories };
+  }
+
+  /** Only lines categorized from "Sin categorizar" settle; posted lines just move on refresh. */
+  private keepSettling(line: TransactionLine): void {
+    const index = this.screen()?.uncategorized.findIndex(l => l.lineId === line.lineId) ?? -1;
+    if (index < 0) return;
+    this.settling.update(map => new Map(map).set(line.lineId, { line, index }));
+  }
+
+  private dropSettling(lineId: number): void {
+    this.settling.update(map => {
+      const next = new Map(map);
+      next.delete(lineId);
+      return next;
+    });
   }
 
   private setLineState(lineId: number, state: LineUiState): void {

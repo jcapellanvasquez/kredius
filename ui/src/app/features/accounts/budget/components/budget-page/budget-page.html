@@ -78,7 +78,7 @@
         <section>
           <h2 class="text-sm font-medium text-gray-500 mb-2">{{ text.detail }}</h2>
           <app-category-list
-            [uncategorized]="screen.uncategorized"
+            [uncategorized]="store.uncategorized()"
             [rows]="store.categories()"
             [options]="store.categoryOptions()"
             [loanOptions]="screen.loanOptions"

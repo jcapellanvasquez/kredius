@@ -3,6 +3,7 @@
 
 import { AccountType } from '../models/account-type';
 import { LoanType } from '../models/loan-type';
+import { StatementType } from '../models/statement-type';
 export interface AccountSummaryResponse {
 
   /**
@@ -10,6 +11,11 @@ export interface AccountSummaryResponse {
    */
   balance?: number;
   code?: number | null;
+
+  /**
+   * Tabler icon name (e.g. credit-card)
+   */
+  icon?: string | null;
   id?: number;
   lastTransactionDate?: string | null;
   lastTransactionDescription?: string | null;
@@ -32,6 +38,11 @@ export interface AccountSummaryResponse {
   loanType?: LoanType;
   name?: string;
   showInAlerts?: boolean;
+
+  /**
+   * Set on accounts bank statements are uploaded for
+   */
+  statementType?: StatementType;
 
   /**
    * Budget threshold as a percentage of income (e.g. 20 = 20%)

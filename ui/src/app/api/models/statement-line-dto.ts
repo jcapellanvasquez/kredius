@@ -7,6 +7,11 @@ export interface StatementLineDto {
   categoryAccountName?: string | null;
   currency?: 'RD' | 'USD';
   description?: string;
+
+  /**
+   * Why the line is excluded; null when it isn't
+   */
+  exclusionReason?: ('CARD_PAYMENT_AVOID_DOUBLE_ENTRY' | 'INITIAL_BALANCE' | 'USER_EXCLUDED' | 'LOAN_PAYMENT_ALREADY_RECORDED') | null;
   id?: number;
   isExcluded?: boolean;
 
@@ -15,4 +20,10 @@ export interface StatementLineDto {
    */
   isPayment?: boolean;
   lineDate?: string;
+  lineType?: ('DEBIT' | 'CREDIT' | 'INITIAL_BALANCE') | null;
+
+  /**
+   * True once the line has produced a journal entry
+   */
+  posted?: boolean;
 }

@@ -1,8 +1,8 @@
-import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, input, output, signal } from '@angular/core';
 import { FileDropComponent } from '../../../../../shared/components/file-drop/file-drop';
 import { IconComponent } from '../../../../../shared/components/icon/icon';
 import { UiIcon } from '../../../../../shared/constants/ui-icons';
-import { STATEMENT_FILE_ACCEPT, STATEMENT_KIND_ORDER } from '../../budget.constants';
+import { PROCESSING_STEP_MS, STATEMENT_FILE_ACCEPT, STATEMENT_KIND_ORDER } from '../../budget.constants';
 import { StatementAccountKind } from '../../budget.enums';
 import { BUDGET_TEXT } from '../../budget.texts';
 import { LastUpload } from '../../models/budget.models';
@@ -19,7 +19,12 @@ export interface FilePick {
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'block' },
   template: `
-    <div class="card p-3.5">
+    <div class="card relative overflow-hidden p-3.5" [attr.aria-busy]="uploading()">
+      @if (uploading()) {
+        <div class="absolute inset-x-0 top-0 h-0.5 bg-brand-50" role="progressbar" [attr.aria-label]="text.processing">
+          <div class="progress-indeterminate h-full w-1/3 bg-brand-400"></div>
+        </div>
+      }
       <div class="grid grid-cols-2 gap-2 mb-2.5">
         @for (slot of slots(); track slot.kind) {
           <app-file-drop
@@ -50,7 +55,7 @@ export interface FilePick {
         class="w-full inline-flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium text-white bg-brand-500 rounded-lg hover:bg-brand-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
         @if (uploading()) {
           <app-icon [name]="icons.Loader" [size]="16" class="animate-spin" />
-          {{ text.processing }}
+          <span aria-live="polite">{{ stepLabel() }}</span>
         } @else {
           {{ text.process }}
         }
@@ -85,6 +90,21 @@ export class UploadPanelComponent {
   protected readonly icons = UiIcon;
   protected readonly accept = STATEMENT_FILE_ACCEPT;
   protected readonly dateId = 'statement-date';
+  private readonly step = signal(0);
+  protected readonly stepLabel = computed(() => {
+    const steps = this.text.processingSteps;
+    return steps[Math.min(this.step(), steps.length - 1)];
+  });
+
+  constructor() {
+    // Walk the step labels while uploading; stay on the last one if the upload takes longer.
+    effect(onCleanup => {
+      if (!this.uploading()) return;
+      this.step.set(0);
+      const id = setInterval(() => this.step.update(s => s + 1), PROCESSING_STEP_MS);
+      onCleanup(() => clearInterval(id));
+    });
+  }
 
   protected readonly slots = computed(() =>
     STATEMENT_KIND_ORDER.map(kind => ({

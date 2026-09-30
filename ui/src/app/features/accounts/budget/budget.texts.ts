@@ -9,6 +9,8 @@ export const BUDGET_TEXT = {
   update:           'Actualizar',
   process:          'Procesar',
   processing:       'Procesando…',
+  /** Shown one after another while a statement is processed (one request, so they're timed, not real steps). */
+  processingSteps:  ['Leyendo el PDF…', 'Buscando movimientos nuevos…', 'Categorizando…'],
   uploadHint:       'Puedes subir uno, el otro, o ambos.',
   statementDate:    'Fecha del corte',
   uploadError:      'No se pudo procesar el archivo. Intenta de nuevo.',

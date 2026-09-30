@@ -25,7 +25,7 @@ import { BUDGET_TEXT } from '../../budget.texts';
       </div>
     </div>
     @if (summary(); as s) {
-      <p class="mt-1 text-xs text-gray-500" role="status">{{ s }}</p>
+      <p animate.enter="fade-in" class="mt-1 text-xs text-gray-500" role="status">{{ s }}</p>
     }
   `,
 })

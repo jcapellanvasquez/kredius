@@ -64,6 +64,15 @@ export interface SavingsSummary {
   income: number;
   /** The month's loan installments, oldest first (plan Q8). */
   loanPayments: LoanPayment[];
+  /** The bank's balance at the latest statement's cut-off date vs the ledger's; null without a statement. */
+  bankBalance: BankBalance | null;
+}
+
+export interface BankBalance {
+  /** ISO date `YYYY-MM-DD`: the statement's cut-off date. */
+  date: string;
+  bank: number;
+  ledger: number;
 }
 
 export interface LastUpload {

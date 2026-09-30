@@ -144,6 +144,7 @@ export class BudgetHttpApi extends BudgetApi {
         balance: savings.balance,
         income: savings.income,
         loanPayments: (savings.loanPayments ?? []).map(toLoanPayment),
+        bankBalance: savings.bankBalance ?? null,
       },
       lastUploads: dto.lastUploads.map(u => ({
         kind: u.kind as StatementAccountKind,

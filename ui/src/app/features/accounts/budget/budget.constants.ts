@@ -11,6 +11,9 @@ export const BUDGET_THRESHOLDS: ProgressThresholds = { warning: 90, danger: 100 
  */
 export const CARD_RING_BANDS = { warningFrom: 71, dangerFrom: 95 } as const;
 
+/** Ledger and bank balances within this many RD$ count as matching (rounding). */
+export const BALANCE_TOLERANCE = 0.005;
+
 /** How long "Guardado" stays visible after a successful save. */
 export const SAVED_HINT_MS = 1500;
 

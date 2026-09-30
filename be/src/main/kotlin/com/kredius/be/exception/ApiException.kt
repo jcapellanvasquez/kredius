@@ -12,5 +12,6 @@ class ApiException(
         val NOT_FOUND = "NOT_FOUND"
         val BAD_REQUEST = "BAD_REQUEST"
         val CONFLICT = "CONFLICT"
+        val NO_EXCHANGE_RATE = "NO_EXCHANGE_RATE"
     }
 }

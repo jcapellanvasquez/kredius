@@ -38,6 +38,8 @@ tags:
     description: Budget reports and budget configuration
   - name: BudgetScreen
     description: Data for the monthly budget screen (Presupuesto)
+  - name: ExchangeRates
+    description: RD$ per US$ rates used to post US$ statement lines
 
 paths:
 
@@ -758,6 +760,32 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
+  /api/v1/exchange-rates:
+    post:
+      tags: [ExchangeRates]
+      summary: Save the RD$ per US$ rate for card statements
+      description: |
+        Saves the rate (context CREDIT_CARD) and posts the categorized US$ statement lines that were
+        waiting for a rate. US$ lines never post without one.
+      operationId: saveExchangeRate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveExchangeRateRequest'
+      responses:
+        '200':
+          description: Rate saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SaveExchangeRateResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
   /api/v1/income-entries:
     get:
       tags: [Income]
@@ -892,10 +920,43 @@ components:
           format: double
           nullable: true
           description: Sum of the saved budgets of categories with card spend; null when none
+        usdRate:
+          type: number
+          format: double
+          nullable: true
+          description: The latest card RD$ per US$ rate; null when none was saved (US$ lines then stay unposted)
         statement:
           $ref: '#/components/schemas/BudgetCardStatement'
           nullable: true
           description: The latest card statement up to the month (its billing cycle), as the bank reports it; null without one
+
+    SaveExchangeRateRequest:
+      type: object
+      required: [value]
+      properties:
+        value:
+          type: number
+          format: double
+          description: RD$ per US$, e.g. 60.50
+        rateDate:
+          type: string
+          format: date
+          nullable: true
+          description: Today when omitted
+
+    SaveExchangeRateResponse:
+      type: object
+      required: [value, rateDate, postedLines]
+      properties:
+        value:
+          type: number
+          format: double
+        rateDate:
+          type: string
+          format: date
+        postedLines:
+          type: integer
+          description: US$ lines posted now that a rate exists
 
     BudgetCardStatement:
       type: object

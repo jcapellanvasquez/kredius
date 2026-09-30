@@ -177,6 +177,11 @@ class StatementService(
             accountRepo.findByIdAndUserId(accId, currentUser.id)
                 ?: throw ApiException(ApiException.NOT_FOUND, "Category account not found", HttpStatus.NOT_FOUND)
         }
+        if (category != null && line.journalLine == null && line.currency == CurrencyType.USD &&
+            exchangeRateRepo.findTopByContextOrderByRateDateDesc(RateContext.CREDIT_CARD) == null) {
+            throw ApiException(ApiException.NO_EXCHANGE_RATE, "Falta la tasa del dólar para registrar líneas en US$",
+                HttpStatus.UNPROCESSABLE_ENTITY)
+        }
         if (line.journalLine != null) {
             if (category != null && category.id != line.categoryAccount?.id)
                 throw ApiException(ApiException.CONFLICT, "Line is already posted; recategorize it instead", HttpStatus.CONFLICT)
@@ -224,6 +229,28 @@ class StatementService(
         line.categoryAccount = newCategory
         learnMerchant(line.description, newCategory)
         lineRepo.save(line)
+    }
+
+    /**
+     * Saves the card's RD$ per US$ rate and posts the categorized US$ lines that were waiting for one,
+     * in every import that isn't reversed. Returns the saved rate and how many lines were posted.
+     */
+    fun saveCardUsdRate(request: SaveExchangeRateRequest): SaveExchangeRateResponse {
+        if (request.value <= 0.0)
+            throw ApiException(ApiException.BAD_REQUEST, "The rate must be positive", HttpStatus.BAD_REQUEST)
+        val rate = exchangeRateRepo.save(
+            ExchangeRate(
+                rateDate = request.rateDate ?: LocalDate.now(),
+                context = RateContext.CREDIT_CARD,
+                value = BigDecimal.valueOf(request.value).setScale(4, java.math.RoundingMode.HALF_UP),
+                source = "manual",
+            )
+        )
+        val posted = importRepo.findByUserIdAndStatusNot(currentUser.id, StatementImportStatus.REVERSED)
+            .sumOf { import ->
+                postPending(import, import.lines.filter { it.currency == CurrencyType.USD }).also { importRepo.save(import) }
+            }
+        return SaveExchangeRateResponse(value = rate.value.toDouble(), rateDate = rate.rateDate, postedLines = posted)
     }
 
     private fun requireNotReversed(import: StatementImport) {
@@ -282,9 +309,9 @@ class StatementService(
      * lines were posted.
      */
     private fun postPending(import: StatementImport, candidates: List<StatementLine> = import.lines): Int {
-        val pending = candidates.filter { isNewJournalEntry(it) }
-        val usdRate = if (pending.isEmpty()) null
-            else exchangeRateRepo.findTopByContextOrderByRateDateDesc(RateContext.CREDIT_CARD)
+        val usdRate = exchangeRateRepo.findTopByContextOrderByRateDateDesc(RateContext.CREDIT_CARD)
+        // A US$ line waits for a card rate (POST /exchange-rates) instead of posting at an invented one.
+        val pending = candidates.filter { isNewJournalEntry(it) && (it.currency != CurrencyType.USD || usdRate != null) }
         val loanAccountIds = if (pending.isEmpty()) emptySet() else loanRepo.findLoanAccountIds(currentUser.id)
         for (line in pending) {
             val amount = amountRd(line, usdRate)

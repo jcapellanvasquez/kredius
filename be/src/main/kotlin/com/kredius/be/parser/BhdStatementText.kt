@@ -25,6 +25,20 @@ data class ParsedStatementRow(
     val occurrenceIndex: Int = 1,
 )
 
+/** What the statement's header says, besides its rows; null when the statement doesn't print it. */
+data class StatementSummary(
+    /** "Fecha de corte". */
+    val cutOffDate: LocalDate? = null,
+    /** The balance the bank reports at the cut-off date ("Balance final"). */
+    val closingBalance: BigDecimal? = null,
+)
+
+/** A parsed statement: its rows and its header summary. */
+data class ParsedStatement(
+    val rows: List<ParsedStatementRow>,
+    val summary: StatementSummary = StatementSummary(),
+)
+
 /** What both BHD parsers share: PDF text extraction and the date/amount formats. */
 internal object BhdStatementText {
 
@@ -46,6 +60,16 @@ internal object BhdStatementText {
     fun parseDate(value: String): LocalDate = LocalDate.parse(value, dateFormatter)
 
     fun parseAmount(value: String): BigDecimal = BigDecimal(value.replace(",", ""))
+
+    /**
+     * The value printed on the line after a label, e.g. "Balance final" then "96,356.20" (the header is
+     * a two-column box, so labels and values come out on consecutive lines).
+     */
+    fun valueAfterLabel(lines: List<String>, label: String, value: Regex): String? {
+        val i = lines.indexOfFirst { it.contains(label, ignoreCase = true) }
+        if (i < 0) return null
+        return lines.getOrNull(i + 1)?.let { value.find(it) }?.takeIf { it.range.first == 0 }?.value
+    }
 
     fun assignOccurrenceIndexes(rows: List<ParsedStatementRow>): List<ParsedStatementRow> {
         val seen = mutableMapOf<List<Any>, Int>()

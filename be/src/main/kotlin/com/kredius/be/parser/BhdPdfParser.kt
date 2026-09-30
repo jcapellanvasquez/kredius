@@ -17,7 +17,8 @@ class BhdPdfParser {
     )
     private val paymentPatterns = listOf("PAGO DEBITO", "PAGO CREDITO")
 
-    fun parse(inputStream: InputStream): List<ParsedStatementRow> = parseText(BhdStatementText.loadText(inputStream))
+    /** The card statement's summary (balance at the cut-off date) isn't read yet (found_bugs 1c). */
+    fun parse(inputStream: InputStream): ParsedStatement = ParsedStatement(parseText(BhdStatementText.loadText(inputStream)))
 
     internal fun parseText(text: String): List<ParsedStatementRow> {
         val result = mutableListOf<ParsedStatementRow>()

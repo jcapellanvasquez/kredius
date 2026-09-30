@@ -25,7 +25,21 @@ class BhdSavingsPdfParser {
 
     private val currencyHeaderRegex = Regex("""MONEDA""")
 
-    fun parse(inputStream: InputStream): List<ParsedStatementRow> = parseText(BhdStatementText.loadText(inputStream))
+    fun parse(inputStream: InputStream): ParsedStatement {
+        val text = BhdStatementText.loadText(inputStream)
+        return ParsedStatement(parseText(text), parseSummary(text))
+    }
+
+    /** "Fecha de corte" and "Balance final" from the statement's header box. */
+    internal fun parseSummary(text: String): StatementSummary {
+        val lines = BhdStatementText.lines(text)
+        return StatementSummary(
+            cutOffDate = BhdStatementText.valueAfterLabel(lines, "Fecha de corte", BhdStatementText.dateRegex)
+                ?.let(BhdStatementText::parseDate),
+            closingBalance = BhdStatementText.valueAfterLabel(lines, "Balance final", BhdStatementText.amountRegex)
+                ?.let(BhdStatementText::parseAmount),
+        )
+    }
 
     internal fun parseText(text: String): List<ParsedStatementRow> {
         val rawLines = BhdStatementText.lines(text)

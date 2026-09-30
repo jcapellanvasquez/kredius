@@ -59,7 +59,7 @@ class StatementService(
             )
         )
 
-        val rows = try {
+        val parsed = try {
             when (type) {
                 ApiStatementType.SAVINGS -> savingsParser.parse(file.inputStream)
                 else -> parser.parse(file.inputStream)
@@ -69,6 +69,9 @@ class StatementService(
             import.errorMessage = ex.message?.take(500)
             return importRepo.save(import).toResponse()
         }
+        val rows = parsed.rows
+        import.cutOffDate = parsed.summary.cutOffDate
+        import.closingBalance = parsed.summary.closingBalance
 
         val merchants = merchantRepo.findByUserIdOrderByTextPatternAsc(userId)
             .associateBy { it.textPattern.uppercase() }

@@ -344,4 +344,24 @@ class BudgetScreenServiceTest {
         assertEquals(listOf("Comida", "Supermercado"), byAmount.getValue(500.0).suggestions.map { it.name })
         assertEquals(listOf("Salario", "Intereses Ganados"), screen.incomeOptions!!.map { it.name })
     }
+
+    @Test
+    fun `savings shows the bank's balance from the latest statement next to the ledger's on that date`() {
+        monthLines()
+        assertNull(service.get(august).savings!!.bankBalance) // no statement yet
+
+        val statement = StatementImport(
+            account = savings, type = StatementType.SAVINGS,
+            cutOffDate = LocalDate.of(2026, 8, 31), closingBalance = BigDecimal("96356.20"),
+        )
+        `when`(importRepo.findTopByAccountIdAndStatusNotAndClosingBalanceNotNullAndCutOffDateLessThanEqualOrderByCutOffDateDesc(
+            1L, StatementImportStatus.REVERSED, LocalDate.of(2026, 8, 31),
+        )).thenReturn(statement)
+
+        val check = service.get(august).savings!!.bankBalance!!
+
+        assertEquals(LocalDate.of(2026, 8, 31), check.date)
+        assertEquals(96356.20, check.bank)
+        assertEquals(3000.0, check.ledger) // the ledger up to 31/08 (debits 5,000 − credits 2,000)
+    }
 }

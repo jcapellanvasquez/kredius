@@ -244,6 +244,7 @@ class BudgetScreenService(
             icon = card.icon,
             spent = charges.filter { it.journalLine != null }.sumOf(rd).toDouble(),
             budget = budget.takeIf { it > 0 },
+            usdRate = exchangeRateRepo.findTopByContextOrderByRateDateDesc(RateContext.CREDIT_CARD)?.value?.toDouble(),
             statement = cardStatement(card, monthEnd),
         )
     }

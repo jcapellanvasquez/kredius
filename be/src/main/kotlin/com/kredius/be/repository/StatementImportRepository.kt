@@ -8,6 +8,8 @@ import java.time.LocalDate
 interface StatementImportRepository : JpaRepository<StatementImport, Long> {
     fun findByIdAndUserId(id: Long, userId: Long): StatementImport?
 
+    fun findByUserIdAndStatusNot(userId: Long, status: StatementImportStatus): List<StatementImport>
+
     fun findByUserIdOrderByStatementDateDesc(userId: Long): List<StatementImport>
 
     fun findTopByAccountIdOrderByCreatedAtDesc(accountId: Long): StatementImport?

@@ -5,6 +5,8 @@ import com.kredius.be.entity.AccountType
 import com.kredius.be.entity.CorrectionType
 import com.kredius.be.entity.CurrencyType
 import com.kredius.be.entity.EntrySide
+import com.kredius.be.entity.ExchangeRate
+import com.kredius.be.entity.RateContext
 import com.kredius.be.entity.ExclusionReason
 import com.kredius.be.entity.JournalEntry
 import com.kredius.be.entity.JournalLine
@@ -39,6 +41,7 @@ import com.kredius.be.repository.UserRepository
 import com.kredius.be.exception.ApiException
 import com.kredius.be.model.PatchStatementLineRequest
 import com.kredius.be.model.RecategorizeStatementLineRequest
+import com.kredius.be.model.SaveExchangeRateRequest
 import com.kredius.be.model.StatementImportResponse
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -87,6 +90,8 @@ class StatementServiceTest {
     private val loanRepo = mock(LoanRepository::class.java)
     private val installmentRepo = mock(LoanInstallmentRepository::class.java)
     private lateinit var loanService: LoanService
+    private val exchangeRateRepo = mock(ExchangeRateRepository::class.java)
+    private var cardRate: ExchangeRate? = null
 
     private val service = run {
         val userRepo = mock(UserRepository::class.java)
@@ -119,6 +124,9 @@ class StatementServiceTest {
         `when`(lineRepo.saveAll(anyList<JournalLine>()))
             .thenAnswer { (it.arguments[0] as List<*>).filterIsInstance<JournalLine>().also(savedJournalLines::addAll) }
         `when`(installmentRepo.save(any(LoanInstallment::class.java))).thenAnswer { it.arguments[0] }
+        `when`(exchangeRateRepo.findTopByContextOrderByRateDateDesc(RateContext.CREDIT_CARD)).thenAnswer { cardRate }
+        `when`(exchangeRateRepo.save(any(ExchangeRate::class.java)))
+            .thenAnswer { (it.arguments[0] as ExchangeRate).also { r -> cardRate = r } }
         `when`(accountRepo.findFirstByUserIdAndStatementTypeAndActiveTrueOrderByCodeAsc(0L, StatementType.SAVINGS))
             .thenReturn(savings)
         loanService = LoanService(
@@ -133,7 +141,7 @@ class StatementServiceTest {
             lineRepo = statementLineRepo,
             merchantRepo = merchantRepo,
             journalEntryRepo = entryRepo,
-            exchangeRateRepo = mock(ExchangeRateRepository::class.java),
+            exchangeRateRepo = exchangeRateRepo,
             parser = cardParser,
             savingsParser = savingsParser,
             journalService = JournalService(entryRepo, lineRepo),
@@ -698,5 +706,35 @@ class StatementServiceTest {
             "Tarjeta" to (EntrySide.DEBIT to BigDecimal("110.85")),
             "Cashback y reembolsos" to (EntrySide.CREDIT to BigDecimal("110.85")),
         ), savedJournalLines.associate { it.account.name to (it.side to it.amountRd) })
+    }
+
+    private fun usdRow(day: Int, description: String, amount: String) = ParsedStatementRow(
+        date = LocalDate.of(2026, 8, day), description = description, amount = BigDecimal(amount),
+        currency = CurrencyType.USD, direction = RowDirection.DEBIT,
+    )
+
+    @Test
+    fun `a US$ line waits for a card rate, then posts at it`() {
+        knownMerchant("GITHUB", food)
+        val import = uploadCard(usdRow(13, "GITHUB, INC. GITHUB.COM-US", "4.00"))
+        assertNull(import.lines.single().journalLine)
+        assertEquals(StatementImportStatus.PENDING_REVIEW, import.status)
+        `when`(importRepo.findByUserIdAndStatusNot(0L, StatementImportStatus.REVERSED)).thenReturn(listOf(import))
+
+        val saved = service.saveCardUsdRate(SaveExchangeRateRequest(value = 60.0))
+
+        assertEquals(1, saved.postedLines)
+        assertEquals(BigDecimal("240.00"), import.lines.single().journalLine!!.amountRd)
+        assertEquals(StatementImportStatus.CONFIRMED, import.status)
+    }
+
+    @Test
+    fun `categorizing a US$ line without a card rate asks for one`() {
+        val import = uploadCard(usdRow(13, "GITHUB, INC. GITHUB.COM-US", "4.00"))
+
+        val ex = assertThrows<ApiException> { patch(import.lines.single(), categoryAccountId = food.id) }
+
+        assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, ex.httpStatus)
+        assertEquals(0, savedEntries.size)
     }
 }

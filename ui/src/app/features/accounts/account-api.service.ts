@@ -16,8 +16,9 @@ export class AccountApiService {
   readonly accounts = signal<AccountSummaryResponse[]>([]);
   readonly loading  = signal(false);
 
+  /** The spinner shows only on the first load; later refreshes keep the list and update it in place. */
   load() {
-    this.loading.set(true);
+    if (this.accounts().length === 0) this.loading.set(true);
     return getAccountsSummary(this.http, this.rootUrl).pipe(
       tap({
         next: res => { this.accounts.set(res.body ?? []); this.loading.set(false); },

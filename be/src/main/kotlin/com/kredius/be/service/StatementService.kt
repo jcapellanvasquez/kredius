@@ -363,6 +363,7 @@ class StatementService(
         accountName = account.name,
         errorMessage = errorMessage,
         uploadedAt = createdAt,
+        fileName = fileName,
         newCount = lines.count { it.type != StatementLineType.INITIAL_BALANCE },
         uncategorizedCount = lines.count { it.isUncategorized() },
         autoPostedCount = autoPostedCount,

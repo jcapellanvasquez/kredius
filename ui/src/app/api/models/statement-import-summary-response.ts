@@ -6,10 +6,12 @@ import { StatementType } from '../models/statement-type';
 export interface StatementImportSummaryResponse {
   accountId?: number;
   accountName?: string;
+  fileName?: string | null;
   id?: number;
   lineCount?: number;
   statementDate?: string;
   status?: StatementImportStatus;
   type?: StatementType;
   unresolvedCount?: number;
+  uploadedAt?: string;
 }

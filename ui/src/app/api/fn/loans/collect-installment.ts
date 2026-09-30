@@ -12,6 +12,11 @@ import { LoanDetailResponse } from '../../models/loan-detail-response';
 export interface CollectInstallment$Params {
   accountId: number;
   num: number;
+
+/**
+ * Payment date; today when omitted
+ */
+  date?: string;
 }
 
 export function collectInstallment(http: HttpClient, rootUrl: string, params: CollectInstallment$Params, context?: HttpContext): Observable<StrictHttpResponse<LoanDetailResponse>> {
@@ -19,6 +24,7 @@ export function collectInstallment(http: HttpClient, rootUrl: string, params: Co
   if (params) {
     rb.path('accountId', params.accountId, {});
     rb.path('num', params.num, {});
+    rb.query('date', params.date, {});
   }
 
   return http.request(

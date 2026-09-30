@@ -7,10 +7,26 @@ import { StatementType } from '../models/statement-type';
 export interface StatementImportResponse {
   accountId?: number;
   accountName?: string;
+
+  /**
+   * Lines posted during this upload because the merchant dictionary matched them; only on the upload response
+   */
+  autoPostedCount?: number | null;
   errorMessage?: string | null;
   id?: number;
   lines?: Array<StatementLineDto>;
+
+  /**
+   * Transactions this upload added; rows already imported are skipped
+   */
+  newCount?: number;
   statementDate?: string;
   status?: StatementImportStatus;
   type?: StatementType;
+
+  /**
+   * Lines of this import still waiting for a category
+   */
+  uncategorizedCount?: number;
+  uploadedAt?: string;
 }

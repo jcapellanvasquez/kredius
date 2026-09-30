@@ -33,10 +33,14 @@ export type { GetStatementImport$Params as GetStatementImport$Params } from './f
 export { getStatementImport as getStatementImport } from './fn/statements/get-statement-import';
 export type { PatchStatementLine$Params as PatchStatementLine$Params } from './fn/statements/patch-statement-line';
 export { patchStatementLine as patchStatementLine } from './fn/statements/patch-statement-line';
+export type { RecategorizeStatementLine$Params as RecategorizeStatementLine$Params } from './fn/statements/recategorize-statement-line';
+export { recategorizeStatementLine as recategorizeStatementLine } from './fn/statements/recategorize-statement-line';
 export type { ConfirmStatementImport$Params as ConfirmStatementImport$Params } from './fn/statements/confirm-statement-import';
 export { confirmStatementImport as confirmStatementImport } from './fn/statements/confirm-statement-import';
 export type { ReverseStatementImport$Params as ReverseStatementImport$Params } from './fn/statements/reverse-statement-import';
 export { reverseStatementImport as reverseStatementImport } from './fn/statements/reverse-statement-import';
+export type { GetBudgetScreen$Params as GetBudgetScreen$Params } from './fn/budget-screen/get-budget-screen';
+export { getBudgetScreen as getBudgetScreen } from './fn/budget-screen/get-budget-screen';
 export type { GetBudgetReport$Params as GetBudgetReport$Params } from './fn/reports/get-budget-report';
 export { getBudgetReport as getBudgetReport } from './fn/reports/get-budget-report';
 export type { BatchUpdateBudgets$Params as BatchUpdateBudgets$Params } from './fn/reports/batch-update-budgets';

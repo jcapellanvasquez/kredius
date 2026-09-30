@@ -22,27 +22,55 @@ import { SavingsSummary } from '../../models/budget.models';
       <p class="mt-1 text-xs text-gray-400 tabular-nums">{{ text.income }}: {{ savings().income | money }}</p>
 
       @if (savings().bankBalance; as bb) {
-        <div class="mt-2 text-xs tabular-nums" role="status">
-          <p class="text-gray-500">{{ text.bankBalanceAt }} {{ bb.date | shortDate }}: {{ bb.bank | money: 2 }}</p>
+        <div class="mt-2 flex flex-col gap-0.5 text-xs tabular-nums" role="status">
+          <div class="flex flex-wrap justify-between gap-x-2">
+            <span class="text-gray-500">{{ text.ledgerBalanceAt }} {{ bb.date | shortDate }}</span>
+            <span class="ml-auto whitespace-nowrap text-gray-700">{{ bb.ledger | money }}</span>
+          </div>
+          <div class="flex flex-wrap justify-between gap-x-2">
+            <span class="text-gray-500">{{ text.bankBalanceAt }} {{ bb.date | shortDate }}</span>
+            <span class="ml-auto whitespace-nowrap text-gray-700">{{ bb.bank | money }}</span>
+          </div>
           @if (difference() === null) {
             <p class="flex items-center gap-0.5 text-gray-500">
               <app-icon [name]="icons.Check" [size]="12" /> {{ text.balanceMatches }}
             </p>
           } @else {
-            <p class="text-gray-900">{{ text.balanceDifference }} {{ difference() | money: 2 }}</p>
+            <div class="flex flex-wrap justify-between gap-x-2 font-medium text-gray-900">
+              <span>{{ text.balanceDifference }}</span>
+              <span class="ml-auto whitespace-nowrap">{{ difference() | money }}</span>
+            </div>
+            <p class="text-gray-400">{{ text.balanceDifferenceHint }}</p>
           }
         </div>
       }
 
       @if (savings().loanPayments.length > 0) {
-        <ul class="mt-3 pt-2 border-t border-gray-100 flex flex-col gap-0.5 text-xs tabular-nums" [attr.aria-label]="text.loans">
+        <ul class="mt-3 pt-2 border-t border-gray-100 flex flex-col gap-1.5 text-xs tabular-nums" [attr.aria-label]="text.loans">
           @for (p of savings().loanPayments; track p.loanAccountId + '-' + p.installmentNumber) {
-            <li class="flex flex-wrap justify-between gap-x-2">
-              <span class="text-gray-500 min-w-0">{{ text.installment(p.installmentNumber, p.totalInstallments) }} · {{ p.loanName }}</span>
-              <span class="ml-auto whitespace-nowrap text-gray-700">{{ p.amount | money: 2 }}</span>
+            <li>
+              <p class="text-gray-700 truncate">{{ p.loanName }}</p>
+              <p class="flex justify-between gap-2">
+                <span class="text-gray-500">{{ text.installment(p.installmentNumber, p.totalInstallments) }}</span>
+                <span class="whitespace-nowrap text-gray-700">{{ p.amount | money }}</span>
+              </p>
             </li>
           }
         </ul>
+      }
+
+      @if (savings().cardPayments.length > 0) {
+        <div class="mt-3 pt-2 border-t border-gray-100 text-xs tabular-nums">
+          <p class="text-gray-700 mb-0.5">{{ text.cardPayments }}</p>
+          <ul class="flex flex-col gap-0.5" [attr.aria-label]="text.cardPayments">
+            @for (p of savings().cardPayments; track p.lineId) {
+              <li class="flex justify-between gap-2">
+                <span class="text-gray-500">{{ p.date | shortDate }}</span>
+                <span class="whitespace-nowrap text-gray-700">{{ p.amount | money }}</span>
+              </li>
+            }
+          </ul>
+        </div>
       }
     </div>
   `,

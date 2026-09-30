@@ -31,6 +31,11 @@ export const KIND_ICON: Record<StatementAccountKind, AccountIcon> = {
   [StatementAccountKind.Savings]:    AccountIcon.BuildingBank,
 };
 
+/** Query parameters of the budget screen. `month` (`YYYY-MM`) keeps the chosen month across refreshes. */
+export const BUDGET_QUERY = {
+  month: 'month',
+} as const;
+
 export const BUDGET_ROUTES = {
   importDetail:   'imports',
   /** Absolute: relative '..' is ambiguous across the empty-path parent routes. */

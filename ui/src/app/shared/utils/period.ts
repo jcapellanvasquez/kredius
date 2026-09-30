@@ -33,6 +33,16 @@ export function shiftPeriod(period: Period, deltaMonths: number): Period {
   return toPeriod(year, monthIndex + deltaMonths);
 }
 
+/** The period as a `YYYY-MM` URL value. */
+export function toMonthParam(period: Period): string {
+  return period.slice(0, 7);
+}
+
+/** A `YYYY-MM` URL value as a period, or null when it isn't one. */
+export function fromMonthParam(value: string | null | undefined): Period | null {
+  return value && /^\d{4}-(0[1-9]|1[0-2])$/.test(value) ? `${value}-01` : null;
+}
+
 /** e.g. "sept 2026" */
 export function periodLabel(period: Period): string {
   const { year, monthIndex } = parsePeriod(period);

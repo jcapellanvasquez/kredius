@@ -72,6 +72,10 @@ class StatementService(
         val rows = parsed.rows
         import.cutOffDate = parsed.summary.cutOffDate
         import.closingBalance = parsed.summary.closingBalance
+        import.closingBalanceUsd = parsed.summary.closingBalanceUsd
+        import.minimumPayment = parsed.summary.minimumPayment
+        import.minimumPaymentUsd = parsed.summary.minimumPaymentUsd
+        import.paymentDueDate = parsed.summary.paymentDueDate
 
         val merchants = merchantRepo.findByUserIdOrderByTextPatternAsc(userId)
             .associateBy { it.textPattern.uppercase() }

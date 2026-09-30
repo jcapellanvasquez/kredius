@@ -78,6 +78,18 @@ class BhdPdfParserTest {
         assertEquals(listOf(1, 2, 1), BhdPdfParser().parseText(text).map { it.occurrenceIndex })
         assertEquals(setOf(1), rows.map { it.occurrenceIndex }.toSet())
     }
+
+    @Test
+    fun `summary has the dates, balances and minimum payments of both currencies`() {
+        val summary = BhdPdfParser().parseSummary(fixture("bhd-card-2026-08.txt"))
+
+        assertEquals(LocalDate.of(2026, 8, 26), summary.cutOffDate)
+        assertEquals(LocalDate.of(2026, 9, 21), summary.paymentDueDate)
+        assertEquals(BigDecimal("66840.21"), summary.closingBalance)
+        assertEquals(BigDecimal("1858.16"), summary.minimumPayment)
+        assertEquals(BigDecimal("198.93"), summary.closingBalanceUsd)
+        assertEquals(BigDecimal("5.53"), summary.minimumPaymentUsd)
+    }
 }
 
 internal fun fixture(name: String): String =

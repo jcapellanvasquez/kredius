@@ -31,8 +31,15 @@ data class ParsedStatementRow(
 data class StatementSummary(
     /** "Fecha de corte". */
     val cutOffDate: LocalDate? = null,
-    /** The balance the bank reports at the cut-off date ("Balance final"). */
+    /** The balance the bank reports at the cut-off date (RD$; savings "Balance final", card balance). */
     val closingBalance: BigDecimal? = null,
+    /** Card only: the US$ balance at the cut-off date. */
+    val closingBalanceUsd: BigDecimal? = null,
+    /** Card only: the minimum payment, RD$ and US$. */
+    val minimumPayment: BigDecimal? = null,
+    val minimumPaymentUsd: BigDecimal? = null,
+    /** Card only: the payment due date ("fecha límite de pago"). */
+    val paymentDueDate: LocalDate? = null,
 )
 
 /** A parsed statement: its rows and its header summary. */

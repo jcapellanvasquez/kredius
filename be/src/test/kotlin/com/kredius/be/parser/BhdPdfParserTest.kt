@@ -19,7 +19,7 @@ class BhdPdfParserTest {
 
     @Test
     fun `parses every transaction row of both currency sections`() {
-        assertEquals(37, rows.count { it.currency == CurrencyType.RD })
+        assertEquals(38, rows.count { it.currency == CurrencyType.RD })
         assertEquals(7, rows.count { it.currency == CurrencyType.USD })
     }
 
@@ -30,11 +30,19 @@ class BhdPdfParserTest {
     }
 
     @Test
-    fun `payments are flagged`() {
-        // The statement's RD$ credit total (72,748.79) also includes AHORRO MI PAIS 110.85, which is skipped
-        assertEquals(BigDecimal("72637.94"), total(CurrencyType.RD, payments = true))
+    fun `credits match the statement totals`() {
+        // RD$ credits are the two payments plus the AHORRO MI PAIS cashback (110.85)
+        assertEquals(BigDecimal("72748.79"), total(CurrencyType.RD, payments = true))
         assertEquals(BigDecimal("567.44"), total(CurrencyType.USD, payments = true))
-        assertEquals(3, rows.count { it.direction == RowDirection.CREDIT })
+    }
+
+    @Test
+    fun `payments are flagged, the cashback is a credit but not a payment`() {
+        assertEquals(3, rows.count { it.isPayment })
+        val cashback = rows.single { it.description == "AHORRO MI PAIS" }
+        assertEquals(RowDirection.CREDIT, cashback.direction)
+        assertEquals(false, cashback.isPayment)
+        assertEquals(LocalDate.of(2026, 8, 26), cashback.date)
     }
 
     @Test

@@ -167,12 +167,14 @@ class StatementServiceTest {
         amount: String,
         occurrence: Int = 1,
         direction: RowDirection = RowDirection.DEBIT,
+        isPayment: Boolean = false,
     ) = ParsedStatementRow(
         date = LocalDate.of(2026, 8, day),
         description = description,
         amount = BigDecimal(amount),
         currency = CurrencyType.RD,
         direction = direction,
+        isPayment = isPayment,
         occurrenceIndex = occurrence,
     )
 
@@ -322,7 +324,7 @@ class StatementServiceTest {
         knownMerchant("PAGO DE TC", card)
 
         val cardImport = uploadCard(
-            row(15, "PAGO DEBITO A CUENTA MBP", "10000.00", direction = RowDirection.CREDIT),
+            row(15, "PAGO DEBITO A CUENTA MBP", "10000.00", direction = RowDirection.CREDIT, isPayment = true),
             row(16, "CAFE", "100.00"),
         )
         uploadSavings(row(17, "PAGO DE TC 4641 3300 0032 7971", "10000.00"))
@@ -682,5 +684,19 @@ class StatementServiceTest {
 
         assertEquals(1, savedEntries.count { it.source == JournalSource.OPENING_BALANCE })
         assertNull(september.lines.single().journalLine)
+    }
+
+    @Test
+    fun `a card credit that isn't a payment, like the cashback, posts against its category`() {
+        val cashback = Account(id = 30, name = "Cashback y reembolsos", type = AccountType.INCOME)
+        knownMerchant("AHORRO MI PAIS", cashback)
+
+        val import = uploadCard(row(26, "AHORRO MI PAIS", "110.85", direction = RowDirection.CREDIT))
+
+        assertNull(import.lines.single().exclusionReason)
+        assertEquals(mapOf(
+            "Tarjeta" to (EntrySide.DEBIT to BigDecimal("110.85")),
+            "Cashback y reembolsos" to (EntrySide.CREDIT to BigDecimal("110.85")),
+        ), savedJournalLines.associate { it.account.name to (it.side to it.amountRd) })
     }
 }

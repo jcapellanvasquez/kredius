@@ -140,12 +140,13 @@ class StatementService(
     }
 
     /**
-     * Rows stored but never posted. A card payment (the card's only CREDIT row) is posted from the
-     * savings statement, where the dictionary maps `PAGO DE TC` to the card; posting both would count it twice.
+     * Rows stored but never posted. A card payment is posted from the savings statement, where the
+     * dictionary maps `PAGO DE TC` to the card; posting both would count it twice. Other card credits
+     * (e.g. the "AHORRO MI PAIS" cashback) post normally.
      */
     private fun ParsedStatementRow.exclusionReason(type: EntityStatementType) = when {
         isInitialBalance -> ExclusionReason.INITIAL_BALANCE
-        type == EntityStatementType.CREDIT_CARD && direction == RowDirection.CREDIT ->
+        type == EntityStatementType.CREDIT_CARD && isPayment ->
             ExclusionReason.CARD_PAYMENT_AVOID_DOUBLE_ENTRY
         else -> null
     }

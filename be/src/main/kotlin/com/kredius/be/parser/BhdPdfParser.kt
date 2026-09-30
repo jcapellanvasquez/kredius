@@ -13,9 +13,11 @@ class BhdPdfParser {
     private val skipPatterns = listOf(
         "TRANSACCIONES EN", "TOTAL DE TRANSACCIONES",
         "INFORMACION DE", "ESTRELLAS", "TASA ", "SALDOS ",
-        "INTERESES", "BAL.", "AHORRO MI PAIS",
+        "INTERESES", "BAL.",
     )
     private val paymentPatterns = listOf("PAGO DEBITO", "PAGO CREDITO")
+    /** Credits to the card that aren't payments, e.g. the "AHORRO MI PAIS" cashback. */
+    private val otherCreditPatterns = listOf("AHORRO MI PAIS")
 
     /** The card statement's summary (balance at the cut-off date) isn't read yet (found_bugs 1c). */
     fun parse(inputStream: InputStream): ParsedStatement = ParsedStatement(parseText(BhdStatementText.loadText(inputStream)))
@@ -63,13 +65,16 @@ class BhdPdfParser {
         val description = trimmed.subList(0, amountIdx).joinToString(" ").trim()
         if (description.isBlank()) return null
 
-        val isPayment = paymentPatterns.any { description.uppercase().contains(it) }
+        val upper = description.uppercase()
+        val isPayment = paymentPatterns.any { upper.contains(it) }
+        val isCredit = isPayment || otherCreditPatterns.any { upper.contains(it) }
         return ParsedStatementRow(
             date        = BhdStatementText.parseDate(firstDate.value),
             description = description,
             amount      = BhdStatementText.parseAmount(trimmed[amountIdx]),
             currency    = currency,
-            direction   = if (isPayment) RowDirection.CREDIT else RowDirection.DEBIT,
+            direction   = if (isCredit) RowDirection.CREDIT else RowDirection.DEBIT,
+            isPayment   = isPayment,
         )
     }
 }

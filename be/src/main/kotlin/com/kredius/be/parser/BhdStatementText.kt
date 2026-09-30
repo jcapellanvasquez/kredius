@@ -19,6 +19,8 @@ data class ParsedStatementRow(
     val currency: CurrencyType,
     val direction: RowDirection,
     val isInitialBalance: Boolean = false,
+    /** A payment to the card itself ("PAGO DEBITO A CUENTA"); the savings statement posts it (plan Q1). */
+    val isPayment: Boolean = false,
     /** Bank reference; savings statements only, and not unique (a fee shares it with its payment). */
     val reference: String? = null,
     /** 1-based position among identical rows (same date, description, amount and currency). */

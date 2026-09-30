@@ -28,6 +28,7 @@ class DataInitializer(
         // Income
         accountRepo.save(Account(user = jcapellan, code = 4001, name = "Salario",                type = AccountType.INCOME, icon = "briefcase"))
         accountRepo.save(Account(user = jcapellan, code = 4002, name = "Intereses Ganados",      type = AccountType.INCOME, icon = "coins"))
+        val cashback = accountRepo.save(Account(user = jcapellan, code = 4003, name = "Cashback y reembolsos", type = AccountType.INCOME, icon = "gift"))
 
         // Expenses
         accountRepo.save(Account(user = jcapellan, code = 5001, name = "Supermercado",    type = AccountType.EXPENSE, icon = "shopping-cart", thresholdPct = BigDecimal("20.00"), showInAlerts = true))
@@ -38,6 +39,8 @@ class DataInitializer(
 
         // Card payments are posted from the savings statement ("PAGO DE TC …"); the card's own payment row is excluded.
         merchantRepo.save(MerchantDictionary(user = jcapellan, textPattern = "PAGO DE TC", account = card))
+        // The card's cashback program credit.
+        merchantRepo.save(MerchantDictionary(user = jcapellan, textPattern = "AHORRO MI PAIS", account = cashback))
         // The transfer tax charged next to every card and loan payment on the savings statement.
         merchantRepo.save(MerchantDictionary(user = jcapellan, textPattern = "Imp. transferencia", account = financialExpenses))
     }

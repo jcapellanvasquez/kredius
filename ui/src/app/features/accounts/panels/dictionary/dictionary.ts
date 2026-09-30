@@ -8,6 +8,7 @@ import { listMerchantMappings } from '../../../../api/fn/dictionary/list-merchan
 import { createMerchantMapping } from '../../../../api/fn/dictionary/create-merchant-mapping';
 import { updateMerchantMapping } from '../../../../api/fn/dictionary/update-merchant-mapping';
 import { deleteMerchantMapping } from '../../../../api/fn/dictionary/delete-merchant-mapping';
+import { AccountType } from '../../../../api/models/account-type';
 import { MerchantMappingResponse } from '../../../../api/models/merchant-mapping-response';
 
 interface Merchant {
@@ -16,6 +17,8 @@ interface Merchant {
   category:  string;
   accountId: number;
 }
+
+const MAPPABLE_TYPES: readonly AccountType[] = ['EXPENSE', 'INCOME'];
 
 @Component({
   selector: 'app-dictionary',
@@ -183,7 +186,10 @@ export class DictionaryComponent implements OnInit {
 
   ngOnInit(): void {
     combineLatest([
-      getAccounts(this.http, this.rootUrl, { type: 'EXPENSE' }).pipe(map(r => r.body!)),
+      // Expense and income accounts: a pattern can map a purchase or money coming in (e.g. a salary).
+      getAccounts(this.http, this.rootUrl).pipe(
+        map(r => r.body!.filter(a => MAPPABLE_TYPES.includes(a.type!) && !a.loanAccount && a.active !== false)),
+      ),
       listMerchantMappings(this.http, this.rootUrl).pipe(map(r => r.body!)),
     ]).subscribe(([accounts, mappings]) => {
       this.categories  = accounts.map(a => a.name ?? '').filter(Boolean);

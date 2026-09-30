@@ -937,6 +937,27 @@ components:
           description: Loan installments paid or collected in the month, oldest first
           items:
             $ref: '#/components/schemas/BudgetLoanPayment'
+        bankBalance:
+          $ref: '#/components/schemas/BudgetBankBalance'
+          nullable: true
+          description: The bank's balance from the latest savings statement up to the month; null without one
+
+    BudgetBankBalance:
+      type: object
+      required: [date, bank, ledger]
+      properties:
+        date:
+          type: string
+          format: date
+          description: The statement's cut-off date
+        bank:
+          type: number
+          format: double
+          description: The balance the bank reports at that date ("Balance final"), RD$
+        ledger:
+          type: number
+          format: double
+          description: The ledger balance of the account at the same date, RD$; equal to bank when everything is posted
 
     BudgetLoanPayment:
       type: object

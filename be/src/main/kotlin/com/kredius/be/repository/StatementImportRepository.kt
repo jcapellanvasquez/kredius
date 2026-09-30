@@ -1,7 +1,9 @@
 package com.kredius.be.repository
 
 import com.kredius.be.entity.StatementImport
+import com.kredius.be.entity.StatementImportStatus
 import org.springframework.data.jpa.repository.JpaRepository
+import java.time.LocalDate
 
 interface StatementImportRepository : JpaRepository<StatementImport, Long> {
     fun findByIdAndUserId(id: Long, userId: Long): StatementImport?
@@ -9,4 +11,10 @@ interface StatementImportRepository : JpaRepository<StatementImport, Long> {
     fun findByUserIdOrderByStatementDateDesc(userId: Long): List<StatementImport>
 
     fun findTopByAccountIdOrderByCreatedAtDesc(accountId: Long): StatementImport?
+
+    fun findTopByAccountIdAndStatusNotAndClosingBalanceNotNullAndCutOffDateLessThanEqualOrderByCutOffDateDesc(
+        accountId: Long,
+        status: StatementImportStatus,
+        cutOffDate: LocalDate,
+    ): StatementImport?
 }

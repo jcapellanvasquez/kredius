@@ -10,6 +10,7 @@ import com.kredius.be.entity.StatementImportStatus
 import com.kredius.be.entity.StatementLine
 import com.kredius.be.entity.StatementLineType
 import com.kredius.be.entity.StatementType
+import com.kredius.be.model.BudgetBankBalance
 import com.kredius.be.model.BudgetCardSummary
 import com.kredius.be.model.BudgetCategoryOption
 import com.kredius.be.model.BudgetCategoryRow
@@ -249,6 +250,24 @@ class BudgetScreenService(
         )
     }
 
+    /**
+     * The latest savings statement up to [monthEnd] that printed a final balance, next to the ledger
+     * balance on its cut-off date. They match once every row up to that date is posted.
+     */
+    private fun bankBalance(savings: Account, monthEnd: LocalDate): BudgetBankBalance? {
+        val statement = importRepo
+            .findTopByAccountIdAndStatusNotAndClosingBalanceNotNullAndCutOffDateLessThanEqualOrderByCutOffDateDesc(
+                savings.id, StatementImportStatus.REVERSED, monthEnd,
+            ) ?: return null
+        val date = statement.cutOffDate!!
+        val totals = journalLineRepo.findBalanceBefore(currentUser.id, savings.id, date.plusDays(1))
+        return BudgetBankBalance(
+            date = date,
+            bank = statement.closingBalance!!.toDouble(),
+            ledger = (totals.totalDebit - totals.totalCredit).toDouble(),
+        )
+    }
+
     private fun savingsSummary(
         savings: Account,
         from: LocalDate,
@@ -264,6 +283,7 @@ class BudgetScreenService(
             balance = (totals.totalDebit - totals.totalCredit).toDouble(),
             income = journalLineRepo.findIncomeInto(userId, savings.id, from, next).toDouble(),
             loanPayments = loanPayments,
+            bankBalance = bankBalance(savings, next.minusDays(1)),
         )
     }
 

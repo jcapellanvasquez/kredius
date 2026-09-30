@@ -137,7 +137,10 @@ class BudgetScreenService(
         if (expenses.isEmpty()) return emptyList()
         val ids = expenses.map { it.id }
         val totals = journalLineRepo.findTotalsByPeriod(userId, from, next, ids).associateBy { it.accountId }
-        val budgets = budgetRepo.findByAccountIdInAndPeriod(ids, from).associate { it.account.id to it.amount }
+        // Clearing a budget in the UI saves 0, which means "no budget" here.
+        val budgets = budgetRepo.findByAccountIdInAndPeriod(ids, from)
+            .filter { it.amount.signum() > 0 }
+            .associate { it.account.id to it.amount }
         val postedByCategory = lines
             .filter { it.journalLine != null && it.categoryAccount != null }
             .groupBy { it.categoryAccount!!.id }

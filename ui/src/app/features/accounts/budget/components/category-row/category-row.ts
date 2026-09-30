@@ -21,6 +21,7 @@ let nextId = 0;
 export class CategoryRowComponent {
   readonly row = input.required<CategoryRowView>();
   readonly options = input<CategoryOption[]>([]);
+  readonly loanOptions = input<CategoryOption[]>([]);
   readonly lineStates = input<ReadonlyMap<number, LineUiState>>(new Map());
   readonly highlight = input(false);
 

@@ -177,10 +177,13 @@ export class BudgetMockApi extends BudgetApi {
     const spendLines = lines.filter(l => !l.isPayment);
     const budgets = db.budgets[period] ?? {};
 
+    const loanPayments = db.loanPayments.filter(p => isInPeriod(p.date, period));
+
     const categories: CategoryRow[] = db.categories
       .map(cat => {
         const own = spendLines.filter(l => l.categoryId === cat.accountId);
-        const actual = own.reduce((sum, l) => sum + l.amount, 0);
+        const interest = loanPayments.filter(p => p.interestCategoryId === cat.accountId);
+        const actual = own.reduce((sum, l) => sum + l.amount, 0) + interest.reduce((sum, p) => sum + p.interest, 0);
         const budget = budgets[cat.accountId] ?? null;
         return {
           accountId: cat.accountId,
@@ -191,6 +194,7 @@ export class BudgetMockApi extends BudgetApi {
           previousBudget: budget === null ? this.previousBudget(db, period, cat.accountId) : null,
           origins: STATEMENT_KIND_ORDER.filter(kind => own.some(l => l.source === kind)),
           transactions: own.sort((a, b) => b.date.localeCompare(a.date)).map(l => this.toTransaction(db, l)),
+          loanInterest: interest,
         };
       })
       .sort((a, b) =>
@@ -218,6 +222,7 @@ export class BudgetMockApi extends BudgetApi {
         icon: db.savings.icon,
         balance: db.savings.balance,
         income: db.savings.incomeByPeriod[period] ?? 0,
+        loanPayments,
       },
       lastUploads: STATEMENT_KIND_ORDER.map(kind => ({
         kind,
@@ -229,6 +234,7 @@ export class BudgetMockApi extends BudgetApi {
         .sort((a, b) => b.date.localeCompare(a.date))
         .map(l => this.toTransaction(db, l)),
       categories,
+      loanOptions: db.loans,
     };
   }
 

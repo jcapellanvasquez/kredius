@@ -1,8 +1,8 @@
 /* Seed data for BudgetMockApi. Covers every visual case listed in the UI plan §4. */
 import { AccountIcon } from '../../../../shared/constants/account-icons';
 import { Period, currentPeriod, shiftPeriod } from '../../../../shared/utils/period';
-import { ImportStatus, MockScenario, StatementAccountKind } from '../budget.enums';
-import { CategoryOption } from '../models/budget.models';
+import { ImportStatus, LoanKind, MockScenario, StatementAccountKind } from '../budget.enums';
+import { CategoryOption, LoanPayment } from '../models/budget.models';
 
 export interface MockLine {
   lineId: number;
@@ -33,6 +33,11 @@ export interface MockAccount {
   icon: string;
 }
 
+/** A loan payment plus the category its interest was booked to. */
+export interface MockLoanPayment extends LoanPayment {
+  interestCategoryId: number;
+}
+
 export interface MockDb {
   card: MockAccount;
   savings: MockAccount & { balance: number; incomeByPeriod: Record<Period, number> };
@@ -40,6 +45,8 @@ export interface MockDb {
   budgets: Record<Period, Record<number, number>>;
   lines: MockLine[];
   imports: MockImport[];
+  loans: CategoryOption[];
+  loanPayments: MockLoanPayment[];
   nextLineId: number;
   nextImportId: number;
 }
@@ -63,7 +70,10 @@ export const CAT = {
   Retiro:        15,
   Restaurantes:  16,
   Salud:         17,
+  Financieros:   18,
 } as const;
+
+const LOAN: CategoryOption = { accountId: 30, name: 'Préstamo BHD', icon: AccountIcon.BuildingBank };
 
 const CATEGORIES: CategoryOption[] = [
   { accountId: CAT.Supermercado,  name: 'Supermercado',       icon: AccountIcon.ShoppingCart },
@@ -75,6 +85,7 @@ const CATEGORIES: CategoryOption[] = [
   { accountId: CAT.Retiro,        name: 'Retiro en efectivo', icon: AccountIcon.Cash },
   { accountId: CAT.Restaurantes,  name: 'Restaurantes',       icon: AccountIcon.Kitchen },
   { accountId: CAT.Salud,         name: 'Salud',              icon: AccountIcon.Heartbeat },
+  { accountId: CAT.Financieros,   name: 'Gastos financieros', icon: AccountIcon.Receipt },
 ];
 
 const CARD: MockAccount = { accountId: 3, name: 'Tarjeta de crédito', icon: AccountIcon.CreditCard };
@@ -127,6 +138,8 @@ export function buildMockDb(scenario: MockScenario, now: Date = new Date()): Moc
     budgets: { [cur]: { ...BUDGETS }, [prev]: { ...BUDGETS, [CAT.Restaurantes]: 5000 } },
     lines: [],
     imports: [],
+    loans: [{ ...LOAN }],
+    loanPayments: [],
     nextLineId: 1000,
     nextImportId: 100,
   };
@@ -176,6 +189,8 @@ export function buildMockDb(scenario: MockScenario, now: Date = new Date()): Moc
     L(561, 14, day(cur, 13), 'POLLO REY',             1850, Card, CAT.Restaurantes),
     // Card payment (statement result: charges − payments)
     L(571, 14, day(cur, 15), 'PAGO RECIBIDO GRACIAS', -15000, Card, null, { isPayment: true, posted: true }),
+    // Gastos financieros: the transfer tax; the loan interest is added from loanPayments
+    L(581, 13, day(cur, 25), 'Imp. transferencia o cheque', 14.67, Sav, CAT.Financieros),
     // Uncategorized
     L(901, 14, day(cur, 19), 'UBER *TRIP 7XK2',        450, Card, null, { suggestionIds: [CAT.Transporte, CAT.Personal] }),
     L(902, 13, day(cur, 17), 'FARMACIA CAROL',        1275, Sav,  null, { suggestionIds: [CAT.Salud, CAT.Personal] }),
@@ -190,6 +205,11 @@ export function buildMockDb(scenario: MockScenario, now: Date = new Date()): Moc
     L(406, 12, day(prev, 5),  'RETIRO ATM PIANTINI',  6000, Sav,  CAT.Retiro),
     L(407, 12, day(prev, 7),  'PAGO EDEESTE',        11800, Sav,  CAT.Hogar),
   ];
+
+  db.loanPayments = [{
+    date: day(cur, 25), loanAccountId: LOAN.accountId, loanName: LOAN.name, loanType: LoanKind.Received,
+    installmentNumber: 5, totalInstallments: 24, amount: 7338.15, interest: 1200, interestCategoryId: CAT.Financieros,
+  }];
 
   if (scenario === MockScenario.AllCategorized) {
     db.lines = db.lines.filter(l => l.isPayment || l.categoryId != null);

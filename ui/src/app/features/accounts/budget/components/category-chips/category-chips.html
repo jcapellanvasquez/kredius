@@ -33,19 +33,20 @@
         <ul class="max-h-56 overflow-y-auto">
           @for (opt of filtered(); track opt.accountId) {
             <li>
-              <button type="button" (click)="pick(opt.accountId)"
-                class="w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-md text-left text-xs text-gray-700 hover:bg-gray-50">
-                <span class="flex items-center gap-1.5">
-                  <app-icon [name]="opt.icon" [size]="14" class="text-gray-400" />
-                  {{ opt.name }}
-                </span>
-                @if (opt.accountId === selectedId()) {
-                  <app-icon [name]="icons.Check" [size]="14" class="text-gray-900" />
-                }
-              </button>
+              <ng-container *ngTemplateOutlet="option; context: { $implicit: opt }" />
             </li>
           } @empty {
-            <li class="px-2 py-1.5 text-xs text-gray-400">{{ text.noMatches }}</li>
+            @if (filteredLoans().length === 0) {
+              <li class="px-2 py-1.5 text-xs text-gray-400">{{ text.noMatches }}</li>
+            }
+          }
+          @if (filteredLoans().length > 0) {
+            <li class="px-2 pt-2 pb-1 text-xs font-medium text-gray-400" role="presentation">{{ text.loans }}</li>
+            @for (opt of filteredLoans(); track opt.accountId) {
+              <li>
+                <ng-container *ngTemplateOutlet="option; context: { $implicit: opt }" />
+              </li>
+            }
           }
         </ul>
       </div>
@@ -65,3 +66,16 @@
     }
   }
 </div>
+
+<ng-template #option let-opt>
+  <button type="button" (click)="pick(opt.accountId)"
+    class="w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-md text-left text-xs text-gray-700 hover:bg-gray-50">
+    <span class="flex items-center gap-1.5">
+      <app-icon [name]="opt.icon" [size]="14" class="text-gray-400" />
+      {{ opt.name }}
+    </span>
+    @if (opt.accountId === selectedId()) {
+      <app-icon [name]="icons.Check" [size]="14" class="text-gray-900" />
+    }
+  </button>
+</ng-template>

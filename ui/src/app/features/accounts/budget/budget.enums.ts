@@ -4,6 +4,12 @@ export enum StatementAccountKind {
   Savings    = 'SAVINGS',
 }
 
+/** Mirrors backend `LoanType`: RECEIVED = you pay installments, GIVEN = you collect them. */
+export enum LoanKind {
+  Received = 'RECEIVED',
+  Given    = 'GIVEN',
+}
+
 /** Whether a statement line already produced a journal entry. */
 export enum LineStatus {
   Posted  = 'POSTED',

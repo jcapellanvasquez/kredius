@@ -154,29 +154,74 @@ class BudgetScreenServiceTest {
     )
 
     @Test
-    fun `card summary counts posted charges as spent and every card line in the statement`() {
+    fun `card spent counts the month's posted charges`() {
         monthLines(
             cardLine("1000.00", postedRd = "1000.00"),
             cardLine("500.00"),
-            cardLine("10.00", currency = CurrencyType.USD), // unposted USD at the latest rate: 600
             cardLine("800.00", type = StatementLineType.CREDIT), // the excluded payment row
         )
 
         val summary = service.get(august).card!!
 
         assertEquals(1000.0, summary.spent)
-        assertEquals(2100.0, summary.statement!!.charges)
-        assertEquals(800.0, summary.statement!!.payments)
-        assertEquals(1300.0, summary.statement!!.net)
         assertEquals("credit-card", summary.icon)
         assertNull(summary.budget)
     }
 
     @Test
-    fun `a month without card lines has no statement`() {
+    fun `without a card statement there is no statement block`() {
         monthLines()
 
         assertNull(service.get(august).card!!.statement)
+    }
+
+    /** The August card statement (cut-off 26/08) with the bank's balances, and its cycle's lines. */
+    private fun augustCardStatement(vararg cycle: StatementLine) {
+        val statement = StatementImport(
+            account = card, type = StatementType.CREDIT_CARD,
+            cutOffDate = LocalDate.of(2026, 8, 26), paymentDueDate = LocalDate.of(2026, 9, 21),
+            closingBalance = BigDecimal("66840.21"), minimumPayment = BigDecimal("1858.16"),
+            closingBalanceUsd = BigDecimal("198.93"), minimumPaymentUsd = BigDecimal("5.53"),
+        )
+        statement.lines += cycle
+        `when`(importRepo.findTopByAccountIdAndStatusNotAndClosingBalanceNotNullAndCutOffDateLessThanEqualOrderByCutOffDateDesc(
+            2L, StatementImportStatus.REVERSED, LocalDate.of(2026, 8, 31),
+        )).thenReturn(statement)
+        `when`(lineRepo.findByAccountIdAndLineDateBetween(2L, LocalDate.of(2026, 7, 27), LocalDate.of(2026, 8, 26)))
+            .thenReturn(cycle.toList())
+    }
+
+    private fun cycleLine(day: LocalDate, amount: String, currency: CurrencyType = CurrencyType.RD,
+                          type: StatementLineType = StatementLineType.DEBIT) =
+        cardLine(amount, type = type, currency = currency).apply { lineDate = day }
+
+    @Test
+    fun `the card statement follows the billing cycle, per currency, like the bank`() {
+        monthLines()
+        augustCardStatement(
+            cycleLine(LocalDate.of(2026, 7, 27), "62637.94", type = StatementLineType.CREDIT), // pays July
+            cycleLine(LocalDate.of(2026, 7, 28), "31702.48"),
+            cycleLine(LocalDate.of(2026, 8, 20), "45248.58"),
+            cycleLine(LocalDate.of(2026, 8, 15), "10000.00", type = StatementLineType.CREDIT),
+            cycleLine(LocalDate.of(2026, 8, 26), "110.85", type = StatementLineType.CREDIT), // cashback
+            cycleLine(LocalDate.of(2026, 7, 27), "567.44", CurrencyType.USD, StatementLineType.CREDIT),
+            cycleLine(LocalDate.of(2026, 7, 29), "146.45", CurrencyType.USD),
+            cycleLine(LocalDate.of(2026, 8, 13), "52.48", CurrencyType.USD),
+        )
+
+        val st = service.get(august).card!!.statement!!
+
+        assertEquals(LocalDate.of(2026, 8, 26), st.cutOffDate)
+        assertEquals(LocalDate.of(2026, 9, 21), st.paymentDueDate)
+        assertEquals(76951.06, st.rd.charges, 0.001)
+        assertEquals(72748.79, st.rd.credits, 0.001)
+        assertEquals(62637.94, st.rd.previousBalance!!, 0.001)
+        assertEquals(66840.21, st.rd.balance)
+        assertEquals(1858.16, st.rd.minimumPayment)
+        assertEquals(198.93, st.usd!!.charges, 0.001)
+        assertEquals(567.44, st.usd!!.credits, 0.001)
+        assertEquals(567.44, st.usd!!.previousBalance!!, 0.001)
+        assertEquals(198.93, st.usd!!.balance)
     }
 
     @Test

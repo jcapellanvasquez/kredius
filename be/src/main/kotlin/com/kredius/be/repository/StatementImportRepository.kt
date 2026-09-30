@@ -12,6 +12,12 @@ interface StatementImportRepository : JpaRepository<StatementImport, Long> {
 
     fun findTopByAccountIdOrderByCreatedAtDesc(accountId: Long): StatementImport?
 
+    fun findTopByAccountIdAndStatusNotAndCutOffDateLessThanOrderByCutOffDateDesc(
+        accountId: Long,
+        status: StatementImportStatus,
+        cutOffDate: LocalDate,
+    ): StatementImport?
+
     fun findTopByAccountIdAndStatusNotAndClosingBalanceNotNullAndCutOffDateLessThanEqualOrderByCutOffDateDesc(
         accountId: Long,
         status: StatementImportStatus,

@@ -2,6 +2,7 @@ package com.kredius.be.service
 
 import com.kredius.be.entity.Account
 import com.kredius.be.entity.AccountType
+import com.kredius.be.entity.CurrencyType
 import com.kredius.be.entity.InstallmentStatus
 import com.kredius.be.entity.LoanInstallment
 import com.kredius.be.entity.LoanType
@@ -17,7 +18,8 @@ import com.kredius.be.model.BudgetCategoryRow
 import com.kredius.be.model.BudgetLastUpload
 import com.kredius.be.model.BudgetSavingsSummary
 import com.kredius.be.model.BudgetScreenResponse
-import com.kredius.be.model.BudgetStatementResult
+import com.kredius.be.model.BudgetCardStatement
+import com.kredius.be.model.BudgetStatementTotals
 import com.kredius.be.model.BudgetTransactionLine
 import com.kredius.be.model.BudgetLoanPayment
 import com.kredius.be.repository.BudgetRepository
@@ -81,7 +83,7 @@ class BudgetScreenService(
         return BudgetScreenResponse(
             period = from,
             card = card?.let { account ->
-                cardSummary(account, lines.filter { it.account.id == account.id }, ::rd, categories)
+                cardSummary(account, lines.filter { it.account.id == account.id }, ::rd, categories, next.minusDays(1))
             },
             savings = savings?.let { savingsSummary(it, from, next, loanPayments.map { (_, payment) -> payment }) },
             lastUploads = listOfNotNull(card, savings).map { account ->
@@ -227,11 +229,9 @@ class BudgetScreenService(
         cardLines: List<StatementLine>,
         rd: (StatementLine) -> BigDecimal,
         categories: List<BudgetCategoryRow>,
+        monthEnd: LocalDate,
     ): BudgetCardSummary {
         val charges = cardLines.filter { it.type == StatementLineType.DEBIT }
-        val payments = cardLines.filter { it.type == StatementLineType.CREDIT }
-        val chargesRd = charges.sumOf(rd)
-        val paymentsRd = payments.sumOf(rd)
         val budget = categories
             .filter { ApiStatementType.CREDIT_CARD in it.origins }
             .mapNotNull { it.budget }
@@ -242,11 +242,48 @@ class BudgetScreenService(
             icon = card.icon,
             spent = charges.filter { it.journalLine != null }.sumOf(rd).toDouble(),
             budget = budget.takeIf { it > 0 },
-            statement = if (cardLines.isEmpty()) null else BudgetStatementResult(
-                charges = chargesRd.toDouble(),
-                payments = paymentsRd.toDouble(),
-                net = (chargesRd - paymentsRd).toDouble(),
-            ),
+            statement = cardStatement(card, monthEnd),
+        )
+    }
+
+    /**
+     * The latest card statement up to [monthEnd], as the bank reports it (found_bugs 1c): its billing cycle
+     * runs from the day after the previous statement's cut-off date (or its own first row) to its cut-off
+     * date. Charges and credits are summed per currency, never converted; the balance and minimum payment
+     * come from the statement itself.
+     */
+    private fun cardStatement(card: Account, monthEnd: LocalDate): BudgetCardStatement? {
+        val statement = importRepo
+            .findTopByAccountIdAndStatusNotAndClosingBalanceNotNullAndCutOffDateLessThanEqualOrderByCutOffDateDesc(
+                card.id, StatementImportStatus.REVERSED, monthEnd,
+            ) ?: return null
+        val cutOff = statement.cutOffDate!!
+        val cycleStart = importRepo
+            .findTopByAccountIdAndStatusNotAndCutOffDateLessThanOrderByCutOffDateDesc(card.id, StatementImportStatus.REVERSED, cutOff)
+            ?.cutOffDate?.plusDays(1)
+            ?: statement.lines.minOfOrNull { it.lineDate }
+            ?: cutOff
+        val cycle = lineRepo.findByAccountIdAndLineDateBetween(card.id, cycleStart, cutOff)
+            .filter { it.statementImport.status != StatementImportStatus.REVERSED && it.type != StatementLineType.INITIAL_BALANCE }
+        fun totals(currency: CurrencyType, balance: BigDecimal?, minimum: BigDecimal?): BudgetStatementTotals? {
+            val own = cycle.filter { it.currency == currency }
+            if (own.isEmpty() && balance == null) return null
+            val charges = own.filter { it.type == StatementLineType.DEBIT }.sumOf { it.amount }
+            val credits = own.filter { it.type == StatementLineType.CREDIT }.sumOf { it.amount }
+            return BudgetStatementTotals(
+                charges = charges.toDouble(),
+                credits = credits.toDouble(),
+                previousBalance = balance?.let { it - charges + credits }?.toDouble(),
+                balance = balance?.toDouble(),
+                minimumPayment = minimum?.toDouble(),
+            )
+        }
+        return BudgetCardStatement(
+            cutOffDate = cutOff,
+            paymentDueDate = statement.paymentDueDate,
+            rd = totals(CurrencyType.RD, statement.closingBalance, statement.minimumPayment)
+                ?: BudgetStatementTotals(charges = 0.0, credits = 0.0),
+            usd = totals(CurrencyType.USD, statement.closingBalanceUsd, statement.minimumPaymentUsd),
         )
     }
 

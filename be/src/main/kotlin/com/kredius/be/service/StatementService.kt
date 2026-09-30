@@ -102,7 +102,8 @@ class StatementService(
         import.lines.addAll(lines)
         importRepo.save(import)
 
-        lines.firstOrNull { it.type == StatementLineType.INITIAL_BALANCE }?.let { postOpeningBalance(import, it) }
+        // import.lines, not `lines`: saving the import merged the new lines, so the managed ones are in the import.
+        import.lines.firstOrNull { it.type == StatementLineType.INITIAL_BALANCE }?.let { postOpeningBalance(import, it) }
         val autoPosted = postPending(import)
         return importRepo.save(import).toResponse(autoPostedCount = autoPosted)
     }

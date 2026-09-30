@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.multipart.MultipartFile
 import java.math.BigDecimal
 import java.time.LocalDate
+import com.kredius.be.entity.AccountType as EntityAccountType
 import com.kredius.be.entity.StatementType as EntityStatementType
 import com.kredius.be.model.StatementImportStatus as ApiStatus
 import com.kredius.be.model.StatementType as ApiStatementType
@@ -94,8 +95,24 @@ class StatementService(
         import.lines.addAll(lines)
         importRepo.save(import)
 
+        lines.firstOrNull { it.type == StatementLineType.INITIAL_BALANCE }?.let { postOpeningBalance(import, it) }
         val autoPosted = postPending(import)
         return importRepo.save(import).toResponse(autoPostedCount = autoPosted)
+    }
+
+    /**
+     * The first statement of an account sets its opening balance: its `BALANCE INICIAL` row posts once
+     * against Capital Inicial (the first equity account) and links to that entry; the row stays excluded.
+     * Later statements' initial balances are carried-over balances and post nothing.
+     */
+    private fun postOpeningBalance(import: StatementImport, row: StatementLine) {
+        if (row.amount.signum() == 0) return
+        if (journalEntryRepo.existsBySourceAndLinesAccountId(JournalSource.OPENING_BALANCE, import.account.id)) return
+        val equity = accountRepo.findByUserIdAndType(currentUser.id, EntityAccountType.EQUITY)
+            .minByOrNull { it.code ?: Int.MAX_VALUE } ?: return
+        row.journalLine = journalService.postOpeningBalance(
+            import.account, equity, row.amount, row.lineDate, import.id, currentUser.user,
+        )
     }
 
     /** What makes a row the same transaction; mirrors the unique constraint on `statement_lines`. */

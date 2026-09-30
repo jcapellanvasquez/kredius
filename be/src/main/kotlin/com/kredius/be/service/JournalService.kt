@@ -15,6 +15,7 @@ import com.kredius.be.entity.StatementLineType
 import com.kredius.be.entity.User
 import com.kredius.be.repository.JournalEntryRepository
 import com.kredius.be.repository.JournalLineRepository
+import java.time.LocalDate
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
 
@@ -103,6 +104,39 @@ class JournalService(
             )
         }
         return entry
+    }
+
+    /**
+     * The opening balance of a statement account: the account on its natural side, [equity] (Capital
+     * Inicial) on the other, so the ledger starts from what the bank says the account held.
+     */
+    fun postOpeningBalance(
+        account: Account,
+        equity: Account,
+        amount: BigDecimal,
+        date: LocalDate,
+        referenceId: Long,
+        user: User,
+    ): JournalLine {
+        val entry = journalEntryRepo.save(
+            JournalEntry(
+                entryDate = date,
+                description = "Balance inicial – ${account.name}",
+                source = JournalSource.OPENING_BALANCE,
+                referenceId = referenceId,
+                user = user,
+                amount = amount,
+            )
+        )
+        val natural = ACCOUNT_NATURE.getValue(account.type)
+        val accountLine = journalLineRepo.save(
+            JournalLine(journalEntry = entry, account = account, side = natural, originalAmount = amount, amountRd = amount)
+        )
+        val equityLine = journalLineRepo.save(
+            JournalLine(journalEntry = entry, account = equity, side = natural.opposite(), originalAmount = amount, amountRd = amount)
+        )
+        entry.lines += listOf(accountLine, equityLine)
+        return accountLine
     }
 
     data class PostingSides(val statementAccount: EntrySide, val category: EntrySide)

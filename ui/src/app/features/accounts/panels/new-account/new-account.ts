@@ -5,7 +5,6 @@ import { AccountApiService } from '../../account-api.service';
 import { AccountType } from '../../../../api/models/account-type';
 import { AccountIconComponent, AccountIconSize } from '../../../../shared/components/account-icon/account-icon';
 import { ACCOUNT_ICONS, DEFAULT_ICON_BY_ACCOUNT_TYPE, FALLBACK_ACCOUNT_ICON } from '../../../../shared/constants/account-icons';
-import { AccountIconService } from '../../../../shared/services/account-icon.service';
 
 type LocalAccountType = 'expense' | 'income' | 'asset' | 'liability';
 
@@ -202,7 +201,6 @@ interface TypeOption {
 export class NewAccountComponent {
   private readonly accountSvc = inject(AccountApiService);
   private readonly router = inject(Router);
-  private readonly accountIcons = inject(AccountIconService);
 
   name = '';
   selectedType: LocalAccountType | null = null;
@@ -273,12 +271,9 @@ export class NewAccountComponent {
       type: TYPE_MAP[this.selectedType!],
       thresholdPct: this.selectedType === 'expense' ? this.threshold : undefined,
       showInAlerts: this.selectedType === 'expense' ? this.showInAlerts : false,
+      icon: this.selectedIcon,
     }).subscribe({
-      next: res => {
-        // Kept locally until the backend stores Account.icon.
-        if (res.body?.id != null) this.accountIcons.setIcon(res.body.id, this.selectedIcon);
-        this.router.navigate(['/accounts']);
-      },
+      next: () => this.router.navigate(['/accounts']),
       error: () => { this.saving = false; },
     });
   }

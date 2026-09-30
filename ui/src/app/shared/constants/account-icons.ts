@@ -40,3 +40,8 @@ export const DEFAULT_ICON_BY_ACCOUNT_TYPE: Record<AccountType, AccountIcon> = {
 };
 
 export const FALLBACK_ACCOUNT_ICON = AccountIcon.Category;
+
+/** The account's stored icon (`Account.icon`), else its type's default. */
+export function accountIcon(icon: string | null | undefined, type?: AccountType | null): string {
+  return icon ?? (type ? DEFAULT_ICON_BY_ACCOUNT_TYPE[type] : FALLBACK_ACCOUNT_ICON);
+}

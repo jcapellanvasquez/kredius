@@ -7,7 +7,7 @@ import { DatePipe, DecimalPipe, NgClass, NgTemplateOutlet } from '@angular/commo
 import { AccountApiService } from './account-api.service';
 import { AccountSummaryResponse } from '../../api/models/account-summary-response';
 import { AccountIconComponent, AccountIconSize } from '../../shared/components/account-icon/account-icon';
-import { AccountIconService } from '../../shared/services/account-icon.service';
+import { accountIcon } from '../../shared/constants/account-icons';
 import { BUDGET_TEXT } from './budget/budget.texts';
 import { BUDGET_ROUTES } from './budget/budget.constants';
 
@@ -19,7 +19,7 @@ import { BUDGET_ROUTES } from './budget/budget.constants';
 })
 export class AccountsComponent implements OnInit {
   readonly accountSvc = inject(AccountApiService);
-  readonly accountIcons = inject(AccountIconService);
+  readonly accountIcon = accountIcon;
   readonly accountIconSize = AccountIconSize.Lg;
   readonly budgetText = BUDGET_TEXT;
 

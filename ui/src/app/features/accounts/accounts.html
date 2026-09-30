@@ -241,7 +241,7 @@
               @for (account of filteredExpense(); track account.id) {
                 <button [routerLink]="['detail']" [queryParams]="{ id: account.id }" (click)="selectAccount(account.id)"
                   class="account-row group" [class.is-selected]="selectedKey() === 'a-' + account.id">
-                  <app-account-icon [icon]="accountIcons.iconFor(account.id, account.type)" [size]="accountIconSize" />
+                  <app-account-icon [icon]="accountIcon(account.icon, account.type)" [size]="accountIconSize" />
                   <div class="flex-1 min-w-0 text-left">
                     <div class="flex items-center justify-between gap-2">
                       <div class="flex items-center gap-1.5 min-w-0">
@@ -305,7 +305,7 @@
     <ng-template #accountRow let-account let-showAlert="showAlert">
       <button [routerLink]="['detail']" [queryParams]="{ id: account.id }" (click)="selectAccount(account.id)"
         class="account-row group" [class.is-selected]="selectedKey() === 'a-' + account.id">
-        <app-account-icon [icon]="accountIcons.iconFor(account.id, account.type)" [size]="accountIconSize" />
+        <app-account-icon [icon]="accountIcon(account.icon, account.type)" [size]="accountIconSize" />
         <div class="flex-1 min-w-0 text-left">
           <!-- top: name · balance -->
           <div class="flex items-center justify-between gap-2">

@@ -16,6 +16,14 @@ export enum CurrencyCode {
   Usd = 'USD',
 }
 
+/** What a transaction does to the statement account, for the help tag on each row. */
+export enum LineEffect {
+  DebtUp      = 'debt-up',
+  DebtDown    = 'debt-down',
+  SavingsOut  = 'savings-out',
+  SavingsIn   = 'savings-in',
+}
+
 /** Whether a statement line already produced a journal entry. */
 export enum LineStatus {
   Posted  = 'POSTED',

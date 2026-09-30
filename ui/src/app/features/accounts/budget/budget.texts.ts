@@ -44,6 +44,9 @@ export const BUDGET_TEXT = {
   unsavedConfirm:   'Tienes cambios de presupuesto sin guardar. ¿Salir y descartarlos?',
 
   income:           'Ingreso',
+  bankBalanceAt:    'Banco al',
+  balanceMatches:   'Cuadra',
+  balanceDifference:'Diferencia',
   charges:          'Consumos',
   payments:         'Pagos',
   monthResult:      'Resultado del mes',

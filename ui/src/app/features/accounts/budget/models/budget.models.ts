@@ -81,8 +81,17 @@ export interface SavingsSummary {
   income: number;
   /** The month's loan installments, oldest first (plan Q8). */
   loanPayments: LoanPayment[];
+  /** The month's payments from savings to the card (transfers, so they're in no category). */
+  cardPayments: CardPayment[];
   /** The bank's balance at the latest statement's cut-off date vs the ledger's; null without a statement. */
   bankBalance: BankBalance | null;
+}
+
+export interface CardPayment {
+  lineId: number;
+  /** ISO date `YYYY-MM-DD`. */
+  date: string;
+  amount: number;
 }
 
 export interface BankBalance {

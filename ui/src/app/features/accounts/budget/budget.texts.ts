@@ -47,8 +47,11 @@ export const BUDGET_TEXT = {
 
   income:           'Ingreso',
   bankBalanceAt:    'Banco al',
-  balanceMatches:   'Cuadra',
+  ledgerBalanceAt:  'Kredius al',
+  balanceMatches:   'Cuadra con el banco',
   balanceDifference:'Diferencia',
+  balanceDifferenceHint: 'Movimientos en Kredius que no aparecen en el banco (p. ej. un préstamo), o líneas sin categorizar.',
+  cardPayments:     'Pagos a tarjeta',
   charges:          'Consumos',
   credits:          'Pagos y créditos',
   previousBalance:  'Saldo anterior',

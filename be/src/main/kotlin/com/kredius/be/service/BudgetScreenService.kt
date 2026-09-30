@@ -213,6 +213,8 @@ class BudgetScreenService(
         date = lineDate,
         description = description,
         amount = (if (type == StatementLineType.CREDIT) amountRd.negate() else amountRd).toDouble(),
+        currency = BudgetTransactionLine.Currency.valueOf(currency.name),
+        originalAmount = (if (type == StatementLineType.CREDIT) amount.negate() else amount).toDouble(),
         source = ApiStatementType.valueOf(statementImport.type.name),
         sourceIcon = account.icon,
         status = if (journalLine != null) BudgetTransactionLine.Status.POSTED else BudgetTransactionLine.Status.PENDING,

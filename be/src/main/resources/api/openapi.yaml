@@ -1076,7 +1076,7 @@ components:
 
     BudgetTransactionLine:
       type: object
-      required: [lineId, date, description, amount, source, status, suggestions]
+      required: [lineId, date, description, amount, currency, originalAmount, source, status, suggestions]
       properties:
         lineId:
           type: integer
@@ -1090,6 +1090,14 @@ components:
           type: number
           format: double
           description: RD$; positive = charge, negative = payment or credit
+        currency:
+          type: string
+          enum: [RD, USD]
+          description: The currency the bank charged in
+        originalAmount:
+          type: number
+          format: double
+          description: The amount in `currency`, signed like amount (e.g. US$4.00 for a US$ charge)
         source:
           $ref: '#/components/schemas/StatementType'
         sourceIcon:

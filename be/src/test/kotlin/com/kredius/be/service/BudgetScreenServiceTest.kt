@@ -409,4 +409,16 @@ class BudgetScreenServiceTest {
         assertEquals(96356.20, check.bank)
         assertEquals(3000.0, check.ledger) // the ledger up to 31/08 (debits 5,000 − credits 2,000)
     }
+
+    @Test
+    fun `a US$ transaction keeps its currency and original amount`() {
+        ledger()
+        monthLines(cardLine("4.00", currency = CurrencyType.USD), cardLine("450.00"))
+
+        val lines = service.get(august).uncategorized.associateBy { it.currency }
+
+        assertEquals(4.0, lines.getValue(BudgetTransactionLine.Currency.USD).originalAmount)
+        assertEquals(240.0, lines.getValue(BudgetTransactionLine.Currency.USD).amount) // RD$ at the latest rate (60)
+        assertEquals(450.0, lines.getValue(BudgetTransactionLine.Currency.RD).originalAmount)
+    }
 }

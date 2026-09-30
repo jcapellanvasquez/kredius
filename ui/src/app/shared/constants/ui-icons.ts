@@ -13,4 +13,5 @@ export enum UiIcon {
   Loader       = 'loader-2',
   Alert        = 'alert-circle',
   Search       = 'search',
+  Info         = 'info-circle',
 }

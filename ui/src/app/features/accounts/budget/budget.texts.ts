@@ -1,4 +1,4 @@
-import { ImportStatus, StatementAccountKind } from './budget.enums';
+import { ImportStatus, LineEffect, StatementAccountKind } from './budget.enums';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -66,6 +66,14 @@ export const BUDGET_TEXT = {
 
   importLines:      'Líneas del corte',
   importNotFound:   'No se encontró el corte.',
+
+  /** Help tags on each transaction: a short label, and one line of explanation on tap. */
+  effect: {
+    [LineEffect.DebtUp]:     { tag: 'Sube tu deuda',   help: 'Compra con la tarjeta: aumenta lo que le debes al banco.' },
+    [LineEffect.DebtDown]:   { tag: 'Baja tu deuda',   help: 'Pago o crédito a la tarjeta: disminuye lo que le debes al banco.' },
+    [LineEffect.SavingsOut]: { tag: 'Sale de ahorros', help: 'Dinero que salió de tu cuenta de ahorros.' },
+    [LineEffect.SavingsIn]:  { tag: 'Entra a ahorros', help: 'Dinero que entró a tu cuenta de ahorros.' },
+  } satisfies Record<LineEffect, { tag: string; help: string }>,
 
   kind: {
     [StatementAccountKind.CreditCard]: 'Tarjeta',

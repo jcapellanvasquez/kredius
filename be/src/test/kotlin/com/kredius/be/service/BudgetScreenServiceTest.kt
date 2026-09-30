@@ -421,4 +421,18 @@ class BudgetScreenServiceTest {
         assertEquals(240.0, lines.getValue(BudgetTransactionLine.Currency.USD).amount) // RD$ at the latest rate (60)
         assertEquals(450.0, lines.getValue(BudgetTransactionLine.Currency.RD).originalAmount)
     }
+
+    @Test
+    fun `payments from savings to the card are listed on the savings card`() {
+        ledger()
+        val payment = savingsLine("66840.21", postedRd = "66840.21").apply { categoryAccount = card; lineDate = LocalDate.of(2026, 8, 27) }
+        val earlier = savingsLine("10000.00", postedRd = "10000.00").apply { categoryAccount = card; lineDate = LocalDate.of(2026, 8, 17) }
+        val purchase = savingsLine("500.00", postedRd = "500.00").apply { categoryAccount = food }
+        monthLines(payment, purchase, earlier)
+
+        val payments = service.get(august).savings!!.cardPayments!!
+
+        assertEquals(listOf(10000.0, 66840.21), payments.map { it.amount })
+        assertEquals(LocalDate.of(2026, 8, 17), payments.first().date)
+    }
 }

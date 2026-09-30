@@ -12,6 +12,7 @@ import com.kredius.be.entity.StatementLine
 import com.kredius.be.entity.StatementLineType
 import com.kredius.be.entity.StatementType
 import com.kredius.be.model.BudgetBankBalance
+import com.kredius.be.model.BudgetCardPayment
 import com.kredius.be.model.BudgetCardSummary
 import com.kredius.be.model.BudgetCategoryOption
 import com.kredius.be.model.BudgetCategoryRow
@@ -85,7 +86,10 @@ class BudgetScreenService(
             card = card?.let { account ->
                 cardSummary(account, lines.filter { it.account.id == account.id }, ::rd, categories, next.minusDays(1))
             },
-            savings = savings?.let { savingsSummary(it, from, next, loanPayments.map { (_, payment) -> payment }) },
+            savings = savings?.let { account ->
+                savingsSummary(account, from, next, loanPayments.map { (_, payment) -> payment },
+                    cardPayments(account, card, lines, ::rd))
+            },
             lastUploads = listOfNotNull(card, savings).map { account ->
                 BudgetLastUpload(
                     kind = ApiStatementType.valueOf(account.statementType!!.name),
@@ -308,11 +312,29 @@ class BudgetScreenService(
         )
     }
 
+    /**
+     * The month's savings rows posted to the card (e.g. "PAGO DE TC"). They are transfers, so they appear
+     * in no category; the savings card lists them.
+     */
+    private fun cardPayments(
+        savings: Account,
+        card: Account?,
+        lines: List<StatementLine>,
+        rd: (StatementLine) -> BigDecimal,
+    ): List<BudgetCardPayment> {
+        if (card == null) return emptyList()
+        return lines
+            .filter { it.account.id == savings.id && it.journalLine != null && it.categoryAccount?.id == card.id }
+            .sortedBy { it.lineDate }
+            .map { BudgetCardPayment(lineId = it.id, date = it.lineDate, amount = rd(it).toDouble()) }
+    }
+
     private fun savingsSummary(
         savings: Account,
         from: LocalDate,
         next: LocalDate,
         loanPayments: List<BudgetLoanPayment>,
+        cardPayments: List<BudgetCardPayment>,
     ): BudgetSavingsSummary {
         val userId = currentUser.id
         val totals = journalLineRepo.findBalanceBefore(userId, savings.id, next)
@@ -323,6 +345,7 @@ class BudgetScreenService(
             balance = (totals.totalDebit - totals.totalCredit).toDouble(),
             income = journalLineRepo.findIncomeInto(userId, savings.id, from, next).toDouble(),
             loanPayments = loanPayments,
+            cardPayments = cardPayments,
             bankBalance = bankBalance(savings, next.minusDays(1)),
         )
     }

@@ -204,7 +204,7 @@
                     <div class="min-w-0 pr-2">
                       <p class="text-sm font-medium text-gray-900 truncate">{{ accountLabel(account) }}</p>
                       <p class="text-xs text-gray-400">
-                        Cuota RD${{ account.loanInstallmentAmount | number:'1.0-0' }}
+                        Cuota RD${{ account.loanInstallmentAmount | number:'1.2-2' }}
                         @if (account.loanNextInstallmentDate) { · próxima: {{ account.loanNextInstallmentDate | date:'d MMM' }} }
                       </p>
                     </div>
@@ -219,8 +219,8 @@
                       <div class="h-full rounded-full bg-income" [style.width.%]="paidPct"></div>
                     </div>
                     <p class="text-[11px] text-gray-400">
-                      Saldo restante RD${{ account.loanRemainingBalance | number:'1.0-0' }}
-                      de RD${{ account.loanTotalAmount | number:'1.0-0' }} · {{ paidPct | number:'1.0-0' }}%
+                      Saldo restante RD${{ account.loanRemainingBalance | number:'1.2-2' }}
+                      de RD${{ account.loanTotalAmount | number:'1.2-2' }} · {{ paidPct | number:'1.0-0' }}%
                       {{ account.loanType === 'GIVEN' ? 'cobrado' : 'pagado' }}
                     </p>
                   }
@@ -249,7 +249,7 @@
                           <span class="relative group/tip shrink-0 cursor-default">
                             <span class="w-1.5 h-1.5 rounded-full bg-amber-400 block"></span>
                             <span class="pointer-events-none absolute bottom-full left-0 mb-1.5 whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-[11px] leading-snug text-white opacity-0 group-hover/tip:opacity-100 transition-opacity z-20">
-                              RD${{ account.balance | number:'1.0-0' }} real
+                              RD${{ account.balance | number:'1.2-2' }} real
                               @if (account.thresholdPct) { · umbral {{ account.thresholdPct }}% del ingreso}
                             </span>
                           </span>
@@ -260,7 +260,7 @@
                         <p class="text-sm font-medium shrink-0 tabular-nums"
                            [class.text-amber-500]="account.showInAlerts"
                            [class.text-gray-900]="!account.showInAlerts">
-                          RD${{ account.balance | number:'1.0-0' }}
+                          RD${{ account.balance | number:'1.2-2' }}
                         </p>
                       }
                     </div>
@@ -317,7 +317,7 @@
             </div>
             @if (account.balance != null) {
               <p class="text-sm font-medium text-gray-900 shrink-0 tabular-nums">
-                RD${{ account.balance | number:'1.0-0' }}
+                RD${{ account.balance | number:'1.2-2' }}
               </p>
             }
           </div>
@@ -332,7 +332,7 @@
                 <p class="text-xs shrink-0 tabular-nums"
                    [class.text-green-600]="account.lastTransactionValue >= 0"
                    [class.text-red-500]="account.lastTransactionValue < 0">
-                  {{ account.lastTransactionValue >= 0 ? '+' : '' }}RD${{ account.lastTransactionValue | number:'1.0-0' }}
+                  {{ account.lastTransactionValue >= 0 ? '+' : '' }}RD${{ account.lastTransactionValue | number:'1.2-2' }}
                 </p>
               }
             }

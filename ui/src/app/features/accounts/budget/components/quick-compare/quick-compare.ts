@@ -21,7 +21,7 @@ import { CategoryRowView } from '../../models/budget.models';
               <span class="truncate">{{ row.name }}</span>
             </span>
             <span class="text-xs text-gray-500 tabular-nums shrink-0">
-              {{ row.actual | money }}
+              {{ row.actual | money: 0 }}
               @if (row.budgetInput !== null) {
                 / {{ row.budgetInput | money: 0 : false }} · {{ row.pct }}{{ text.percent }}
               } @else {

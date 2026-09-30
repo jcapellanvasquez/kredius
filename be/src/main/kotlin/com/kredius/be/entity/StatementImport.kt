@@ -39,6 +39,20 @@ class StatementImport(
     @Column(name = "closing_balance", precision = 14, scale = 2)
     var closingBalance: BigDecimal? = null,
 
+    /** Card statements: the US$ balance at [cutOffDate]. */
+    @Column(name = "closing_balance_usd", precision = 14, scale = 2)
+    var closingBalanceUsd: BigDecimal? = null,
+
+    /** Card statements: the minimum payment, RD$ and US$, and its due date. */
+    @Column(name = "minimum_payment", precision = 14, scale = 2)
+    var minimumPayment: BigDecimal? = null,
+
+    @Column(name = "minimum_payment_usd", precision = 14, scale = 2)
+    var minimumPaymentUsd: BigDecimal? = null,
+
+    @Column(name = "payment_due_date")
+    var paymentDueDate: LocalDate? = null,
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     var user: User = User(),

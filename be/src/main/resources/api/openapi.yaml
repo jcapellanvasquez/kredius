@@ -865,6 +865,11 @@ components:
           description: Active loans, offered in a separate "Préstamos" group when picking a category
           items:
             $ref: '#/components/schemas/BudgetCategoryOption'
+        incomeOptions:
+          type: array
+          description: Active income accounts, offered in a separate "Ingresos" group when picking a category
+          items:
+            $ref: '#/components/schemas/BudgetCategoryOption'
 
     BudgetCardSummary:
       type: object
@@ -1050,7 +1055,7 @@ components:
           nullable: true
         suggestions:
           type: array
-          description: Two expense categories to offer as chips, never the current one
+          description: Two categories to offer as chips, never the current one; income accounts for money in (CREDIT lines), expense accounts otherwise
           items:
             $ref: '#/components/schemas/BudgetCategoryOption'
 

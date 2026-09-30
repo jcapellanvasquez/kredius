@@ -325,4 +325,23 @@ class BudgetScreenServiceTest {
         assertEquals(1200.0, financialRow.actual)
         assertEquals(listOf("Préstamo BHD"), screen.loanOptions!!.map { it.name })
     }
+
+    @Test
+    fun `money coming in is offered income accounts, and income accounts are listed as options`() {
+        ledger()
+        val salary = Account(id = 4, code = 4001, name = "Salario", type = AccountType.INCOME)
+        val interest = Account(id = 5, code = 4002, name = "Intereses Ganados", type = AccountType.INCOME)
+        val closed = Account(id = 12, code = 4003, name = "Viejo", type = AccountType.INCOME, active = false)
+        `when`(accountRepo.findByUserIdAndType(0L, AccountType.INCOME)).thenReturn(listOf(interest, salary, closed))
+        val deposit = savingsLine("198450.00", type = StatementLineType.CREDIT)
+        val purchase = savingsLine("500.00")
+        monthLines(deposit, purchase)
+
+        val screen = service.get(august)
+
+        val byAmount = screen.uncategorized.associateBy { it.amount }
+        assertEquals(listOf("Salario", "Intereses Ganados"), byAmount.getValue(-198450.0).suggestions.map { it.name })
+        assertEquals(listOf("Comida", "Supermercado"), byAmount.getValue(500.0).suggestions.map { it.name })
+        assertEquals(listOf("Salario", "Intereses Ganados"), screen.incomeOptions!!.map { it.name })
+    }
 }

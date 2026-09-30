@@ -60,8 +60,14 @@ class BudgetScreenService(
         val usdRate by lazy { exchangeRateRepo.findTopByContextOrderByRateDateDesc(RateContext.CREDIT_CARD) }
         fun rd(line: StatementLine) = line.journalLine?.amountRd ?: amountRd(line, usdRate)
         val expenses = accountRepo.findByUserIdAndType(userId, AccountType.EXPENSE)
-        val ranked = rankForSuggestions(expenses)
-        fun transaction(line: StatementLine) = line.toTransaction(rd(line), ranked)
+        val incomes = accountRepo.findByUserIdAndType(userId, AccountType.INCOME)
+        val uses = recentUses()
+        val rankedExpenses = rankForSuggestions(expenses, uses)
+        val rankedIncomes = rankForSuggestions(incomes, uses)
+        // Money in (a savings credit, a card refund) is suggested income accounts; everything else expenses.
+        fun transaction(line: StatementLine) = line.toTransaction(
+            rd(line), if (line.type == StatementLineType.CREDIT) rankedIncomes else rankedExpenses,
+        )
 
         val loanPayments = installmentRepo
             .findByLoanUserIdAndStatusAndActualPaymentDateBetween(userId, InstallmentStatus.PAID, from, next.minusDays(1))
@@ -92,6 +98,10 @@ class BudgetScreenService(
             loanOptions = loanRepo.findByUserId(userId)
                 .filter { it.active }
                 .map { BudgetCategoryOption(accountId = it.account.id, name = it.account.name, icon = it.account.icon) },
+            incomeOptions = incomes
+                .filter { it.active }
+                .sortedBy { it.code ?: Int.MAX_VALUE }
+                .map { BudgetCategoryOption(accountId = it.id, name = it.name, icon = it.icon) },
         )
     }
 
@@ -172,20 +182,24 @@ class BudgetScreenService(
         )
     }
 
-    /**
-     * Active expense categories, most posted lines in the last [SUGGESTION_WINDOW_DAYS] days first, then by
-     * account code; with no history this is plain code order.
-     */
-    private fun rankForSuggestions(expenses: List<Account>): List<Account> {
+    /** Posted lines per category account in the last [SUGGESTION_WINDOW_DAYS] days. */
+    private fun recentUses(): Map<Long, Int> {
         val today = LocalDate.now()
-        val uses = lineRepo.findByStatementImportUserIdAndStatementImportStatusNotAndLineDateBetween(
+        return lineRepo.findByStatementImportUserIdAndStatementImportStatusNotAndLineDateBetween(
             currentUser.id, StatementImportStatus.REVERSED, today.minusDays(SUGGESTION_WINDOW_DAYS), today,
         )
             .filter { it.journalLine != null }
             .mapNotNull { it.categoryAccount?.id }
             .groupingBy { it }
             .eachCount()
-        return expenses
+    }
+
+    /**
+     * Active accounts, most posted lines in the last [SUGGESTION_WINDOW_DAYS] days first ([uses]), then by
+     * account code; with no history this is plain code order.
+     */
+    private fun rankForSuggestions(accounts: List<Account>, uses: Map<Long, Int>): List<Account> {
+        return accounts
             .filter { it.active }
             .sortedWith(compareByDescending<Account> { uses[it.id] ?: 0 }.thenBy { it.code ?: Int.MAX_VALUE })
     }

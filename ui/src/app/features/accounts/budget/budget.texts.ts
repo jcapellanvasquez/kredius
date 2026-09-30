@@ -65,6 +65,7 @@ export const BUDGET_TEXT = {
   changeRate:       'cambiar',
 
   loadError:        'No se pudo cargar el presupuesto.',
+  loadingMonth:     'Cargando el mes',
   retry:            'Reintentar',
 
   importLines:      'Líneas del corte',

@@ -6,4 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository
 
 interface JournalEntryRepository : JpaRepository<JournalEntry, Long> {
     fun findByReferenceIdAndSource(referenceId: Long, source: JournalSource): List<JournalEntry>
+
+    /** Whether the account already has an entry of this source (e.g. its opening balance). */
+    fun existsBySourceAndLinesAccountId(source: JournalSource, accountId: Long): Boolean
 }

@@ -72,6 +72,7 @@ class StatementServiceTest {
     private val financialExpenses = Account(id = 10, name = "Gastos Financieros", type = AccountType.EXPENSE)
     private val interestIncome = Account(id = 11, name = "Intereses Ganados", type = AccountType.INCOME)
     private val loanAccount = Account(id = 20, name = "Préstamo BHD", type = AccountType.LIABILITY)
+    private val capital = Account(id = 3, code = 3001, name = "Capital Inicial", type = AccountType.EQUITY)
 
     private val savedEntries = mutableListOf<JournalEntry>()
     private val savedJournalLines = mutableListOf<JournalLine>()
@@ -98,12 +99,15 @@ class StatementServiceTest {
         `when`(accountRepo.findByIdAndUserId(20L, 0L)).thenReturn(loanAccount)
         `when`(accountRepo.findByUserIdAndType(0L, AccountType.EXPENSE)).thenReturn(listOf(financialExpenses))
         `when`(accountRepo.findByUserIdAndType(0L, AccountType.INCOME)).thenReturn(listOf(interestIncome))
+        `when`(accountRepo.findByUserIdAndType(0L, AccountType.EQUITY)).thenReturn(listOf(capital))
         `when`(importRepo.save(any(StatementImport::class.java))).thenAnswer { it.arguments[0] }
         `when`(statementLineRepo.save(any(StatementLine::class.java))).thenAnswer { it.arguments[0] }
         `when`(statementLineRepo.findByAccountIdAndLineDateBetween(anyLong(), anyDate(), anyDate()))
             .thenAnswer { storedLines.toList() }
         `when`(entryRepo.save(any(JournalEntry::class.java)))
             .thenAnswer { (it.arguments[0] as JournalEntry).also { e -> if (savedEntries.none { it === e }) savedEntries += e } }
+        `when`(entryRepo.existsBySourceAndLinesAccountId(any(JournalSource::class.java) ?: JournalSource.MANUAL, anyLong()))
+            .thenAnswer { inv -> savedEntries.any { e -> e.source == inv.arguments[0] && e.lines.any { it.account.id == inv.arguments[1] } } }
         `when`(entryRepo.findByReferenceIdAndSource(anyLong(), any(JournalSource::class.java) ?: JournalSource.MANUAL))
             .thenAnswer { inv -> savedEntries.filter { it.referenceId == inv.arguments[0] && it.source == inv.arguments[1] } }
         val lineRepo = mock(JournalLineRepository::class.java)
@@ -646,5 +650,36 @@ class StatementServiceTest {
         patch(line, categoryAccountId = loanAccount.id)
 
         assertEquals(BigDecimal("6800.00"), savedEntries.single().sides().getValue("Préstamo BHD").second)
+    }
+
+    private fun initialBalance(day: Int, amount: String) = ParsedStatementRow(
+        date = LocalDate.of(2026, 8, day), description = "BALANCE INICIAL", amount = BigDecimal(amount),
+        currency = CurrencyType.RD, direction = RowDirection.CREDIT, isInitialBalance = true,
+    )
+
+    @Test
+    fun `the first savings statement posts its opening balance against Capital Inicial`() {
+        val import = uploadSavings(initialBalance(1, "102717.23"), row(3, "Ret. VISA ABPHNM", "4900.00"))
+
+        val opening = savedEntries.single { it.source == JournalSource.OPENING_BALANCE }
+        assertEquals(LocalDate.of(2026, 8, 1), opening.entryDate)
+        assertEquals(mapOf(
+            "Ahorros" to (EntrySide.DEBIT to BigDecimal("102717.23")),
+            "Capital Inicial" to (EntrySide.CREDIT to BigDecimal("102717.23")),
+        ), opening.sides())
+        val row = import.lines.first()
+        assertEquals(ExclusionReason.INITIAL_BALANCE, row.exclusionReason)
+        assertTrue(row.journalLine!!.journalEntry === opening)
+        assertEquals(StatementImportStatus.PENDING_REVIEW, import.status) // the purchase still needs a category
+    }
+
+    @Test
+    fun `a later statement's initial balance posts nothing`() {
+        uploadSavings(initialBalance(1, "102717.23"))
+
+        val september = uploadSavings(initialBalance(30, "96356.20"))
+
+        assertEquals(1, savedEntries.count { it.source == JournalSource.OPENING_BALANCE })
+        assertNull(september.lines.single().journalLine)
     }
 }

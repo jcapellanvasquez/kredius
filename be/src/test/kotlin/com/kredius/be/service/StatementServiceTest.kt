@@ -22,6 +22,7 @@ import com.kredius.be.entity.StatementType
 import com.kredius.be.entity.User
 import com.kredius.be.parser.BhdPdfParser
 import com.kredius.be.parser.BhdSavingsPdfParser
+import com.kredius.be.parser.ParsedStatement
 import com.kredius.be.parser.ParsedStatementRow
 import com.kredius.be.parser.RowDirection
 import com.kredius.be.repository.AccountRepository
@@ -177,12 +178,12 @@ class StatementServiceTest {
 
     /** Uploads [rows] as a card statement and keeps its lines as the account's stored lines. */
     private fun uploadCard(vararg rows: ParsedStatementRow): StatementImport {
-        `when`(cardParser.parse(any(InputStream::class.java) ?: InputStream.nullInputStream())).thenReturn(rows.toList())
+        `when`(cardParser.parse(any(InputStream::class.java) ?: InputStream.nullInputStream())).thenReturn(ParsedStatement(rows.toList()))
         return upload(card, ApiStatementType.CREDIT_CARD)
     }
 
     private fun uploadSavings(vararg rows: ParsedStatementRow): StatementImport {
-        `when`(savingsParser.parse(any(InputStream::class.java) ?: InputStream.nullInputStream())).thenReturn(rows.toList())
+        `when`(savingsParser.parse(any(InputStream::class.java) ?: InputStream.nullInputStream())).thenReturn(ParsedStatement(rows.toList()))
         return upload(savings, ApiStatementType.SAVINGS)
     }
 

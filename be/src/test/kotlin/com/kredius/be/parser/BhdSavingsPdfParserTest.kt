@@ -83,4 +83,21 @@ class BhdSavingsPdfParserTest {
         assertEquals(listOf(1, 2), withdrawals.map { it.occurrenceIndex })
         assertEquals(1, movements.count { it.occurrenceIndex == 2 })
     }
+
+    @Test
+    fun `summary has the cut-off date and the closing balance`() {
+        val summary = BhdSavingsPdfParser().parseSummary(fixture("bhd-savings-2026-08.txt"))
+
+        assertEquals(LocalDate.of(2026, 8, 31), summary.cutOffDate)
+        assertEquals(BigDecimal("96356.20"), summary.closingBalance)
+    }
+
+    @Test
+    fun `the closing balance reconciles with the initial balance and the rows`() {
+        val summary = BhdSavingsPdfParser().parseSummary(fixture("bhd-savings-2026-08.txt"))
+        val movements = rows.filter { !it.isInitialBalance }
+            .sumOf { if (it.direction == RowDirection.CREDIT) it.amount else it.amount.negate() }
+
+        assertEquals(summary.closingBalance, rows.single { it.isInitialBalance }.amount + movements)
+    }
 }

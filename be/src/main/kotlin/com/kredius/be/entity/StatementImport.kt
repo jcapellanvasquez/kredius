@@ -2,6 +2,7 @@ package com.kredius.be.entity
 
 import jakarta.persistence.*
 import org.hibernate.annotations.Filter
+import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.OffsetDateTime
 
@@ -29,6 +30,14 @@ class StatementImport(
 
     @Column(name = "error_message", length = 500)
     var errorMessage: String? = null,
+
+    /** "Fecha de corte" printed on the statement, when it prints one. */
+    @Column(name = "cut_off_date")
+    var cutOffDate: LocalDate? = null,
+
+    /** The balance the bank reports at [cutOffDate] ("Balance final"). */
+    @Column(name = "closing_balance", precision = 14, scale = 2)
+    var closingBalance: BigDecimal? = null,
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)

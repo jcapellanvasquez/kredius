@@ -9,6 +9,13 @@ export interface CreateReceivedLoanRequest {
   counterpartyName: string;
 
   /**
+   * Where the money went. Omitted: into the savings account (a cash loan). Otherwise the account
+   * the loan paid for, e.g. an expense or asset for a financed purchase (a phone bought in
+   * installments), so savings isn't touched. Asset, expense or liability accounts only.
+   */
+  disbursedToAccountId?: number | null;
+
+  /**
    * Monthly interest rate as a percentage (e.g. 3 = 3%)
    */
   monthlyRate: number;

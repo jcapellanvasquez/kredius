@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
@@ -97,6 +97,30 @@ interface PreviewRow {
             </div>
           </div>
 
+          <!-- Where the money went: savings (a cash loan) or a financed purchase -->
+          <div class="flex flex-col gap-1.5" role="radiogroup" aria-labelledby="loan-destination-label">
+            <span id="loan-destination-label" class="text-xs font-medium text-gray-500">¿Dónde entró el dinero?</span>
+            <div class="grid grid-cols-2 gap-2">
+              <button type="button" role="radio" [attr.aria-checked]="toSavings" (click)="toSavings = true"
+                [class]="toSavings ? choiceClass.selected : choiceClass.idle">A mi cuenta de ahorros</button>
+              <button type="button" role="radio" [attr.aria-checked]="!toSavings" (click)="toSavings = false"
+                [class]="!toSavings ? choiceClass.selected : choiceClass.idle">Pagó una compra</button>
+            </div>
+            @if (!toSavings) {
+              <select [(ngModel)]="purchaseAccountId" aria-label="Cuenta de la compra"
+                class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-400 transition-colors">
+                <option [ngValue]="null" disabled>Elige la cuenta de la compra</option>
+                @for (a of purchaseAccounts(); track a.id) {
+                  <option [ngValue]="a.id">{{ a.name }}</option>
+                }
+              </select>
+              <p class="text-xs text-gray-400">
+                El dinero no pasa por tu cuenta de ahorros; solo las cuotas salen de ella.
+                Si la cuenta no existe, créala antes (p. ej. un activo "Celular").
+              </p>
+            }
+          </div>
+
         </div>
 
         <!-- Summary box -->
@@ -179,6 +203,20 @@ export class NewLoanReceivedComponent {
   monthlyRate = 0;
   n           = 0;
   startDate   = new Date().toISOString().substring(0, 10);
+  /** True: the money went into savings (a cash loan). False: it paid for a purchase (purchaseAccountId). */
+  toSavings   = true;
+  purchaseAccountId: number | null = null;
+
+  readonly choiceClass = {
+    selected: 'px-3 py-2 text-sm rounded-lg border border-brand-400 bg-brand-50 text-brand-800 font-medium',
+    idle:     'px-3 py-2 text-sm rounded-lg border border-gray-200 text-gray-600 hover:border-gray-400',
+  };
+
+  /** Accounts a financed purchase can be booked to: assets, expenses and liabilities, except loans and savings. */
+  readonly purchaseAccounts = computed(() =>
+    this.accountSvc.accounts().filter(a =>
+      (a.type === 'ASSET' || a.type === 'EXPENSE' || a.type === 'LIABILITY')
+      && !a.loanAccount && a.statementType !== 'SAVINGS'));
 
   readonly saving  = signal(false);
   readonly created = signal(false);
@@ -215,7 +253,8 @@ export class NewLoanReceivedComponent {
   get hiddenCount(): number { return Math.max(0, this.n - 3); }
 
   get isValid(): boolean {
-    return this.lender.trim().length > 0 && this.principal > 0 && this.monthlyRate > 0 && this.n > 0;
+    return this.lender.trim().length > 0 && this.principal > 0 && this.monthlyRate > 0 && this.n > 0
+      && (this.toSavings || this.purchaseAccountId != null);
   }
 
   formatRD(n: number): string { return 'RD$' + n.toLocaleString(); }
@@ -241,6 +280,7 @@ export class NewLoanReceivedComponent {
           monthlyRate:      this.monthlyRate,
           numInstallments:  this.n,
           startDate:        this.startDate,
+          disbursedToAccountId: this.toSavings ? undefined : this.purchaseAccountId,
         },
       }).pipe(map(r => r.body!)),
       timer(MIN_SPINNER_MS),
@@ -256,6 +296,8 @@ export class NewLoanReceivedComponent {
     this.monthlyRate = 3;
     this.n           = 24;
     this.startDate   = new Date().toISOString().substring(0, 10);
+    this.toSavings   = true;
+    this.purchaseAccountId = null;
     this.saving.set(false);
     this.created.set(false);
   }

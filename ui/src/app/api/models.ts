@@ -7,6 +7,7 @@ export type { AccountSummaryResponse } from './models/account-summary-response';
 export type { AccountType } from './models/account-type';
 export type { BatchBudgetUpdateRequest } from './models/batch-budget-update-request';
 export type { BudgetBankBalance } from './models/budget-bank-balance';
+export type { BudgetCardStatement } from './models/budget-card-statement';
 export type { BudgetCardSummary } from './models/budget-card-summary';
 export type { BudgetCategoryOption } from './models/budget-category-option';
 export type { BudgetCategoryRow } from './models/budget-category-row';
@@ -16,7 +17,7 @@ export type { BudgetReportAccountRow } from './models/budget-report-account-row'
 export type { BudgetReportResponse } from './models/budget-report-response';
 export type { BudgetSavingsSummary } from './models/budget-savings-summary';
 export type { BudgetScreenResponse } from './models/budget-screen-response';
-export type { BudgetStatementResult } from './models/budget-statement-result';
+export type { BudgetStatementTotals } from './models/budget-statement-totals';
 export type { BudgetTransactionLine } from './models/budget-transaction-line';
 export type { BudgetUpdateItem } from './models/budget-update-item';
 export type { ConfirmImportResponse } from './models/confirm-import-response';
@@ -41,6 +42,8 @@ export type { PatchStatementLineRequest } from './models/patch-statement-line-re
 export type { PrincipalPaymentRecord } from './models/principal-payment-record';
 export type { PrincipalPaymentRequest } from './models/principal-payment-request';
 export type { RecategorizeStatementLineRequest } from './models/recategorize-statement-line-request';
+export type { SaveExchangeRateRequest } from './models/save-exchange-rate-request';
+export type { SaveExchangeRateResponse } from './models/save-exchange-rate-response';
 export type { StatementImportResponse } from './models/statement-import-response';
 export type { StatementImportStatus } from './models/statement-import-status';
 export type { StatementImportSummaryResponse } from './models/statement-import-summary-response';

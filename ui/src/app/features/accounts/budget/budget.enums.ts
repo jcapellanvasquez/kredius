@@ -10,6 +10,12 @@ export enum LoanKind {
   Given    = 'GIVEN',
 }
 
+/** Mirrors backend `CurrencyType`: the currency a bank row is in. */
+export enum CurrencyCode {
+  Rd  = 'RD',
+  Usd = 'USD',
+}
+
 /** Whether a statement line already produced a journal entry. */
 export enum LineStatus {
   Posted  = 'POSTED',

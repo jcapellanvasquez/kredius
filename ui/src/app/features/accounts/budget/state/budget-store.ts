@@ -43,6 +43,8 @@ export class BudgetStore {
    */
   private readonly settling = signal<ReadonlyMap<number, { line: TransactionLine; index: number }>>(new Map());
 
+  readonly savingRate = signal(false);
+
   // ── Upload ────────────────────────────────────────────────────────────────
   readonly uploadOpen = signal(false);
   readonly uploadFiles = signal<Partial<Record<StatementAccountKind, File>>>({});
@@ -199,6 +201,22 @@ export class BudgetStore {
           });
         },
         error: () => this.budgetSaveState.set(SaveState.Error),
+      });
+  }
+
+  /** Saves the card's US$ rate; the server posts the US$ lines that were waiting, so the data reloads. */
+  saveUsdRate(value: number): void {
+    if (this.savingRate()) return;
+    this.savingRate.set(true);
+    this.api.saveUsdRate(value)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.savingRate.set(false);
+          this.load(true);
+          this.refreshSidebar();
+        },
+        error: () => this.savingRate.set(false),
       });
   }
 

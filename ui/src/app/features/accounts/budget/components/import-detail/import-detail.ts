@@ -7,6 +7,7 @@ import { UiIcon } from '../../../../../shared/constants/ui-icons';
 import { MoneyPipe } from '../../../../../shared/pipes/money.pipe';
 import { ShortDatePipe } from '../../../../../shared/pipes/short-date.pipe';
 import { BUDGET_ROUTES, KIND_ICON } from '../../budget.constants';
+import { CurrencyCode } from '../../budget.enums';
 import { BUDGET_TEXT } from '../../budget.texts';
 import { BudgetApi } from '../../data/budget-api';
 import { ImportDetail } from '../../models/budget.models';
@@ -50,7 +51,7 @@ import { ImportDetail } from '../../models/budget.models';
                   <p class="text-sm text-gray-700 truncate">{{ line.date | shortDate }} · {{ line.description }}</p>
                   <p class="text-xs text-gray-400">{{ line.categoryName ?? text.uncategorized }}</p>
                 </div>
-                <span class="text-sm text-gray-900 tabular-nums shrink-0">{{ line.amount | money: 2 }}</span>
+                <span class="text-sm text-gray-900 tabular-nums shrink-0">{{ line.originalAmount | money: 2 : true : line.currency === usd }}</span>
               </li>
             }
           </ul>
@@ -72,6 +73,7 @@ export class ImportDetailComponent implements OnInit {
   protected readonly icons = UiIcon;
   protected readonly routes = BUDGET_ROUTES;
   protected readonly kindIcon = KIND_ICON;
+  protected readonly usd = CurrencyCode.Usd;
   protected readonly iconSize = AccountIconSize.Lg;
   protected readonly loading = signal(true);
   protected readonly detail = signal<ImportDetail | null>(null);

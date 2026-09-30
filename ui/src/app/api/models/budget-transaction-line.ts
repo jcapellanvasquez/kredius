@@ -11,9 +11,19 @@ export interface BudgetTransactionLine {
   amount: number;
   categoryId?: number | null;
   categoryName?: string | null;
+
+  /**
+   * The currency the bank charged in
+   */
+  currency: 'RD' | 'USD';
   date: string;
   description: string;
   lineId: number;
+
+  /**
+   * The amount in `currency`, signed like amount (e.g. US$4.00 for a US$ charge)
+   */
+  originalAmount: number;
   source: StatementType;
   sourceIcon?: string | null;
   status: 'POSTED' | 'PENDING';

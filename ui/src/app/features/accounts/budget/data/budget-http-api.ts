@@ -4,6 +4,7 @@ import { Observable, map, switchMap, throwError } from 'rxjs';
 import { ApiConfiguration } from '../../../../api/api-configuration';
 import { getAccounts } from '../../../../api/fn/accounts/get-accounts';
 import { getBudgetScreen } from '../../../../api/fn/budget-screen/get-budget-screen';
+import { saveExchangeRate } from '../../../../api/fn/exchange-rates/save-exchange-rate';
 import { batchUpdateBudgets } from '../../../../api/fn/reports/batch-update-budgets';
 import { getStatementImport } from '../../../../api/fn/statements/get-statement-import';
 import { listStatementImports } from '../../../../api/fn/statements/list-statement-imports';
@@ -15,6 +16,7 @@ import { BudgetCategoryOption } from '../../../../api/models/budget-category-opt
 import { BudgetCategoryRow } from '../../../../api/models/budget-category-row';
 import { BudgetLoanPayment } from '../../../../api/models/budget-loan-payment';
 import { BudgetScreenResponse } from '../../../../api/models/budget-screen-response';
+import { BudgetStatementTotals } from '../../../../api/models/budget-statement-totals';
 import { BudgetTransactionLine } from '../../../../api/models/budget-transaction-line';
 import { StatementImportSummaryResponse } from '../../../../api/models/statement-import-summary-response';
 import { StatementLineDto } from '../../../../api/models/statement-line-dto';
@@ -22,10 +24,10 @@ import { StatementType } from '../../../../api/models/statement-type';
 import { AccountIcon } from '../../../../shared/constants/account-icons';
 import { Period } from '../../../../shared/utils/period';
 import { KIND_ICON } from '../budget.constants';
-import { ImportStatus, LineStatus, LoanKind, StatementAccountKind } from '../budget.enums';
+import { CurrencyCode, ImportStatus, LineStatus, LoanKind, StatementAccountKind } from '../budget.enums';
 import {
   BudgetScreen, BudgetUpdate, CategoryOption, CategoryRow, ImportDetail, ImportSummary, LoanPayment,
-  TransactionLine, UploadResult,
+  StatementTotals, TransactionLine, UploadResult,
 } from '../models/budget.models';
 import { BudgetApi } from './budget-api';
 
@@ -87,6 +89,10 @@ export class BudgetHttpApi extends BudgetApi {
       .pipe(map(() => undefined));
   }
 
+  saveUsdRate(value: number): Observable<void> {
+    return saveExchangeRate(this.http, this.rootUrl, { body: { value } }).pipe(map(() => undefined));
+  }
+
   saveBudgets(period: Period, updates: BudgetUpdate[]): Observable<void> {
     return batchUpdateBudgets(this.http, this.rootUrl, { body: { period, updates } }).pipe(map(() => undefined));
   }
@@ -135,7 +141,13 @@ export class BudgetHttpApi extends BudgetApi {
         icon: card.icon ?? KIND_ICON[StatementAccountKind.CreditCard],
         spent: card.spent,
         budget: positiveOrNull(card.budget),
-        statement: card.statement ?? null,
+        statement: card.statement ? {
+          cutOffDate: card.statement.cutOffDate,
+          paymentDueDate: card.statement.paymentDueDate ?? null,
+          rd: toTotals(card.statement.rd),
+          usd: card.statement.usd ? toTotals(card.statement.usd) : null,
+        } : null,
+        usdRate: card.usdRate ?? null,
       },
       savings: {
         accountId: savings.accountId,
@@ -174,12 +186,14 @@ export class BudgetHttpApi extends BudgetApi {
 
   /** Import detail lines are read-only: no suggestions. Payments and refunds show as negative. */
   private toImportLine(l: StatementLineDto, kind: StatementAccountKind): TransactionLine {
-    const amount = l.amount ?? 0;
+    const amount = l.lineType === CREDIT ? -(l.amount ?? 0) : (l.amount ?? 0);
     return {
       lineId: l.id ?? 0,
       date: l.lineDate ?? '',
       description: l.description ?? '',
-      amount: l.lineType === CREDIT ? -amount : amount,
+      amount,
+      currency: (l.currency ?? CurrencyCode.Rd) as CurrencyCode,
+      originalAmount: amount,
       source: kind,
       sourceIcon: KIND_ICON[kind],
       status: l.posted ? LineStatus.Posted : LineStatus.Pending,
@@ -192,6 +206,16 @@ export class BudgetHttpApi extends BudgetApi {
 
 function positiveOrNull(value: number | null | undefined): number | null {
   return value != null && value > 0 ? value : null;
+}
+
+function toTotals(t: BudgetStatementTotals): StatementTotals {
+  return {
+    charges: t.charges,
+    credits: t.credits,
+    previousBalance: t.previousBalance ?? null,
+    balance: t.balance ?? null,
+    minimumPayment: t.minimumPayment ?? null,
+  };
 }
 
 function toOption(o: BudgetCategoryOption): CategoryOption {
@@ -218,6 +242,8 @@ function toTransaction(t: BudgetTransactionLine): TransactionLine {
     date: t.date,
     description: t.description,
     amount: t.amount,
+    currency: t.currency as CurrencyCode,
+    originalAmount: t.originalAmount,
     source,
     sourceIcon: t.sourceIcon ?? KIND_ICON[source],
     status: t.status as LineStatus,

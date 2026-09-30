@@ -1,6 +1,6 @@
 /**
- * Budget screen contracts. The mock API returns exactly these shapes; the backend
- * `GET /budget-screen` and related endpoints must match them (master plan §3).
+ * Budget screen contracts. `BudgetHttpApi` maps the backend's `GET /budget-screen` and related
+ * responses to these shapes (master plan §3).
  */
 import { Period } from '../../../../shared/utils/period';
 import { ProgressLevel } from '../../../../shared/utils/progress-level';

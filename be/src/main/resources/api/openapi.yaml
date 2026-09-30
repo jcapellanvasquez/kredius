@@ -893,24 +893,55 @@ components:
           nullable: true
           description: Sum of the saved budgets of categories with card spend; null when none
         statement:
-          $ref: '#/components/schemas/BudgetStatementResult'
+          $ref: '#/components/schemas/BudgetCardStatement'
           nullable: true
-          description: From the month's card lines, payments included; null when the month has none
+          description: The latest card statement up to the month (its billing cycle), as the bank reports it; null without one
 
-    BudgetStatementResult:
+    BudgetCardStatement:
       type: object
-      required: [charges, payments, net]
+      required: [cutOffDate, rd]
+      properties:
+        cutOffDate:
+          type: string
+          format: date
+        paymentDueDate:
+          type: string
+          format: date
+          nullable: true
+        rd:
+          $ref: '#/components/schemas/BudgetStatementTotals'
+        usd:
+          $ref: '#/components/schemas/BudgetStatementTotals'
+          nullable: true
+          description: Null when the statement has no US$ movements or balance
+
+    BudgetStatementTotals:
+      type: object
+      description: One currency of a card statement, in that currency (never converted)
+      required: [charges, credits]
       properties:
         charges:
           type: number
           format: double
-        payments:
+          description: Charges in the billing cycle
+        credits:
           type: number
           format: double
-        net:
+          description: Payments and other credits in the billing cycle
+        previousBalance:
           type: number
           format: double
-          description: charges − payments
+          nullable: true
+          description: balance − charges + credits; null when the statement has no balance
+        balance:
+          type: number
+          format: double
+          nullable: true
+          description: The balance at the cut-off date, as printed on the statement
+        minimumPayment:
+          type: number
+          format: double
+          nullable: true
 
     BudgetSavingsSummary:
       type: object

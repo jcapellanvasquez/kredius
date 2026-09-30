@@ -98,6 +98,14 @@ export interface BudgetScreen {
   categories: CategoryRow[];
   /** Active loans: the "Préstamos" group of "Otra" (plan Q8c). */
   loanOptions: CategoryOption[];
+  /** Active income accounts: the "Ingresos" group of "Otra", for money coming in. */
+  incomeOptions: CategoryOption[];
+}
+
+/** A labelled group of extra choices in "Otra" (e.g. "Ingresos", "Préstamos"), listed after the categories. */
+export interface CategoryOptionGroup {
+  label: string;
+  options: CategoryOption[];
 }
 
 export interface UploadResult {

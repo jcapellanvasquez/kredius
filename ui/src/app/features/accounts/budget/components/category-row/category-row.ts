@@ -5,7 +5,7 @@ import { ProgressBarComponent } from '../../../../../shared/components/progress-
 import { UiIcon } from '../../../../../shared/constants/ui-icons';
 import { MoneyPipe } from '../../../../../shared/pipes/money.pipe';
 import { BUDGET_TEXT } from '../../budget.texts';
-import { CategoryOption, CategoryRowView, ChipSelection, LineUiState } from '../../models/budget.models';
+import { CategoryOption, CategoryOptionGroup, CategoryRowView, ChipSelection, LineUiState } from '../../models/budget.models';
 import { BudgetInputComponent } from '../budget-input/budget-input';
 import { TransactionRowComponent } from '../transaction-row/transaction-row';
 
@@ -21,7 +21,7 @@ let nextId = 0;
 export class CategoryRowComponent {
   readonly row = input.required<CategoryRowView>();
   readonly options = input<CategoryOption[]>([]);
-  readonly loanOptions = input<CategoryOption[]>([]);
+  readonly optionGroups = input<CategoryOptionGroup[]>([]);
   readonly lineStates = input<ReadonlyMap<number, LineUiState>>(new Map());
   readonly highlight = input(false);
 

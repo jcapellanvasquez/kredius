@@ -36,6 +36,7 @@ export const BUDGET_TEXT = {
   other:            'Otra',
   searchCategory:   'Buscar categoría',
   loans:            'Préstamos',
+  incomes:          'Ingresos',
   noMatches:        'Sin resultados',
 
   saveChanges:      'Guardar cambios',

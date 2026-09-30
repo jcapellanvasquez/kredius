@@ -153,6 +153,7 @@ export class BudgetHttpApi extends BudgetApi {
       uncategorized: dto.uncategorized.map(toTransaction),
       categories: dto.categories.map(toCategoryRow),
       loanOptions: (dto.loanOptions ?? []).map(toOption),
+      incomeOptions: (dto.incomeOptions ?? []).map(toOption),
     };
   }
 

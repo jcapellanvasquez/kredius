@@ -4,7 +4,7 @@ import { IconComponent } from '../../../../../shared/components/icon/icon';
 import { UiIcon } from '../../../../../shared/constants/ui-icons';
 import { SaveState } from '../../budget.enums';
 import { BUDGET_TEXT } from '../../budget.texts';
-import { CategoryOption } from '../../models/budget.models';
+import { CategoryOption, CategoryOptionGroup } from '../../models/budget.models';
 
 const CHIP_BASE = 'inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-xs transition-colors disabled:opacity-40';
 
@@ -24,8 +24,8 @@ export class CategoryChipsComponent {
   readonly selectedId = input<number | null>(null);
   readonly suggestions = input<CategoryOption[]>([]);
   readonly options = input<CategoryOption[]>([]);
-  /** Active loans, listed under "Préstamos" in "Otra"; never offered as quick chips (plan Q8c). */
-  readonly loanOptions = input<CategoryOption[]>([]);
+  /** Extra labelled groups in "Otra" (Ingresos, Préstamos), after the categories. */
+  readonly groups = input<CategoryOptionGroup[]>([]);
   readonly state = input(SaveState.Idle);
   readonly choose = output<number>();
 
@@ -46,14 +46,17 @@ export class CategoryChipsComponent {
     const id = this.selectedId();
     const selected = id == null ? null
       : this.options().find(o => o.accountId === id)
-        ?? this.loanOptions().find(o => o.accountId === id)
+        ?? this.groups().flatMap(g => g.options).find(o => o.accountId === id)
         ?? this.suggestions().find(o => o.accountId === id) ?? null;
     const rest = this.suggestions().filter(o => o.accountId !== id);
     return selected ? [selected, ...rest] : rest;
   });
 
   protected readonly filtered = computed(() => this.matching(this.options()));
-  protected readonly filteredLoans = computed(() => this.matching(this.loanOptions()));
+  protected readonly filteredGroups = computed(() =>
+    this.groups()
+      .map(g => ({ label: g.label, options: this.matching(g.options) }))
+      .filter(g => g.options.length > 0));
 
   protected pick(accountId: number): void {
     this.close();

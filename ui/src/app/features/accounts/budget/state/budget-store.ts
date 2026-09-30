@@ -10,7 +10,7 @@ import { LineStatus, SaveState, StatementAccountKind } from '../budget.enums';
 import { BUDGET_TEXT } from '../budget.texts';
 import { BudgetApi } from '../data/budget-api';
 import {
-  BudgetScreen, CategoryOption, CategoryRowView, ImportSummary, LineUiState, TransactionLine, UploadResult,
+  BudgetScreen, CategoryOption, CategoryOptionGroup, CategoryRowView, ImportSummary, LineUiState, TransactionLine, UploadResult,
 } from '../models/budget.models';
 
 /** Page-level state for the budget screen. Provided by `BudgetPageComponent`. */
@@ -58,6 +58,15 @@ export class BudgetStore {
   readonly historyLoading = signal(false);
 
   // ── Derived ───────────────────────────────────────────────────────────────
+  /** Extra groups in "Otra", after the expense categories. */
+  readonly optionGroups = computed<CategoryOptionGroup[]>(() => {
+    const screen = this.screen();
+    return [
+      { label: BUDGET_TEXT.incomes, options: screen?.incomeOptions ?? [] },
+      { label: BUDGET_TEXT.loans, options: screen?.loanOptions ?? [] },
+    ].filter(g => g.options.length > 0);
+  });
+
   /** "Sin categorizar" as shown: the server's list plus the lines still settling, at their old position. */
   readonly uncategorized = computed<TransactionLine[]>(() => {
     const list = [...(this.screen()?.uncategorized ?? [])];

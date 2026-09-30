@@ -81,7 +81,7 @@
             [uncategorized]="store.uncategorized()"
             [rows]="store.categories()"
             [options]="store.categoryOptions()"
-            [loanOptions]="screen.loanOptions"
+            [optionGroups]="store.optionGroups()"
             [lineStates]="store.lineStates()"
             [highlightId]="store.highlightId()"
             (budgetChange)="store.setDraft($event.accountId, $event.value)"

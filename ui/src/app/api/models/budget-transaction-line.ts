@@ -19,7 +19,7 @@ export interface BudgetTransactionLine {
   status: 'POSTED' | 'PENDING';
 
   /**
-   * Two expense categories to offer as chips, never the current one
+   * Two categories to offer as chips, never the current one; income accounts for money in (CREDIT lines), expense accounts otherwise
    */
   suggestions: Array<BudgetCategoryOption>;
 }

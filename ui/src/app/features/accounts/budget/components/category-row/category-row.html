@@ -28,6 +28,17 @@
   }
 </p>
 
+@if (r.loanInterest.length > 0) {
+  <ul class="mb-2.5 flex flex-col gap-0.5 text-xs tabular-nums">
+    @for (p of r.loanInterest; track p.loanAccountId + '-' + p.installmentNumber) {
+      <li class="flex justify-between gap-2 text-gray-500">
+        <span class="min-w-0 truncate">{{ text.loanInterest(p.installmentNumber, p.totalInstallments, p.loanName) }}</span>
+        <span class="shrink-0 text-gray-700">{{ p.interest | money: 2 }}</span>
+      </li>
+    }
+  </ul>
+}
+
 <app-budget-input [value]="r.budgetInput" [hint]="r.previousBudget" [state]="r.saveState"
   (valueChange)="budgetChange.emit($event)" />
 
@@ -41,7 +52,7 @@
   @if (expanded()) {
     <div [id]="listId" class="mt-1.5 pl-1">
       @for (line of r.transactions; track line.lineId) {
-        <app-transaction-row [line]="line" [options]="options()" [uiState]="lineStates().get(line.lineId)"
+        <app-transaction-row [line]="line" [options]="options()" [loanOptions]="loanOptions()" [uiState]="lineStates().get(line.lineId)"
           (choose)="choose.emit({ line, categoryId: $event })" />
       }
     </div>

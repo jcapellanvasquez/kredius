@@ -4,7 +4,7 @@
  */
 import { Period } from '../../../../shared/utils/period';
 import { ProgressLevel } from '../../../../shared/utils/progress-level';
-import { ImportStatus, LineStatus, SaveState, StatementAccountKind } from '../budget.enums';
+import { ImportStatus, LineStatus, LoanKind, SaveState, StatementAccountKind } from '../budget.enums';
 
 export interface CategoryOption {
   accountId: number;
@@ -25,6 +25,19 @@ export interface TransactionLine {
   categoryId: number | null;
   categoryName: string | null;
   suggestions: CategoryOption[];
+}
+
+/** A loan installment paid (or collected) in the month; the interest is part of `amount`. */
+export interface LoanPayment {
+  /** ISO date `YYYY-MM-DD`. */
+  date: string;
+  loanAccountId: number;
+  loanName: string;
+  loanType: LoanKind;
+  installmentNumber: number;
+  totalInstallments: number | null;
+  amount: number;
+  interest: number;
 }
 
 /** Net result of the month's card transactions: charges − payments. */
@@ -49,6 +62,8 @@ export interface SavingsSummary {
   icon: string;
   balance: number;
   income: number;
+  /** The month's loan installments, oldest first (plan Q8). */
+  loanPayments: LoanPayment[];
 }
 
 export interface LastUpload {
@@ -69,6 +84,8 @@ export interface CategoryRow {
   /** Accounts the spend came from; both when mixed (Decision 1). */
   origins: StatementAccountKind[];
   transactions: TransactionLine[];
+  /** Read-only interest of the month's loan installments booked to this category. */
+  loanInterest: LoanPayment[];
 }
 
 export interface BudgetScreen {
@@ -79,6 +96,8 @@ export interface BudgetScreen {
   uncategorized: TransactionLine[];
   /** Sorted server-side: highest actual / budget first, no budget last. */
   categories: CategoryRow[];
+  /** Active loans: the "Préstamos" group of "Otra" (plan Q8c). */
+  loanOptions: CategoryOption[];
 }
 
 export interface UploadResult {

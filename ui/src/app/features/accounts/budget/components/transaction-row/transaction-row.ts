@@ -27,6 +27,7 @@ import { CategoryChipsComponent } from '../category-chips/category-chips';
       [selectedId]="selectedId()"
       [suggestions]="line().suggestions"
       [options]="options()"
+      [loanOptions]="loanOptions()"
       [state]="uiState()?.state ?? idle"
       (choose)="choose.emit($event)" />
   `,
@@ -34,6 +35,7 @@ import { CategoryChipsComponent } from '../category-chips/category-chips';
 export class TransactionRowComponent {
   readonly line = input.required<TransactionLine>();
   readonly options = input<CategoryOption[]>([]);
+  readonly loanOptions = input<CategoryOption[]>([]);
   readonly uiState = input<LineUiState | undefined>(undefined);
   readonly choose = output<number>();
 

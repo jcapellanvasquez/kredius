@@ -28,7 +28,7 @@ export interface BudgetEdit {
           <span class="text-sm font-normal text-gray-500">({{ uncategorized().length }})</span>
         </p>
         @for (line of uncategorized(); track line.lineId) {
-          <app-transaction-row [line]="line" [options]="options()" [uiState]="lineStates().get(line.lineId)"
+          <app-transaction-row [line]="line" [options]="options()" [loanOptions]="loanOptions()" [uiState]="lineStates().get(line.lineId)"
             (choose)="choose.emit({ line, categoryId: $event })" />
         }
       </div>
@@ -39,6 +39,7 @@ export interface BudgetEdit {
         <app-category-row
           [row]="row"
           [options]="options()"
+          [loanOptions]="loanOptions()"
           [lineStates]="lineStates()"
           [highlight]="row.accountId === highlightId()"
           (budgetChange)="budgetChange.emit({ accountId: row.accountId, value: $event })"
@@ -51,6 +52,7 @@ export class CategoryListComponent {
   readonly uncategorized = input<TransactionLine[]>([]);
   readonly rows = input<CategoryRowView[]>([]);
   readonly options = input<CategoryOption[]>([]);
+  readonly loanOptions = input<CategoryOption[]>([]);
   readonly lineStates = input<ReadonlyMap<number, LineUiState>>(new Map());
   readonly highlightId = input<number | null>(null);
 

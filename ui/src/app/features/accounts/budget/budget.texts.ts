@@ -35,6 +35,7 @@ export const BUDGET_TEXT = {
   saveFailed:       'No se pudo guardar',
   other:            'Otra',
   searchCategory:   'Buscar categoría',
+  loans:            'Préstamos',
   noMatches:        'Sin resultados',
 
   saveChanges:      'Guardar cambios',
@@ -70,6 +71,9 @@ export const BUDGET_TEXT = {
     [ImportStatus.Failed]:        'Fallido',
   } satisfies Record<ImportStatus, string>,
 
+  installment: (n: number, total: number | null) => (total ? `Cuota ${n}/${total}` : `Cuota ${n}`),
+  loanInterest: (n: number, total: number | null, loan: string) =>
+    `Interés ${total ? `cuota ${n}/${total}` : `cuota ${n}`} – ${loan}`,
   previousBudget: (amount: string) => `${amount} (mes anterior)`,
   transactions: (n: number) => `${n} ${n === 1 ? 'transacción' : 'transacciones'}`,
   lines:        (n: number) => `${n} ${n === 1 ? 'línea' : 'líneas'}`,

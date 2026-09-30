@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
 import { IconComponent } from '../../../../../shared/components/icon/icon';
 import { UiIcon } from '../../../../../shared/constants/ui-icons';
@@ -13,7 +14,7 @@ const CHIP_BASE = 'inline-flex items-center gap-1 px-2.5 py-1 rounded-full borde
  */
 @Component({
   selector: 'app-category-chips',
-  imports: [IconComponent],
+  imports: [IconComponent, NgTemplateOutlet],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'block', '(keydown.escape)': 'close()' },
   templateUrl: './category-chips.html',
@@ -23,6 +24,8 @@ export class CategoryChipsComponent {
   readonly selectedId = input<number | null>(null);
   readonly suggestions = input<CategoryOption[]>([]);
   readonly options = input<CategoryOption[]>([]);
+  /** Active loans, listed under "Préstamos" in "Otra"; never offered as quick chips (plan Q8c). */
+  readonly loanOptions = input<CategoryOption[]>([]);
   readonly state = input(SaveState.Idle);
   readonly choose = output<number>();
 
@@ -42,15 +45,15 @@ export class CategoryChipsComponent {
   protected readonly chips = computed(() => {
     const id = this.selectedId();
     const selected = id == null ? null
-      : this.options().find(o => o.accountId === id) ?? this.suggestions().find(o => o.accountId === id) ?? null;
+      : this.options().find(o => o.accountId === id)
+        ?? this.loanOptions().find(o => o.accountId === id)
+        ?? this.suggestions().find(o => o.accountId === id) ?? null;
     const rest = this.suggestions().filter(o => o.accountId !== id);
     return selected ? [selected, ...rest] : rest;
   });
 
-  protected readonly filtered = computed(() => {
-    const q = this.query().trim().toLowerCase();
-    return q ? this.options().filter(o => o.name.toLowerCase().includes(q)) : this.options();
-  });
+  protected readonly filtered = computed(() => this.matching(this.options()));
+  protected readonly filteredLoans = computed(() => this.matching(this.loanOptions()));
 
   protected pick(accountId: number): void {
     this.close();
@@ -68,5 +71,10 @@ export class CategoryChipsComponent {
 
   protected onSearch(event: Event): void {
     this.query.set((event.target as HTMLInputElement).value);
+  }
+
+  private matching(options: CategoryOption[]): CategoryOption[] {
+    const q = this.query().trim().toLowerCase();
+    return q ? options.filter(o => o.name.toLowerCase().includes(q)) : options;
   }
 }

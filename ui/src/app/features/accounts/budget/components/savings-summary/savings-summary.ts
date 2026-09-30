@@ -17,6 +17,17 @@ import { SavingsSummary } from '../../models/budget.models';
       </p>
       <p class="text-base font-medium text-gray-900 tabular-nums">{{ savings().balance | money }}</p>
       <p class="mt-1 text-xs text-gray-400 tabular-nums">{{ text.income }}: {{ savings().income | money }}</p>
+
+      @if (savings().loanPayments.length > 0) {
+        <ul class="mt-3 pt-2 border-t border-gray-100 flex flex-col gap-0.5 text-xs tabular-nums" [attr.aria-label]="text.loans">
+          @for (p of savings().loanPayments; track p.loanAccountId + '-' + p.installmentNumber) {
+            <li class="flex flex-wrap justify-between gap-x-2">
+              <span class="text-gray-500 min-w-0">{{ text.installment(p.installmentNumber, p.totalInstallments) }} · {{ p.loanName }}</span>
+              <span class="ml-auto whitespace-nowrap text-gray-700">{{ p.amount | money: 2 }}</span>
+            </li>
+          }
+        </ul>
+      }
     </div>
   `,
 })

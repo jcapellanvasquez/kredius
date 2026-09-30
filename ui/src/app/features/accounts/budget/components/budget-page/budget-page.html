@@ -62,7 +62,8 @@
         <section>
           <h2 class="text-sm font-medium text-gray-500 mb-2">{{ text.summary }}</h2>
           <div class="grid grid-cols-2 gap-2">
-            <app-card-summary [card]="screen.card" />
+            <app-card-summary [card]="screen.card" [savingRate]="store.savingRate()"
+              (saveRate)="store.saveUsdRate($event)" />
             <app-savings-summary [savings]="screen.savings" />
           </div>
         </section>

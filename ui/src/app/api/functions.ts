@@ -53,6 +53,8 @@ export type { DeleteMerchantMapping$Params as DeleteMerchantMapping$Params } fro
 export { deleteMerchantMapping as deleteMerchantMapping } from './fn/dictionary/delete-merchant-mapping';
 export type { UpdateMerchantMapping$Params as UpdateMerchantMapping$Params } from './fn/dictionary/update-merchant-mapping';
 export { updateMerchantMapping as updateMerchantMapping } from './fn/dictionary/update-merchant-mapping';
+export type { SaveExchangeRate$Params as SaveExchangeRate$Params } from './fn/exchange-rates/save-exchange-rate';
+export { saveExchangeRate as saveExchangeRate } from './fn/exchange-rates/save-exchange-rate';
 export type { ListIncomeEntries$Params as ListIncomeEntries$Params } from './fn/income/list-income-entries';
 export { listIncomeEntries as listIncomeEntries } from './fn/income/list-income-entries';
 export type { CreateIncomeEntry$Params as CreateIncomeEntry$Params } from './fn/income/create-income-entry';

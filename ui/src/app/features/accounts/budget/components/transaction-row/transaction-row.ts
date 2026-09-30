@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, input, output } from '@an
 import { AccountIconComponent, AccountIconSize } from '../../../../../shared/components/account-icon/account-icon';
 import { MoneyPipe } from '../../../../../shared/pipes/money.pipe';
 import { ShortDatePipe } from '../../../../../shared/pipes/short-date.pipe';
-import { SaveState } from '../../budget.enums';
+import { CurrencyCode, SaveState } from '../../budget.enums';
 import { BUDGET_TEXT } from '../../budget.texts';
 import { CategoryOption, CategoryOptionGroup, LineUiState, TransactionLine } from '../../models/budget.models';
 import { CategoryChipsComponent } from '../category-chips/category-chips';
@@ -21,7 +21,13 @@ import { CategoryChipsComponent } from '../category-chips/category-chips';
           {{ line().date | shortDate }} · {{ line().description }}
         </span>
       </div>
-      <span class="text-sm text-gray-900 tabular-nums shrink-0">{{ line().amount | money }}</span>
+      <span class="text-sm text-gray-900 tabular-nums shrink-0">
+        @if (isUsd()) {
+          {{ line().originalAmount | money: 2 : true : true }}
+        } @else {
+          {{ line().amount | money }}
+        }
+      </span>
     </div>
     <app-category-chips
       [selectedId]="selectedId()"
@@ -42,6 +48,7 @@ export class TransactionRowComponent {
   protected readonly text = BUDGET_TEXT;
   protected readonly iconSize = AccountIconSize.Sm;
   protected readonly idle = SaveState.Idle;
+  protected readonly isUsd = computed(() => this.line().currency === CurrencyCode.Usd);
 
   /** Optimistic selection while saving; falls back to the line's saved category (also after an error). */
   protected readonly selectedId = computed(() => this.uiState()?.pendingCategoryId ?? this.line().categoryId);

@@ -25,6 +25,8 @@ export abstract class BudgetApi {
   /** Posted line: `POST /statement-lines/{id}/recategorize` writes a correction entry. */
   abstract recategorize(lineId: number, categoryId: number): Observable<void>;
 
+  /** `POST /exchange-rates`: the card's RD$ per US$ rate; posts the US$ lines that were waiting for it. */
+  abstract saveUsdRate(value: number): Observable<void>;
   /** `POST /budgets/batch-update`. */
   abstract saveBudgets(period: Period, updates: BudgetUpdate[]): Observable<void>;
 

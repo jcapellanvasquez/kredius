@@ -4,7 +4,7 @@
  */
 import { Period } from '../../../../shared/utils/period';
 import { ProgressLevel } from '../../../../shared/utils/progress-level';
-import { ImportStatus, LineStatus, LoanKind, SaveState, StatementAccountKind } from '../budget.enums';
+import { CurrencyCode, ImportStatus, LineStatus, LoanKind, SaveState, StatementAccountKind } from '../budget.enums';
 
 export interface CategoryOption {
   accountId: number;
@@ -19,6 +19,9 @@ export interface TransactionLine {
   description: string;
   /** RD$ amount; positive = charge, negative = payment/credit. */
   amount: number;
+  /** The currency the bank charged in, and the amount in it (signed like `amount`). */
+  currency: CurrencyCode;
+  originalAmount: number;
   source: StatementAccountKind;
   sourceIcon: string;
   status: LineStatus;
@@ -40,11 +43,23 @@ export interface LoanPayment {
   interest: number;
 }
 
-/** Net result of the month's card transactions: charges − payments. */
-export interface StatementResult {
+/** One currency of a card statement, in that currency (never converted). */
+export interface StatementTotals {
   charges: number;
-  payments: number;
-  net: number;
+  credits: number;
+  previousBalance: number | null;
+  /** The balance at the cut-off date, as printed on the statement. */
+  balance: number | null;
+  minimumPayment: number | null;
+}
+
+/** The latest card statement up to the month: its billing cycle, as the bank reports it. */
+export interface CardStatement {
+  /** ISO dates `YYYY-MM-DD`. */
+  cutOffDate: string;
+  paymentDueDate: string | null;
+  rd: StatementTotals;
+  usd: StatementTotals | null;
 }
 
 export interface CardSummary {
@@ -53,7 +68,9 @@ export interface CardSummary {
   icon: string;
   spent: number;
   budget: number | null;
-  statement: StatementResult | null;
+  statement: CardStatement | null;
+  /** The latest card RD$ per US$ rate; null until one is saved (US$ lines wait for it). */
+  usdRate: number | null;
 }
 
 export interface SavingsSummary {

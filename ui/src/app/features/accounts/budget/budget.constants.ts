@@ -36,10 +36,3 @@ export const BUDGET_ROUTES = {
   /** Absolute: relative '..' is ambiguous across the empty-path parent routes. */
   root:           '/accounts/budget',
 } as const;
-
-// ── Mock API ────────────────────────────────────────────────────────────────
-export const MOCK_QUERY_PARAM = 'mock';
-export const MOCK_LATENCY_MS = 600;
-export const MOCK_SLOW_LATENCY_MS = 3000;
-/** Changing this line's category always fails, to exercise the chip error state. */
-export const MOCK_FAIL_LINE_ID = 903;

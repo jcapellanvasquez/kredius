@@ -33,13 +33,3 @@ export enum SaveState {
   Saved  = 'saved',
   Error  = 'error',
 }
-
-/** Mock data sets, selected with `?mock=<value>` while the page runs on `BudgetMockApi`. */
-export enum MockScenario {
-  Default        = 'default',
-  Empty          = 'empty',
-  AllCategorized = 'all-categorized',
-  Slow           = 'slow',
-  LoadError      = 'load-error',
-  SaveError      = 'save-error',
-}

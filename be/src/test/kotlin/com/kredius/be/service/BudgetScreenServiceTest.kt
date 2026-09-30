@@ -112,6 +112,7 @@ class BudgetScreenServiceTest {
             Budget(account = food, period = august, amount = BigDecimal("2000.00")),
             Budget(account = market, period = august, amount = BigDecimal("200.00")),
             Budget(account = leisure, period = august, amount = BigDecimal("500.00")),
+            Budget(account = gas, period = august, amount = BigDecimal.ZERO), // cleared: no budget
         ))
         `when`(budgetRepo.findTopByAccountIdAndPeriodLessThanOrderByPeriodDesc(9L, august))
             .thenReturn(Budget(account = gas, amount = BigDecimal("800.00")))

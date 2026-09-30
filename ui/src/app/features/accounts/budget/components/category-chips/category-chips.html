@@ -36,13 +36,13 @@
               <ng-container *ngTemplateOutlet="option; context: { $implicit: opt }" />
             </li>
           } @empty {
-            @if (filteredLoans().length === 0) {
+            @if (filteredGroups().length === 0) {
               <li class="px-2 py-1.5 text-xs text-gray-400">{{ text.noMatches }}</li>
             }
           }
-          @if (filteredLoans().length > 0) {
-            <li class="px-2 pt-2 pb-1 text-xs font-medium text-gray-400" role="presentation">{{ text.loans }}</li>
-            @for (opt of filteredLoans(); track opt.accountId) {
+          @for (group of filteredGroups(); track group.label) {
+            <li class="px-2 pt-2 pb-1 text-xs font-medium text-gray-400" role="presentation">{{ group.label }}</li>
+            @for (opt of group.options; track opt.accountId) {
               <li>
                 <ng-container *ngTemplateOutlet="option; context: { $implicit: opt }" />
               </li>

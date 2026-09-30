@@ -14,6 +14,11 @@ export interface BudgetScreenResponse {
    */
   card?: BudgetCardSummary;
   categories: Array<BudgetCategoryRow>;
+
+  /**
+   * Active income accounts, offered in a separate "Ingresos" group when picking a category
+   */
+  incomeOptions?: Array<BudgetCategoryOption>;
   lastUploads: Array<BudgetLastUpload>;
 
   /**

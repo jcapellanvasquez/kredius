@@ -52,7 +52,7 @@
   @if (expanded()) {
     <div [id]="listId" class="mt-1.5 pl-1">
       @for (line of r.transactions; track line.lineId) {
-        <app-transaction-row [line]="line" [options]="options()" [loanOptions]="loanOptions()" [uiState]="lineStates().get(line.lineId)"
+        <app-transaction-row [line]="line" [options]="options()" [optionGroups]="optionGroups()" [uiState]="lineStates().get(line.lineId)"
           (choose)="choose.emit({ line, categoryId: $event })" />
       }
     </div>

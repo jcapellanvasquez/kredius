@@ -4,7 +4,7 @@ import { MoneyPipe } from '../../../../../shared/pipes/money.pipe';
 import { ShortDatePipe } from '../../../../../shared/pipes/short-date.pipe';
 import { SaveState } from '../../budget.enums';
 import { BUDGET_TEXT } from '../../budget.texts';
-import { CategoryOption, LineUiState, TransactionLine } from '../../models/budget.models';
+import { CategoryOption, CategoryOptionGroup, LineUiState, TransactionLine } from '../../models/budget.models';
 import { CategoryChipsComponent } from '../category-chips/category-chips';
 
 @Component({
@@ -27,7 +27,7 @@ import { CategoryChipsComponent } from '../category-chips/category-chips';
       [selectedId]="selectedId()"
       [suggestions]="line().suggestions"
       [options]="options()"
-      [loanOptions]="loanOptions()"
+      [groups]="optionGroups()"
       [state]="uiState()?.state ?? idle"
       (choose)="choose.emit($event)" />
   `,
@@ -35,7 +35,7 @@ import { CategoryChipsComponent } from '../category-chips/category-chips';
 export class TransactionRowComponent {
   readonly line = input.required<TransactionLine>();
   readonly options = input<CategoryOption[]>([]);
-  readonly loanOptions = input<CategoryOption[]>([]);
+  readonly optionGroups = input<CategoryOptionGroup[]>([]);
   readonly uiState = input<LineUiState | undefined>(undefined);
   readonly choose = output<number>();
 

@@ -97,8 +97,8 @@ class BudgetScreenService(
                     uploadedAt = importRepo.findTopByAccountIdOrderByCreatedAtDesc(account.id)?.createdAt,
                 )
             },
-            uncategorized = lines
-                .filter { it.journalLine == null && !it.isExcluded }
+            // Every pending line, not just the month's: a statement's rows can fall in the previous month.
+            uncategorized = lineRepo.findPendingByUserId(userId)
                 .sortedByDescending { it.lineDate }
                 .map(::transaction),
             categories = categories,

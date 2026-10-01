@@ -14,6 +14,14 @@ interface StatementLineRepository : JpaRepository<StatementLine, Long> {
 
     fun findByAccountIdAndLineDateBetween(accountId: Long, from: LocalDate, to: LocalDate): List<StatementLine>
 
+    fun findByAccountIdAndLineDateLessThanEqual(accountId: Long, date: LocalDate): List<StatementLine>
+
+    fun findByAccountIdAndCategoryAccountIdAndLineDateLessThanEqual(
+        accountId: Long,
+        categoryAccountId: Long,
+        date: LocalDate,
+    ): List<StatementLine>
+
     fun findByStatementImportUserIdAndStatementImportStatusNotAndLineDateBetween(
         userId: Long,
         status: StatementImportStatus,

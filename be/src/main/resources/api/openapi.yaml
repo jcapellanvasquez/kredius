@@ -964,7 +964,7 @@ components:
 
     BudgetCardStatement:
       type: object
-      required: [cycleStart, cutOffDate, rd]
+      required: [cycleStart, cutOffDate, rd, check]
       properties:
         cycleStart:
           type: string
@@ -983,6 +983,45 @@ components:
           $ref: '#/components/schemas/BudgetStatementTotals'
           nullable: true
           description: Null when the statement has no US$ movements or balance
+        check:
+          $ref: '#/components/schemas/BudgetCardCheck'
+
+    BudgetCardCheck:
+      type: object
+      description: |
+        The card's RD$ balance at the cut-off date, bank vs ledger, and what explains the gap:
+        bank = ledger + pending + paymentsToReconcile + difference. US$ isn't reconciled (a
+        payment from savings is always RD$, even when it pays the US$ balance); only how many
+        of the cycle's US$ charges are posted.
+      required: [ledger, pending, pendingCount, paymentsToReconcile, difference, usdCharges, usdPosted]
+      properties:
+        ledger:
+          type: number
+          format: double
+          description: The card's RD$ ledger balance (owed) at the cut-off date
+        pending:
+          type: number
+          format: double
+          description: Net RD$ of the card's unposted, non-excluded lines dated up to the cut-off (charges positive)
+        pendingCount:
+          type: integer
+        paymentsToReconcile:
+          type: number
+          format: double
+          description: |
+            RD$ payments from savings to the card in the ledger minus the RD$ payment rows the bank applied,
+            up to the cut-off. Positive: payments the bank hasn't applied yet, or that paid the US$ balance;
+            negative: payments the bank applied whose savings statement isn't uploaded.
+        difference:
+          type: number
+          format: double
+          description: bank − ledger − pending − paymentsToReconcile; 0 when the gap is fully explained
+        usdCharges:
+          type: integer
+          description: US$ charges in the billing cycle
+        usdPosted:
+          type: integer
+          description: How many of them are posted (they wait for a card rate)
 
     BudgetStatementTotals:
       type: object

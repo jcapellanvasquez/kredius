@@ -201,6 +201,12 @@ class BudgetScreenServiceTest {
         )).thenReturn(statement)
         `when`(lineRepo.findByAccountIdAndLineDateBetween(2L, LocalDate.of(2026, 7, 27), LocalDate.of(2026, 8, 26)))
             .thenReturn(cycle.toList())
+        `when`(lineRepo.findByAccountIdAndLineDateLessThanEqual(2L, LocalDate.of(2026, 8, 26))).thenReturn(cycle.toList())
+        cardLedgerAtCutOff(debit = "0", credit = "0")
+    }
+
+    private fun cardLedgerAtCutOff(debit: String, credit: String) {
+        `when`(journalLineRepo.findOriginalTotalsAt(0L, 2L, "RD", LocalDate.of(2026, 8, 26))).thenReturn(totals(debit, credit))
     }
 
     private fun cycleLine(day: LocalDate, amount: String, currency: CurrencyType = CurrencyType.RD,
@@ -235,6 +241,42 @@ class BudgetScreenServiceTest {
         assertEquals(567.44, st.usd!!.credits, 0.001)
         assertEquals(567.44, st.usd!!.previousBalance!!, 0.001)
         assertEquals(198.93, st.usd!!.balance)
+    }
+
+    /**
+     * The August sample: the card opened at 62,637.94 owed; the bank applied a 27/07 payment of 62,637.94
+     * and a 17/08 one of 10,000 (savings uploaded only the latter); a charge and the cashback aren't posted.
+     */
+    @Test
+    fun `the card check explains the gap between the bank's balance and the ledger`() {
+        monthLines()
+        fun payment(day: LocalDate, amount: String) = cycleLine(day, amount, type = StatementLineType.CREDIT)
+            .apply { exclude(ExclusionReason.CARD_PAYMENT_AVOID_DOUBLE_ENTRY) }
+        val posted = cycleLine(LocalDate.of(2026, 8, 20), "45248.58").apply { journalLine = JournalLine(amountRd = BigDecimal("45248.58")) }
+        augustCardStatement(
+            payment(LocalDate.of(2026, 7, 27), "62637.94"),
+            payment(LocalDate.of(2026, 8, 17), "10000.00"),
+            cycleLine(LocalDate.of(2026, 7, 28), "31702.48"),
+            cycleLine(LocalDate.of(2026, 8, 26), "110.85", type = StatementLineType.CREDIT), // cashback
+            posted,
+            cycleLine(LocalDate.of(2026, 8, 13), "52.48", CurrencyType.USD),
+        )
+        // Opening 62,637.94 + charge 45,248.58 − savings payment 10,000 = 97,886.52 owed.
+        cardLedgerAtCutOff(debit = "10000.00", credit = "107886.52")
+        val savingsPayment = savingsLine("10000.00", postedRd = "10000.00").apply {
+            categoryAccount = card; lineDate = LocalDate.of(2026, 8, 17)
+        }
+        `when`(lineRepo.findByAccountIdAndCategoryAccountIdAndLineDateLessThanEqual(1L, 2L, LocalDate.of(2026, 8, 26)))
+            .thenReturn(listOf(savingsPayment))
+
+        val check = service.get(august).card!!.statement!!.check
+
+        assertEquals(97886.52, check.ledger, 0.001)
+        assertEquals(31591.63, check.pending, 0.001) // 31,702.48 − 110.85
+        assertEquals(2, check.pendingCount)
+        assertEquals(-62637.94, check.paymentsToReconcile, 0.001) // the bank applied a payment from July's savings
+        assertEquals(0.0, check.difference, 0.001) // 66,840.21 = 97,886.52 + 31,591.63 − 62,637.94
+        assertEquals(1 to 0, check.usdCharges to check.usdPosted)
     }
 
     @Test

@@ -726,6 +726,51 @@ class StatementServiceTest {
         assertNull(september.lines.single().journalLine)
     }
 
+    /** Uploads a card statement whose header prints [closing] as the RD$ balance at the cut-off. */
+    private fun uploadCardWithBalance(closing: String, vararg rows: ParsedStatementRow): StatementImport {
+        `when`(cardParser.parse(any(InputStream::class.java) ?: InputStream.nullInputStream())).thenReturn(ParsedStatement(
+            rows.toList(), StatementSummary(cutOffDate = LocalDate.of(2026, 8, 26), closingBalance = BigDecimal(closing)),
+        ))
+        return upload(card, ApiStatementType.CREDIT_CARD)
+    }
+
+    @Test
+    fun `the first card statement posts what was owed at the previous cut-off`() {
+        uploadCardWithBalance(
+            "38159.79",
+            row(15, "GASOLINERA", "45000.00"),
+            row(10, "PAGO DEBITO A CUENTA MBP", "66840.21", direction = RowDirection.CREDIT, isPayment = true),
+            usdRow(12, "NETFLIX.COM", "15.99"), // US$ rows don't change the RD$ balance
+        )
+
+        val opening = savedEntries.single { it.source == JournalSource.OPENING_BALANCE }
+        assertEquals(LocalDate.of(2026, 8, 9), opening.entryDate) // the day before the first row
+        assertEquals(mapOf(
+            "Tarjeta" to (EntrySide.CREDIT to BigDecimal("60000.00")), // 38,159.79 − 45,000 + 66,840.21
+            "Capital Inicial" to (EntrySide.DEBIT to BigDecimal("60000.00")),
+        ), opening.sides())
+    }
+
+    @Test
+    fun `a later card statement posts no opening balance`() {
+        uploadCardWithBalance("1000.00", row(10, "TIENDA", "400.00"))
+
+        uploadCardWithBalance("1500.00", row(28, "TIENDA", "500.00"))
+
+        assertEquals(1, savedEntries.count { it.source == JournalSource.OPENING_BALANCE })
+    }
+
+    @Test
+    fun `a card that started with a credit in its favour opens on the debit side`() {
+        uploadCardWithBalance("100.00", row(10, "TIENDA", "300.00"))
+
+        val opening = savedEntries.single { it.source == JournalSource.OPENING_BALANCE }
+        assertEquals(mapOf(
+            "Tarjeta" to (EntrySide.DEBIT to BigDecimal("200.00")),
+            "Capital Inicial" to (EntrySide.CREDIT to BigDecimal("200.00")),
+        ), opening.sides())
+    }
+
     @Test
     fun `a card credit that isn't a payment, like the cashback, posts against its category`() {
         val cashback = Account(id = 30, name = "Cashback y reembolsos", type = AccountType.INCOME)

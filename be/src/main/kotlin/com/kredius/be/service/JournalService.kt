@@ -110,7 +110,8 @@ class JournalService(
 
     /**
      * The opening balance of a statement account: the account on its natural side, [equity] (Capital
-     * Inicial) on the other, so the ledger starts from what the bank says the account held.
+     * Inicial) on the other, so the ledger starts from what the bank says the account held. A negative
+     * [amount] (e.g. a card with a credit in its favour) swaps the sides.
      */
     fun postOpeningBalance(
         account: Account,
@@ -120,6 +121,7 @@ class JournalService(
         referenceId: Long,
         user: User,
     ): JournalLine {
+        val value = amount.abs()
         val entry = journalEntryRepo.save(
             JournalEntry(
                 entryDate = date,
@@ -127,15 +129,16 @@ class JournalService(
                 source = JournalSource.OPENING_BALANCE,
                 referenceId = referenceId,
                 user = user,
-                amount = amount,
+                amount = value,
             )
         )
         val natural = ACCOUNT_NATURE.getValue(account.type)
+        val side = if (amount.signum() < 0) natural.opposite() else natural
         val accountLine = journalLineRepo.save(
-            JournalLine(journalEntry = entry, account = account, side = natural, originalAmount = amount, amountRd = amount)
+            JournalLine(journalEntry = entry, account = account, side = side, originalAmount = value, amountRd = value)
         )
         val equityLine = journalLineRepo.save(
-            JournalLine(journalEntry = entry, account = equity, side = natural.opposite(), originalAmount = amount, amountRd = amount)
+            JournalLine(journalEntry = entry, account = equity, side = side.opposite(), originalAmount = value, amountRd = value)
         )
         entry.lines += listOf(accountLine, equityLine)
         return accountLine

@@ -261,7 +261,7 @@ interface JournalLineRepository : JpaRepository<JournalLine, Long> {
         @Param("before") before: LocalDate,
     ): BigDecimal
 
-    /** Debit and credit totals per account for entries dated in [from, before). */
+    /** Debit and credit totals per account for entries counting in the budget of [period] (first day of the month). */
     @Query(
         value = """
             SELECT jl.account_id AS accountId,
@@ -270,17 +270,15 @@ interface JournalLineRepository : JpaRepository<JournalLine, Long> {
             FROM journal_lines jl
             JOIN journal_entries je ON je.id = jl.journal_entry_id
             WHERE je.user_id = :userId
-              AND je.entry_date >= :from
-              AND je.entry_date < :before
+              AND je.budget_period = :period
               AND jl.account_id IN (:accountIds)
             GROUP BY jl.account_id
         """,
         nativeQuery = true,
     )
-    fun findTotalsByPeriod(
+    fun findTotalsByBudgetPeriod(
         @Param("userId") userId: Long,
-        @Param("from") from: LocalDate,
-        @Param("before") before: LocalDate,
+        @Param("period") period: LocalDate,
         @Param("accountIds") accountIds: Collection<Long>,
     ): List<AccountBalanceView>
 }

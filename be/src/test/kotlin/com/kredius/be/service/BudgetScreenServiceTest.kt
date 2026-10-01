@@ -103,7 +103,7 @@ class BudgetScreenServiceTest {
     private fun ledger() {
         `when`(accountRepo.findByUserIdAndType(0L, AccountType.EXPENSE)).thenReturn(expenses)
         val ids = expenses.map { it.id }
-        `when`(journalLineRepo.findTotalsByPeriod(0L, august, august.plusMonths(1), ids)).thenReturn(listOf(
+        `when`(journalLineRepo.findTotalsByBudgetPeriod(0L, august, ids)).thenReturn(listOf(
             accountTotals(6, "1500.00", "100.00"),
             accountTotals(7, "300.00"),
             accountTotals(10, "50.00"),
@@ -131,10 +131,10 @@ class BudgetScreenServiceTest {
             journalLine = postedRd?.let { JournalLine(amountRd = BigDecimal(it)) },
         )
 
-    /** The month's lines; the pending ones (unposted, not excluded) are also what the pending query returns. */
+    /** The month's lines (budget period August); the pending ones (unposted, not excluded) are also what the pending query returns. */
     private fun monthLines(vararg lines: StatementLine) {
-        `when`(lineRepo.findByStatementImportUserIdAndStatementImportStatusNotAndLineDateBetween(
-            0L, StatementImportStatus.REVERSED, august, LocalDate.of(2026, 8, 31),
+        `when`(lineRepo.findByStatementImportUserIdAndStatementImportStatusNotAndBudgetPeriod(
+            0L, StatementImportStatus.REVERSED, august,
         )).thenReturn(lines.toList())
         `when`(lineRepo.findPendingByUserId(0L)).thenReturn(lines.filter { it.journalLine == null && !it.isExcluded })
     }
@@ -168,6 +168,16 @@ class BudgetScreenServiceTest {
         assertEquals(1000.0, summary.spent)
         assertEquals("credit-card", summary.icon)
         assertNull(summary.budget)
+    }
+
+    @Test
+    fun `card spent counts the whole statement cut in the month, rows of the previous month included`() {
+        monthLines(
+            cardLine("300.00", postedRd = "300.00").apply { lineDate = LocalDate.of(2026, 7, 28) },
+            cardLine("1000.00", postedRd = "1000.00"),
+        )
+
+        assertEquals(1300.0, service.get(august).card!!.spent)
     }
 
     @Test
@@ -213,6 +223,7 @@ class BudgetScreenServiceTest {
 
         val st = service.get(august).card!!.statement!!
 
+        assertEquals(LocalDate.of(2026, 7, 27), st.cycleStart) // no earlier statement: its first row
         assertEquals(LocalDate.of(2026, 8, 26), st.cutOffDate)
         assertEquals(LocalDate.of(2026, 9, 21), st.paymentDueDate)
         assertEquals(76951.06, st.rd.charges, 0.001)
@@ -352,7 +363,7 @@ class BudgetScreenServiceTest {
         val financial = expense(11, "Gastos Financieros")
         val withFinancial = expenses + financial
         `when`(accountRepo.findByUserIdAndType(0L, AccountType.EXPENSE)).thenReturn(withFinancial)
-        `when`(journalLineRepo.findTotalsByPeriod(0L, august, august.plusMonths(1), withFinancial.map { it.id }))
+        `when`(journalLineRepo.findTotalsByBudgetPeriod(0L, august, withFinancial.map { it.id }))
             .thenReturn(listOf(accountTotals(11, "1200.00")))
         val loanAccount = Account(id = 20, name = "Préstamo BHD", type = AccountType.LIABILITY, icon = "building-bank")
         val loan = Loan(account = loanAccount, type = LoanType.RECEIVED, counterpartyName = "BHD", numInstallments = 48)

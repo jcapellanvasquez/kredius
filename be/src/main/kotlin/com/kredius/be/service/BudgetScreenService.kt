@@ -58,8 +58,9 @@ class BudgetScreenService(
         val next = from.plusMonths(1)
         val card = accountRepo.findFirstByUserIdAndStatementTypeAndActiveTrueOrderByCodeAsc(userId, StatementType.CREDIT_CARD)
         val savings = accountRepo.findFirstByUserIdAndStatementTypeAndActiveTrueOrderByCodeAsc(userId, StatementType.SAVINGS)
-        val lines = lineRepo.findByStatementImportUserIdAndStatementImportStatusNotAndLineDateBetween(
-            userId, StatementImportStatus.REVERSED, from, next.minusDays(1),
+        // The month's budget lines: savings rows dated in it, card rows of the statement cut in it.
+        val lines = lineRepo.findByStatementImportUserIdAndStatementImportStatusNotAndBudgetPeriod(
+            userId, StatementImportStatus.REVERSED, from,
         )
         val usdRate by lazy { exchangeRateRepo.findTopByContextOrderByRateDateDesc(RateContext.CREDIT_CARD) }
         fun rd(line: StatementLine) = line.journalLine?.amountRd ?: amountRd(line, usdRate)
@@ -79,7 +80,7 @@ class BudgetScreenService(
             .sortedWith(compareBy({ it.actualPaymentDate }, { it.number }))
             .map { it to it.toLoanPayment(savings) }
 
-        val categories = categories(from, next, expenses, lines, ::transaction, loanPayments)
+        val categories = categories(from, expenses, lines, ::transaction, loanPayments)
 
         return BudgetScreenResponse(
             period = from,
@@ -138,13 +139,13 @@ class BudgetScreenService(
         else journalEntry!!.lines.firstOrNull { it.account.type == AccountType.EXPENSE }?.account?.id
 
     /**
-     * Expense accounts with spend in the month or a budget saved for it. `actual` is debits − credits,
-     * so recategorizations and reversals count. Sorted by actual / budget, highest first; categories
+     * Expense accounts with spend in the month or a budget saved for it. `actual` is debits − credits of
+     * the entries in the month's budget period, so recategorizations and reversals count, and a card
+     * statement counts whole in its cut-off month. Sorted by actual / budget, highest first; categories
      * without a budget last.
      */
     private fun categories(
         from: LocalDate,
-        next: LocalDate,
         expenses: List<Account>,
         lines: List<StatementLine>,
         transaction: (StatementLine) -> BudgetTransactionLine,
@@ -153,7 +154,7 @@ class BudgetScreenService(
         val userId = currentUser.id
         if (expenses.isEmpty()) return emptyList()
         val ids = expenses.map { it.id }
-        val totals = journalLineRepo.findTotalsByPeriod(userId, from, next, ids).associateBy { it.accountId }
+        val totals = journalLineRepo.findTotalsByBudgetPeriod(userId, from, ids).associateBy { it.accountId }
         // Clearing a budget in the UI saves 0, which means "no budget" here.
         val budgets = budgetRepo.findByAccountIdInAndPeriod(ids, from)
             .filter { it.amount.signum() > 0 }
@@ -286,6 +287,7 @@ class BudgetScreenService(
             )
         }
         return BudgetCardStatement(
+            cycleStart = cycleStart,
             cutOffDate = cutOff,
             paymentDueDate = statement.paymentDueDate,
             rd = totals(CurrencyType.RD, statement.closingBalance, statement.minimumPayment)

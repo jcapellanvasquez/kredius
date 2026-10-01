@@ -616,9 +616,11 @@ paths:
       tags: [BudgetScreen]
       summary: Everything the budget screen shows for one month
       description: |
-        Card and savings summaries, the last upload per statement account, the month's
-        uncategorized lines and its category rows (sorted by actual / budget, highest first,
+        Card and savings summaries, the last upload per statement account, the uncategorized
+        lines and the month's category rows (sorted by actual / budget, highest first,
         categories without a budget last). Lines of reversed imports are left out.
+        A month's budget holds savings rows dated in it and the whole card statement cut in
+        it: a statement cut on 26/09 counts 27/08–26/09 in September.
       operationId: getBudgetScreen
       parameters:
         - name: period
@@ -916,7 +918,7 @@ components:
         spent:
           type: number
           format: double
-          description: The month's posted card charges, RD$
+          description: Posted charges of the card statement cut in the month, RD$
         budget:
           type: number
           format: double
@@ -962,8 +964,12 @@ components:
 
     BudgetCardStatement:
       type: object
-      required: [cutOffDate, rd]
+      required: [cycleStart, cutOffDate, rd]
       properties:
+        cycleStart:
+          type: string
+          format: date
+          description: First day of the billing cycle (the day after the previous statement's cut-off)
         cutOffDate:
           type: string
           format: date
@@ -1131,7 +1137,7 @@ components:
         actual:
           type: number
           format: double
-          description: The month's debits − credits on the category, corrections included
+          description: The month's debits − credits on the category (by budget period), corrections included
         budget:
           type: number
           format: double

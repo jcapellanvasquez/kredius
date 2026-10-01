@@ -21,6 +21,12 @@ interface StatementLineRepository : JpaRepository<StatementLine, Long> {
         to: LocalDate,
     ): List<StatementLine>
 
+    fun findByStatementImportUserIdAndStatementImportStatusNotAndBudgetPeriod(
+        userId: Long,
+        status: StatementImportStatus,
+        budgetPeriod: LocalDate,
+    ): List<StatementLine>
+
     /** Unposted, non-excluded lines of the user's imports that aren't reversed, whatever their date. */
     @Query("""
         SELECT l FROM StatementLine l

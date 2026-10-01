@@ -29,6 +29,7 @@ export interface BudgetEdit {
         </p>
         @for (line of uncategorized(); track line.lineId) {
           <app-transaction-row animate.leave="line-leave" [line]="line" [options]="options()" [optionGroups]="optionGroups()" [uiState]="lineStates().get(line.lineId)"
+            [noCardRate]="noCardRate()"
             (choose)="choose.emit({ line, categoryId: $event })" />
         }
       </div>
@@ -55,6 +56,8 @@ export class CategoryListComponent {
   readonly optionGroups = input<CategoryOptionGroup[]>([]);
   readonly lineStates = input<ReadonlyMap<number, LineUiState>>(new Map());
   readonly highlightId = input<number | null>(null);
+  /** The card has no US$ rate yet (US$ card lines show a tag). */
+  readonly noCardRate = input(false);
 
   readonly budgetChange = output<BudgetEdit>();
   readonly choose = output<ChipSelection>();

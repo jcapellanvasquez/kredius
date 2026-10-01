@@ -58,5 +58,6 @@ Some older scaffolding is leftover and has no effect:
 - Tailwind theme (`tailwind.config.js`):
   - `brand-*` (violet) is the UI accent for navigation, toggles and CTAs. Never use it to convey financial meaning.
   - `income` (green) and `expense` (red) are reserved for financial meaning only.
+  - `warning-*` (amber `bg`/`border`/`text`) marks a notice that needs the user's action, such as a missing US$ rate. It is not an error color.
 - Shared component classes `.card`, `.card-row` and `.account-row` are defined in `src/styles.css` and use hairline 0.5px borders. `styles.css` also defines print styles: only `#schedule-card` and `#report-card` are visible when printing.
 - Tailwind runs as v3 through `postcss.config.js` (`tailwindcss` + `autoprefixer`), even though `@tailwindcss/postcss` v4 is also installed.

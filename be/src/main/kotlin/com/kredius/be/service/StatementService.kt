@@ -104,24 +104,39 @@ class StatementService(
         importRepo.save(import)
 
         // import.lines, not `lines`: saving the import merged the new lines, so the managed ones are in the import.
-        import.lines.firstOrNull { it.type == StatementLineType.INITIAL_BALANCE }?.let { postOpeningBalance(import, it) }
+        import.lines.firstOrNull { it.type == StatementLineType.INITIAL_BALANCE }?.let { row ->
+            postOpeningBalance(import, row.amount, row.lineDate)?.let { row.journalLine = it }
+        }
+        if (import.type == EntityStatementType.CREDIT_CARD) postCardOpeningBalance(import, rows)
         val autoPosted = postPending(import)
         return importRepo.save(import).toResponse(autoPostedCount = autoPosted)
     }
 
     /**
-     * The first statement of an account sets its opening balance: its `BALANCE INICIAL` row posts once
-     * against Capital Inicial (the first equity account) and links to that entry; the row stays excluded.
-     * Later statements' initial balances are carried-over balances and post nothing.
+     * The first statement of an account sets its opening balance: [amount] posts once against Capital
+     * Inicial (the first equity account). A savings statement's `BALANCE INICIAL` row links to that
+     * entry and stays excluded. Later statements' balances are carried over and post nothing.
      */
-    private fun postOpeningBalance(import: StatementImport, row: StatementLine) {
-        if (row.amount.signum() == 0) return
-        if (journalEntryRepo.existsBySourceAndLinesAccountId(JournalSource.OPENING_BALANCE, import.account.id)) return
+    private fun postOpeningBalance(import: StatementImport, amount: BigDecimal, date: LocalDate): JournalLine? {
+        if (amount.signum() == 0) return null
+        if (journalEntryRepo.existsBySourceAndLinesAccountId(JournalSource.OPENING_BALANCE, import.account.id)) return null
         val equity = accountRepo.findByUserIdAndType(currentUser.id, EntityAccountType.EQUITY)
-            .minByOrNull { it.code ?: Int.MAX_VALUE } ?: return
-        row.journalLine = journalService.postOpeningBalance(
-            import.account, equity, row.amount, row.lineDate, import.id, currentUser.user,
-        )
+            .minByOrNull { it.code ?: Int.MAX_VALUE } ?: return null
+        return journalService.postOpeningBalance(import.account, equity, amount, date, import.id, currentUser.user)
+    }
+
+    /**
+     * A card statement prints no initial-balance row, so the first one's opening balance is what was owed
+     * at the previous cut-off: closing balance − charges + credits over its RD$ rows (payments included),
+     * dated the day before its first row. RD$ only: the card check shows the bank's US$ figures as printed.
+     */
+    private fun postCardOpeningBalance(import: StatementImport, rows: List<ParsedStatementRow>) {
+        val closing = import.closingBalance ?: return
+        val first = rows.minOfOrNull { it.date } ?: return
+        val rd = rows.filter { it.currency == CurrencyType.RD && !it.isInitialBalance }
+        val charges = rd.filter { it.direction == RowDirection.DEBIT }.sumOf { it.amount }
+        val credits = rd.filter { it.direction == RowDirection.CREDIT }.sumOf { it.amount }
+        postOpeningBalance(import, closing - charges + credits, first.minusDays(1))
     }
 
     /** What makes a row the same transaction; mirrors the unique constraint on `statement_lines`. */

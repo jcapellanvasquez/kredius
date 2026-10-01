@@ -5,7 +5,8 @@ import { CURRENCY_PREFIX, USD_PREFIX } from '../../../../../shared/constants/loc
 import { MoneyPipe } from '../../../../../shared/pipes/money.pipe';
 import { ShortDatePipe } from '../../../../../shared/pipes/short-date.pipe';
 import { ProgressLevel, percentOf } from '../../../../../shared/utils/progress-level';
-import { CARD_RING_BANDS } from '../../budget.constants';
+import { UiIcon } from '../../../../../shared/constants/ui-icons';
+import { BALANCE_TOLERANCE, CARD_RING_BANDS } from '../../budget.constants';
 import { StatementAccountKind } from '../../budget.enums';
 import { BUDGET_TEXT } from '../../budget.texts';
 import { CardSummary } from '../../models/budget.models';
@@ -64,6 +65,54 @@ import { CardSummary } from '../../models/budget.models';
             </tbody>
           </table>
 
+          <div class="mt-2 flex flex-col gap-0.5" role="status">
+            <div class="flex flex-wrap justify-between gap-x-2">
+              <span class="text-gray-500">{{ text.ledgerBalanceAt }} {{ st.cutOffDate | shortDate }}</span>
+              <span class="ml-auto whitespace-nowrap text-gray-700">{{ st.check.ledger | money }}</span>
+            </div>
+            <div class="flex flex-wrap justify-between gap-x-2">
+              <span class="text-gray-500">{{ text.bankBalanceAt }} {{ st.cutOffDate | shortDate }}</span>
+              <span class="ml-auto whitespace-nowrap text-gray-700">{{ st.rd.balance | money }}</span>
+            </div>
+            @if (st.check.pendingCount > 0) {
+              <div class="flex flex-wrap justify-between gap-x-2 pl-2">
+                <span class="text-gray-500">{{ text.cardPending(st.check.pendingCount) }}</span>
+                <span class="ml-auto whitespace-nowrap text-gray-700">{{ st.check.pending | money }}</span>
+              </div>
+            }
+            @if (hasPaymentsToReconcile()) {
+              <div class="flex flex-wrap justify-between gap-x-2 pl-2">
+                <span class="text-gray-500">{{ text.cardPaymentsToReconcile }}</span>
+                <span class="ml-auto whitespace-nowrap text-gray-700">{{ st.check.paymentsToReconcile | money }}</span>
+              </div>
+              <p class="pl-2 text-gray-400">{{ text.cardPaymentsHint }}</p>
+            }
+            @switch (gapState()) {
+              @case ('matches') {
+                <p class="flex items-center gap-0.5 text-gray-500">
+                  <app-icon [name]="icons.Check" [size]="12" /> {{ text.balanceMatches }}
+                </p>
+              }
+              @case ('explained') {
+                <p class="flex items-center gap-0.5 text-gray-500">
+                  <app-icon [name]="icons.Check" [size]="12" /> {{ text.cardGapExplained }}
+                </p>
+              }
+              @default {
+                <div class="flex flex-wrap justify-between gap-x-2 font-medium text-gray-900">
+                  <span>{{ text.cardUnexplained }}</span>
+                  <span class="ml-auto whitespace-nowrap">{{ st.check.difference | money }}</span>
+                </div>
+              }
+            }
+            @if (st.check.usdCharges > 0) {
+              <p class="text-gray-500">
+                {{ text.usdPosted(st.check.usdPosted, st.check.usdCharges) }}
+                @if (card().usdRate === null) { · {{ text.usdNeedsRate }} }
+              </p>
+            }
+          </div>
+
           @if (st.usd) {
             <div class="mt-2 flex flex-wrap items-center gap-1.5 text-gray-500">
               @if (card().usdRate !== null && !editingRate()) {
@@ -101,6 +150,19 @@ export class CardSummaryComponent {
   protected readonly editingRate = signal(false);
   protected readonly rateId = 'card-usd-rate';
   protected readonly prefix = { rd: CURRENCY_PREFIX, usd: USD_PREFIX };
+  protected readonly icons = UiIcon;
+
+  protected readonly hasPaymentsToReconcile = computed(
+    () => Math.abs(this.card().statement?.check.paymentsToReconcile ?? 0) >= BALANCE_TOLERANCE,
+  );
+
+  /** `matches`: bank = ledger; `explained`: the gap is pending lines and payments; else something's missing. */
+  protected readonly gapState = computed(() => {
+    const st = this.card().statement;
+    if (!st) return null;
+    if (Math.abs((st.rd.balance ?? 0) - st.check.ledger) < BALANCE_TOLERANCE) return 'matches';
+    return Math.abs(st.check.difference) < BALANCE_TOLERANCE ? 'explained' : 'unexplained';
+  });
 
   /** Previous balance, charges, credits (negative), balance and minimum payment; empty rows are left out. */
   protected readonly statementRows = computed(() => {

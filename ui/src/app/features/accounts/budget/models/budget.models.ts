@@ -61,6 +61,21 @@ export interface CardStatement {
   paymentDueDate: string | null;
   rd: StatementTotals;
   usd: StatementTotals | null;
+  check: CardCheck;
+}
+
+/** The card's RD$ balance at the cut-off: bank = ledger + pending + paymentsToReconcile + difference. */
+export interface CardCheck {
+  ledger: number;
+  /** Net of the card lines up to the cut-off that aren't posted yet (charges positive). */
+  pending: number;
+  pendingCount: number;
+  /** Savings payments in the ledger − payments the bank applied, up to the cut-off. */
+  paymentsToReconcile: number;
+  /** What's left unexplained; 0 when everything adds up. */
+  difference: number;
+  usdCharges: number;
+  usdPosted: number;
 }
 
 export interface CardSummary {

@@ -36,6 +36,16 @@ class DataInitializer(
         accountRepo.save(Account(user = jcapellan, code = 5003, name = "Restaurantes",    type = AccountType.EXPENSE, icon = "tools-kitchen-2", thresholdPct = BigDecimal("15.00"), showInAlerts = true))
         accountRepo.save(Account(user = jcapellan, code = 5004, name = "Servicios",       type = AccountType.EXPENSE, icon = "bolt", showInAlerts = false))
         val financialExpenses = accountRepo.save(Account(user = jcapellan, code = 5005, name = "Gastos Financieros", type = AccountType.EXPENSE, icon = "receipt"))
+        accountRepo.save(Account(user = jcapellan, code = 5006, name = "Retiros en efectivo",   type = AccountType.EXPENSE, icon = "receipt"))
+        accountRepo.save(Account(user = jcapellan, code = 5007, name = "Recargas",              type = AccountType.EXPENSE, icon = "cash"))
+        accountRepo.save(Account(user = jcapellan, code = 5008, name = "Servicios del hogar",   type = AccountType.EXPENSE, icon = "briefcase"))
+        accountRepo.save(Account(user = jcapellan, code = 5009, name = "Comisiones banco",      type = AccountType.EXPENSE, icon = "coins"))
+        accountRepo.save(Account(user = jcapellan, code = 5010, name = "Subscripciones online", type = AccountType.EXPENSE, icon = "refresh"))
+        accountRepo.save(Account(user = jcapellan, code = 5011, name = "Compras online",        type = AccountType.EXPENSE, icon = "bolt"))
+        accountRepo.save(Account(user = jcapellan, code = 5012, name = "Diversion",             type = AccountType.EXPENSE, icon = "confetti"))
+        accountRepo.save(Account(user = jcapellan, code = 5013, name = "Mantenimiento carro",   type = AccountType.EXPENSE, icon = "car"))
+        accountRepo.save(Account(user = jcapellan, code = 5014, name = "Personales",            type = AccountType.EXPENSE, icon = "user"))
+        accountRepo.save(Account(user = jcapellan, code = 5015, name = "Hogar",                 type = AccountType.EXPENSE, icon = "home"))
 
         // Card payments are posted from the savings statement ("PAGO DE TC …"); the card's own payment row is excluded.
         merchantRepo.save(MerchantDictionary(user = jcapellan, textPattern = "PAGO DE TC", account = card))

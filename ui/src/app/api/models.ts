@@ -7,6 +7,7 @@ export type { AccountSummaryResponse } from './models/account-summary-response';
 export type { AccountType } from './models/account-type';
 export type { BatchBudgetUpdateRequest } from './models/batch-budget-update-request';
 export type { BudgetBankBalance } from './models/budget-bank-balance';
+export type { BudgetCardCheck } from './models/budget-card-check';
 export type { BudgetCardPayment } from './models/budget-card-payment';
 export type { BudgetCardStatement } from './models/budget-card-statement';
 export type { BudgetCardSummary } from './models/budget-card-summary';

@@ -60,6 +60,11 @@ export const BUDGET_TEXT = {
   cutOff:           'Corte',
   statement:        'Estado',
   dueDate:          'vence',
+  cardGapExplained: 'Diferencia explicada',
+  cardUnexplained:  'Sin explicar',
+  cardPaymentsToReconcile: 'Pagos por conciliar',
+  cardPaymentsHint: 'Pagos desde ahorros que el banco aplica en otra fecha o al saldo en US$, o pagos de un estado de ahorros no subido.',
+  usdNeedsRate:     'falta la tasa',
   usdRate:          'Tasa US$',
   usdRateHint:      'Las compras en US$ se registran al guardar la tasa.',
   saveRate:         'Guardar',
@@ -105,6 +110,9 @@ export const BUDGET_TEXT = {
   transactions: (n: number) => `${n} ${n === 1 ? 'transacción' : 'transacciones'}`,
   lines:        (n: number) => `${n} ${n === 1 ? 'línea' : 'líneas'}`,
   unresolved:   (n: number) => `${n} sin categorizar`,
+  cardPending:  (n: number) => `Sin registrar (${n})`,
+  usdPosted:    (posted: number, total: number) =>
+    `US$: ${posted} de ${total} ${total === 1 ? 'compra registrada' : 'compras registradas'}`,
   saveCountSuffix: (n: number) => (n > 0 ? `(${n})` : ''),
   pendingChanges:  (n: number) => `${n} ${n === 1 ? 'cambio sin guardar' : 'cambios sin guardar'}`,
   uploadResult: (newCount: number, uncategorized: number) =>

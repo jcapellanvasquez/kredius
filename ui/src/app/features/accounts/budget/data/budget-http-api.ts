@@ -147,6 +147,7 @@ export class BudgetHttpApi extends BudgetApi {
           paymentDueDate: card.statement.paymentDueDate ?? null,
           rd: toTotals(card.statement.rd),
           usd: card.statement.usd ? toTotals(card.statement.usd) : null,
+          check: card.statement.check,
         } : null,
         usdRate: card.usdRate ?? null,
       },

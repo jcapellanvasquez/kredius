@@ -13,7 +13,7 @@ export interface BudgetCardSummary {
   name: string;
 
   /**
-   * The month's posted card charges, RD$
+   * Posted charges of the card statement cut in the month, RD$
    */
   spent: number;
 

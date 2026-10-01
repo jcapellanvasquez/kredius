@@ -33,7 +33,7 @@ export interface BudgetScreenResponse {
   savings?: BudgetSavingsSummary;
 
   /**
-   * The month's unposted, non-excluded lines, newest first
+   * Every unposted, non-excluded line of imports that aren't reversed, whatever its month, newest first
    */
   uncategorized: Array<BudgetTransactionLine>;
 }

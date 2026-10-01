@@ -8,7 +8,7 @@ export interface BudgetCategoryRow {
   accountId: number;
 
   /**
-   * The month's debits − credits on the category, corrections included
+   * The month's debits − credits on the category (by budget period), corrections included
    */
   actual: number;
 

@@ -3,6 +3,7 @@ package com.kredius.be.service
 import com.kredius.be.entity.Account
 import com.kredius.be.entity.AccountType
 import com.kredius.be.entity.CurrencyType
+import com.kredius.be.entity.ExclusionReason
 import com.kredius.be.entity.InstallmentStatus
 import com.kredius.be.entity.LoanInstallment
 import com.kredius.be.entity.LoanType
@@ -12,6 +13,7 @@ import com.kredius.be.entity.StatementLine
 import com.kredius.be.entity.StatementLineType
 import com.kredius.be.entity.StatementType
 import com.kredius.be.model.BudgetBankBalance
+import com.kredius.be.model.BudgetCardCheck
 import com.kredius.be.model.BudgetCardPayment
 import com.kredius.be.model.BudgetCardSummary
 import com.kredius.be.model.BudgetCategoryOption
@@ -85,7 +87,7 @@ class BudgetScreenService(
         return BudgetScreenResponse(
             period = from,
             card = card?.let { account ->
-                cardSummary(account, lines.filter { it.account.id == account.id }, ::rd, categories, next.minusDays(1))
+                cardSummary(account, savings, lines.filter { it.account.id == account.id }, ::rd, categories, next.minusDays(1))
             },
             savings = savings?.let { account ->
                 savingsSummary(account, from, next, loanPayments.map { (_, payment) -> payment },
@@ -233,6 +235,7 @@ class BudgetScreenService(
 
     private fun cardSummary(
         card: Account,
+        savings: Account?,
         cardLines: List<StatementLine>,
         rd: (StatementLine) -> BigDecimal,
         categories: List<BudgetCategoryRow>,
@@ -250,7 +253,7 @@ class BudgetScreenService(
             spent = charges.filter { it.journalLine != null }.sumOf(rd).toDouble(),
             budget = budget.takeIf { it > 0 },
             usdRate = exchangeRateRepo.findTopByContextOrderByRateDateDesc(RateContext.CREDIT_CARD)?.value?.toDouble(),
-            statement = cardStatement(card, monthEnd),
+            statement = cardStatement(card, savings, monthEnd),
         )
     }
 
@@ -260,7 +263,7 @@ class BudgetScreenService(
      * date. Charges and credits are summed per currency, never converted; the balance and minimum payment
      * come from the statement itself.
      */
-    private fun cardStatement(card: Account, monthEnd: LocalDate): BudgetCardStatement? {
+    private fun cardStatement(card: Account, savings: Account?, monthEnd: LocalDate): BudgetCardStatement? {
         val statement = importRepo
             .findTopByAccountIdAndStatusNotAndClosingBalanceNotNullAndCutOffDateLessThanEqualOrderByCutOffDateDesc(
                 card.id, StatementImportStatus.REVERSED, monthEnd,
@@ -293,6 +296,50 @@ class BudgetScreenService(
             rd = totals(CurrencyType.RD, statement.closingBalance, statement.minimumPayment)
                 ?: BudgetStatementTotals(charges = 0.0, credits = 0.0),
             usd = totals(CurrencyType.USD, statement.closingBalanceUsd, statement.minimumPaymentUsd),
+            check = cardCheck(card, savings, statement.closingBalance!!, cutOff, cycle),
+        )
+    }
+
+    /**
+     * The card's RD$ balance at [cutOff], bank vs ledger, and what explains the gap: lines not posted yet,
+     * and payments the ledger and the bank date differently. Savings pays the card with one RD$ row, posted
+     * on the savings date; the bank applies it on the card's own payment row, maybe after the cut-off, and
+     * may apply part of it to the US$ balance. Payments are counted from the card's first row: earlier ones
+     * are in its opening balance. US$ isn't reconciled, only how many of the [cycle]'s charges are posted.
+     */
+    private fun cardCheck(
+        card: Account,
+        savings: Account?,
+        bank: BigDecimal,
+        cutOff: LocalDate,
+        cycle: List<StatementLine>,
+    ): BudgetCardCheck {
+        val owed = journalLineRepo.findOriginalTotalsAt(currentUser.id, card.id, CurrencyType.RD.name, cutOff)
+        val ledger = owed.totalCredit - owed.totalDebit
+        val cardLines = lineRepo.findByAccountIdAndLineDateLessThanEqual(card.id, cutOff)
+            .filter { it.statementImport.status != StatementImportStatus.REVERSED && it.type != StatementLineType.INITIAL_BALANCE }
+        val pendingLines = cardLines.filter { it.currency == CurrencyType.RD && it.journalLine == null && !it.isExcluded }
+        val pending = pendingLines.sumOf { if (it.type == StatementLineType.CREDIT) it.amount.negate() else it.amount }
+        val firstRow = cardLines.minOfOrNull { it.lineDate } ?: cutOff
+        val ledgerPayments = savings?.let {
+            lineRepo.findByAccountIdAndCategoryAccountIdAndLineDateLessThanEqual(it.id, card.id, cutOff)
+                .filter { line -> line.statementImport.status != StatementImportStatus.REVERSED }
+                .filter { line -> line.journalLine != null && line.lineDate >= firstRow }
+                .sumOf { line -> line.amount }
+        } ?: BigDecimal.ZERO
+        val bankPayments = cardLines
+            .filter { it.exclusionReason == ExclusionReason.CARD_PAYMENT_AVOID_DOUBLE_ENTRY && it.currency == CurrencyType.RD }
+            .sumOf { it.amount }
+        val paymentsToReconcile = ledgerPayments - bankPayments
+        val usdCharges = cycle.filter { it.currency == CurrencyType.USD && it.type == StatementLineType.DEBIT && !it.isExcluded }
+        return BudgetCardCheck(
+            ledger = ledger.toDouble(),
+            pending = pending.toDouble(),
+            pendingCount = pendingLines.size,
+            paymentsToReconcile = paymentsToReconcile.toDouble(),
+            difference = (bank - ledger - pending - paymentsToReconcile).toDouble(),
+            usdCharges = usdCharges.size,
+            usdPosted = usdCharges.count { it.journalLine != null },
         )
     }
 

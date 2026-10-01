@@ -120,6 +120,26 @@ interface JournalLineRepository : JpaRepository<JournalLine, Long> {
         @Param("before") before: LocalDate,
     ): TotalsView
 
+    /** Debit and credit totals of [accountId]'s lines in [currency], in that currency, dated up to [onOrBefore]. */
+    @Query(
+        value = """
+            SELECT COALESCE(SUM(CASE WHEN jl.side = 'DEBIT'  THEN jl.original_amount ELSE 0 END), 0) AS totalDebit,
+                   COALESCE(SUM(CASE WHEN jl.side = 'CREDIT' THEN jl.original_amount ELSE 0 END), 0) AS totalCredit
+            FROM journal_lines jl
+            JOIN journal_entries je ON jl.journal_entry_id = je.id
+            WHERE je.user_id = :userId AND jl.account_id = :accountId
+              AND jl.currency = :currency
+              AND je.entry_date <= :onOrBefore
+        """,
+        nativeQuery = true,
+    )
+    fun findOriginalTotalsAt(
+        @Param("userId") userId: Long,
+        @Param("accountId") accountId: Long,
+        @Param("currency") currency: String,
+        @Param("onOrBefore") onOrBefore: LocalDate,
+    ): TotalsView
+
     @Query(
         value = """
             SELECT DATE_TRUNC('month', je.entry_date)::date AS monthStart,

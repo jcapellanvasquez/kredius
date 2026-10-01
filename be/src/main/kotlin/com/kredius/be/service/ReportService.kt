@@ -35,7 +35,6 @@ class ReportService(
     fun getBudgetReport(period: LocalDate): BudgetReportResponse {
         val userId      = currentUser.id
         val periodStart = period.withDayOfMonth(1)
-        val periodEnd   = periodStart.withDayOfMonth(periodStart.lengthOfMonth())
 
         val lastPayroll = incomeEntryRepo.findPayrollsByUserId(userId, PageRequest.of(0, 1)).firstOrNull()
 
@@ -46,9 +45,9 @@ class ReportService(
             else budgetRepo.findByAccountIdInAndPeriod(accountIds, periodStart).associateBy { it.account.id }
 
         val actuals = if (accountIds.isEmpty()) emptyMap()
-            else journalLineRepo.findActualsByPeriod(userId, periodStart, periodEnd, accountIds).associateBy { it.accountId }
+            else journalLineRepo.findActualsByBudgetPeriod(userId, periodStart, accountIds).associateBy { it.accountId }
 
-        val totalIncome = journalLineRepo.findTotalIncomeCreditByPeriod(userId, periodStart, periodEnd)
+        val totalIncome = journalLineRepo.findTotalIncomeCreditByBudgetPeriod(userId, periodStart)
 
         val rows = expenseAccounts.map { account ->
             val budget       = budgets[account.id]

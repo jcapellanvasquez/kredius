@@ -38,7 +38,7 @@ import { CardSummary } from '../../models/budget.models';
       @if (card().statement; as st) {
         <div class="mt-3 pt-2 border-t border-gray-100 text-xs tabular-nums">
           <p class="text-gray-500 mb-1">
-            {{ text.cutOff }} {{ st.cutOffDate | shortDate }}
+            {{ text.statement }} {{ st.cycleStart | shortDate }} – {{ st.cutOffDate | shortDate }}
             @if (st.paymentDueDate) { · {{ text.dueDate }} {{ st.paymentDueDate | shortDate }} }
           </p>
           <table class="w-full">

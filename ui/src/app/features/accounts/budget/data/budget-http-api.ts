@@ -142,6 +142,7 @@ export class BudgetHttpApi extends BudgetApi {
         spent: card.spent,
         budget: positiveOrNull(card.budget),
         statement: card.statement ? {
+          cycleStart: card.statement.cycleStart,
           cutOffDate: card.statement.cutOffDate,
           paymentDueDate: card.statement.paymentDueDate ?? null,
           rd: toTotals(card.statement.rd),

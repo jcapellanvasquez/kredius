@@ -4,6 +4,11 @@
 import { BudgetStatementTotals } from '../models/budget-statement-totals';
 export interface BudgetCardStatement {
   cutOffDate: string;
+
+  /**
+   * First day of the billing cycle (the day after the previous statement's cut-off)
+   */
+  cycleStart: string;
   paymentDueDate?: string | null;
   rd: BudgetStatementTotals;
 

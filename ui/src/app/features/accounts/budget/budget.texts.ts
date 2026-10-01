@@ -58,6 +58,7 @@ export const BUDGET_TEXT = {
   statementBalance: 'Saldo al corte',
   minimumPayment:   'Pago mínimo',
   cutOff:           'Corte',
+  statement:        'Estado',
   dueDate:          'vence',
   usdRate:          'Tasa US$',
   usdRateHint:      'Las compras en US$ se registran al guardar la tasa.',

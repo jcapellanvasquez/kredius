@@ -55,7 +55,8 @@ export interface StatementTotals {
 
 /** The latest card statement up to the month: its billing cycle, as the bank reports it. */
 export interface CardStatement {
-  /** ISO dates `YYYY-MM-DD`. */
+  /** ISO dates `YYYY-MM-DD`: the cycle runs from `cycleStart` to `cutOffDate`. */
+  cycleStart: string;
   cutOffDate: string;
   paymentDueDate: string | null;
   rd: StatementTotals;

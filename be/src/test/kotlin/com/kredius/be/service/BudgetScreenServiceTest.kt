@@ -131,10 +131,12 @@ class BudgetScreenServiceTest {
             journalLine = postedRd?.let { JournalLine(amountRd = BigDecimal(it)) },
         )
 
+    /** The month's lines; the pending ones (unposted, not excluded) are also what the pending query returns. */
     private fun monthLines(vararg lines: StatementLine) {
         `when`(lineRepo.findByStatementImportUserIdAndStatementImportStatusNotAndLineDateBetween(
             0L, StatementImportStatus.REVERSED, august, LocalDate.of(2026, 8, 31),
         )).thenReturn(lines.toList())
+        `when`(lineRepo.findPendingByUserId(0L)).thenReturn(lines.filter { it.journalLine == null && !it.isExcluded })
     }
 
     private fun cardLine(
@@ -290,6 +292,18 @@ class BudgetScreenServiceTest {
 
         assertEquals(listOf(450.0), uncategorized.map { it.amount })
         assertEquals(BudgetTransactionLine.Status.PENDING, uncategorized.single().status)
+    }
+
+    @Test
+    fun `uncategorized also lists pending lines of other months, newest first`() {
+        ledger()
+        monthLines(cardLine("450.00"))
+        val julyRow = cardLine("75.00").apply { lineDate = LocalDate.of(2026, 7, 28) } // on the August statement
+        `when`(lineRepo.findPendingByUserId(0L)).thenReturn(listOf(julyRow, cardLine("450.00")))
+
+        val uncategorized = service.get(august).uncategorized
+
+        assertEquals(listOf(450.0, 75.0), uncategorized.map { it.amount })
     }
 
     /** A matcher for a Kotlin non-null parameter; the fallback only avoids Kotlin's null check. */

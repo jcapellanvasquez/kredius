@@ -94,6 +94,7 @@
             [optionGroups]="store.optionGroups()"
             [lineStates]="store.lineStates()"
             [highlightId]="store.highlightId()"
+            [noCardRate]="screen.card.usdRate === null"
             (budgetChange)="store.setDraft($event.accountId, $event.value)"
             (choose)="store.chooseCategory($event.line, $event.categoryId)" />
         </section>

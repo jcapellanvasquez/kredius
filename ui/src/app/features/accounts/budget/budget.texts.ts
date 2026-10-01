@@ -65,6 +65,8 @@ export const BUDGET_TEXT = {
   cardPaymentsToReconcile: 'Pagos por conciliar',
   cardPaymentsHint: 'Pagos desde ahorros que el banco aplica en otra fecha o al saldo en US$, o pagos de un estado de ahorros no subido.',
   usdNeedsRate:     'falta la tasa',
+  /** Tag on a US$ card line while the card has no rate: categorizing it would fail. */
+  rateMissing:      'Tasa sin asignar',
   usdRate:          'Tasa US$',
   usdRateHint:      'Las compras en US$ se registran al guardar la tasa.',
   saveRate:         'Guardar',

@@ -32,11 +32,18 @@ import { CategoryChipsComponent } from '../category-chips/category-chips';
       </span>
     </div>
     <div class="mb-2">
-      <button type="button" (click)="helpOpen.set(!helpOpen())" [attr.aria-expanded]="helpOpen()"
-        class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-50 text-xs text-gray-500 hover:text-gray-900 transition-colors">
-        <app-icon [name]="icons.Info" [size]="12" />
-        {{ effectText().tag }}
-      </button>
+      <div class="flex flex-wrap items-center gap-1.5">
+        <button type="button" (click)="helpOpen.set(!helpOpen())" [attr.aria-expanded]="helpOpen()"
+          class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-50 text-xs text-gray-500 hover:text-gray-900 transition-colors">
+          <app-icon [name]="icons.Info" [size]="12" />
+          {{ effectText().tag }}
+        </button>
+        @if (rateMissing()) {
+          <span class="inline-flex items-center px-2 py-0.5 rounded-full border border-warning-border bg-warning-bg text-xs text-warning-text">
+            {{ text.rateMissing }}
+          </span>
+        }
+      </div>
       @if (helpOpen()) {
         <p animate.enter="fade-in" class="mt-1 text-xs text-gray-500">{{ effectText().help }}</p>
       }
@@ -55,12 +62,17 @@ export class TransactionRowComponent {
   readonly options = input<CategoryOption[]>([]);
   readonly optionGroups = input<CategoryOptionGroup[]>([]);
   readonly uiState = input<LineUiState | undefined>(undefined);
+  /** The card has no US$ rate yet. */
+  readonly noCardRate = input(false);
   readonly choose = output<number>();
 
   protected readonly text = BUDGET_TEXT;
   protected readonly iconSize = AccountIconSize.Sm;
   protected readonly idle = SaveState.Idle;
   protected readonly isUsd = computed(() => this.line().currency === CurrencyCode.Usd);
+  /** A US$ card line can't be categorized until the card has a rate. */
+  protected readonly rateMissing = computed(() =>
+    this.noCardRate() && this.isUsd() && this.line().source === StatementAccountKind.CreditCard);
   protected readonly icons = UiIcon;
   protected readonly helpOpen = signal(false);
 

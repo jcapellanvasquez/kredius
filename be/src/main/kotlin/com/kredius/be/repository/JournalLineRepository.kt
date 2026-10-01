@@ -179,17 +179,15 @@ interface JournalLineRepository : JpaRepository<JournalLine, Long> {
             JOIN journal_entries je ON je.id = jl.journal_entry_id
             WHERE je.user_id = :userId
               AND jl.side = 'DEBIT'
-              AND je.entry_date >= :periodStart
-              AND je.entry_date <= :periodEnd
+              AND je.budget_period = :period
               AND jl.account_id IN (:accountIds)
             GROUP BY jl.account_id
         """,
         nativeQuery = true,
     )
-    fun findActualsByPeriod(
+    fun findActualsByBudgetPeriod(
         @Param("userId") userId: Long,
-        @Param("periodStart") periodStart: LocalDate,
-        @Param("periodEnd") periodEnd: LocalDate,
+        @Param("period") period: LocalDate,
         @Param("accountIds") accountIds: Collection<Long>,
     ): List<AccountActualView>
 
@@ -202,15 +200,13 @@ interface JournalLineRepository : JpaRepository<JournalLine, Long> {
             WHERE je.user_id = :userId
               AND jl.side = 'CREDIT'
               AND a.type = 'INCOME'
-              AND je.entry_date >= :periodStart
-              AND je.entry_date <= :periodEnd
+              AND je.budget_period = :period
         """,
         nativeQuery = true,
     )
-    fun findTotalIncomeCreditByPeriod(
+    fun findTotalIncomeCreditByBudgetPeriod(
         @Param("userId") userId: Long,
-        @Param("periodStart") periodStart: LocalDate,
-        @Param("periodEnd") periodEnd: LocalDate,
+        @Param("period") period: LocalDate,
     ): BigDecimal
 
     @Query(
@@ -220,14 +216,14 @@ interface JournalLineRepository : JpaRepository<JournalLine, Long> {
                 SELECT generate_series(CAST(:m3Start AS date), CAST(:m1Start AS date), interval '1 month')::date AS month_start
             ) m
             LEFT JOIN (
-                SELECT DATE_TRUNC('month', je.entry_date)::date AS month_start,
+                SELECT je.budget_period AS month_start,
                        SUM(jl.amount_rd) AS total_sum
                 FROM journal_lines jl
                 JOIN journal_entries je ON jl.journal_entry_id = je.id
                 WHERE je.user_id = :userId
                   AND jl.account_id = :accountId
                   AND jl.side = 'DEBIT'
-                GROUP BY DATE_TRUNC('month', je.entry_date)
+                GROUP BY je.budget_period
             ) a ON a.month_start = m.month_start
         """,
         nativeQuery = true,

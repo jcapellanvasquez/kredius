@@ -3,6 +3,8 @@ package com.kredius.be.repository
 import com.kredius.be.entity.StatementImportStatus
 import com.kredius.be.entity.StatementLine
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Query
+import org.springframework.data.repository.query.Param
 import java.time.LocalDate
 
 interface StatementLineRepository : JpaRepository<StatementLine, Long> {
@@ -18,4 +20,13 @@ interface StatementLineRepository : JpaRepository<StatementLine, Long> {
         from: LocalDate,
         to: LocalDate,
     ): List<StatementLine>
+
+    /** Unposted, non-excluded lines of the user's imports that aren't reversed, whatever their date. */
+    @Query("""
+        SELECT l FROM StatementLine l
+        WHERE l.statementImport.user.id = :userId
+          AND l.statementImport.status <> com.kredius.be.entity.StatementImportStatus.REVERSED
+          AND l.journalLine IS NULL AND l.isExcluded = false
+    """)
+    fun findPendingByUserId(@Param("userId") userId: Long): List<StatementLine>
 }

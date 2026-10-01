@@ -883,7 +883,7 @@ components:
             $ref: '#/components/schemas/BudgetLastUpload'
         uncategorized:
           type: array
-          description: The month's unposted, non-excluded lines, newest first
+          description: Every unposted, non-excluded line of imports that aren't reversed, whatever its month, newest first
           items:
             $ref: '#/components/schemas/BudgetTransactionLine'
         categories:

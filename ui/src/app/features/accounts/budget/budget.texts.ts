@@ -67,6 +67,10 @@ export const BUDGET_TEXT = {
   usdNeedsRate:     'falta la tasa',
   /** Tag on a US$ card line while the card has no rate: categorizing it would fail. */
   rateMissing:      'Tasa sin asignar',
+  rateMissingError: 'Tasa sin asignar. Guarda la tasa del dólar para registrar compras en US$.',
+  setRate:          'Poner tasa',
+  lineChanged:      'Esta línea ya cambió.',
+  reloadMonth:      'Recargar el mes',
   usdRate:          'Tasa US$',
   usdRateHint:      'Las compras en US$ se registran al guardar la tasa.',
   saveRate:         'Guardar',

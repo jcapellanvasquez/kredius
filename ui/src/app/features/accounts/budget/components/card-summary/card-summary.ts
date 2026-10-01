@@ -1,4 +1,8 @@
-import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
+import {
+  ChangeDetectionStrategy, Component, ElementRef, Injector, afterNextRender, computed, effect, inject, input, output, signal,
+  untracked, viewChild,
+} from '@angular/core';
 import { IconComponent } from '../../../../../shared/components/icon/icon';
 import { ProgressRingComponent } from '../../../../../shared/components/progress-ring/progress-ring';
 import { CURRENCY_PREFIX, USD_PREFIX } from '../../../../../shared/constants/locale';
@@ -14,7 +18,7 @@ import { CardSummary } from '../../models/budget.models';
 /** Credit card: % of its budget consumed, plus the month's statement result (charges − payments). */
 @Component({
   selector: 'app-card-summary',
-  imports: [IconComponent, ProgressRingComponent, MoneyPipe, ShortDatePipe],
+  imports: [IconComponent, NgTemplateOutlet, ProgressRingComponent, MoneyPipe, ShortDatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'block' },
   template: `
@@ -113,36 +117,50 @@ import { CardSummary } from '../../models/budget.models';
             }
           </div>
 
-          @if (st.usd) {
-            <div class="mt-2 flex flex-wrap items-center gap-1.5 text-gray-500">
-              @if (card().usdRate !== null && !editingRate()) {
-                <span>{{ text.usdRate }}: {{ card().usdRate | money: 2 : false }}</span>
-                <button type="button" (click)="editingRate.set(true)" class="underline underline-offset-2 hover:text-gray-900">
-                  {{ text.changeRate }}
-                </button>
-              } @else {
-                <label [for]="rateId" class="shrink-0">{{ text.usdRate }}</label>
-                <input [id]="rateId" #rate type="number" inputmode="decimal" min="0" step="0.01"
-                  [value]="card().usdRate ?? ''" [disabled]="savingRate()"
-                  class="w-20 px-2 py-1 text-xs text-gray-900 tabular-nums bg-white rounded-md border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-300" />
-                <button type="button" (click)="submitRate(rate.value)" [disabled]="savingRate()"
-                  class="px-2 py-1 rounded-md border border-gray-200 text-gray-700 hover:border-gray-400 disabled:opacity-40">
-                  {{ text.saveRate }}
-                </button>
-                @if (card().usdRate === null) {
-                  <p class="basis-full text-gray-400">{{ text.usdRateHint }}</p>
-                }
-              }
-            </div>
+          @if (st.usd || editingRate()) {
+            <ng-container *ngTemplateOutlet="rateEditor" />
           }
+        </div>
+      } @else if (editingRate()) {
+        <!-- "Poner tasa" with no card statement this month: the rate field alone -->
+        <div class="mt-3 pt-2 border-t border-gray-100 text-xs tabular-nums">
+          <ng-container *ngTemplateOutlet="rateEditor" />
         </div>
       }
     </div>
+
+    <ng-template #rateEditor>
+      <div class="mt-2 flex flex-wrap items-center gap-1.5 text-gray-500">
+        @if (card().usdRate !== null && !editingRate()) {
+          <span>{{ text.usdRate }}: {{ card().usdRate | money: 2 : false }}</span>
+          <button type="button" (click)="editingRate.set(true)" class="underline underline-offset-2 hover:text-gray-900">
+            {{ text.changeRate }}
+          </button>
+        } @else {
+          <label [for]="rateId" class="shrink-0">{{ text.usdRate }}</label>
+          <input [id]="rateId" #rate type="number" inputmode="decimal" min="0" step="0.01"
+            [value]="card().usdRate ?? ''" [disabled]="savingRate()"
+            class="w-20 px-2 py-1 text-xs text-gray-900 tabular-nums bg-white rounded-md border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-300" />
+          <button type="button" (click)="submitRate(rate.value)" [disabled]="savingRate()"
+            class="px-2 py-1 rounded-md border border-gray-200 text-gray-700 hover:border-gray-400 disabled:opacity-40">
+            {{ text.saveRate }}
+          </button>
+          @if (card().usdRate === null) {
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full border border-warning-border bg-warning-bg text-warning-text">
+              {{ text.rateMissing }}
+            </span>
+            <p class="basis-full text-gray-400">{{ text.usdRateHint }}</p>
+          }
+        }
+      </div>
+    </ng-template>
   `,
 })
 export class CardSummaryComponent {
   readonly card = input.required<CardSummary>();
   readonly savingRate = input(false);
+  /** Bumped by "Poner tasa" (store.rateRequest): open the rate field, scroll to it and focus it. */
+  readonly rateRequest = input(0);
   readonly saveRate = output<number>();
 
   protected readonly text = BUDGET_TEXT;
@@ -151,6 +169,20 @@ export class CardSummaryComponent {
   protected readonly rateId = 'card-usd-rate';
   protected readonly prefix = { rd: CURRENCY_PREFIX, usd: USD_PREFIX };
   protected readonly icons = UiIcon;
+
+  private readonly host = inject(ElementRef<HTMLElement>);
+  private readonly injector = inject(Injector);
+  private readonly rateInput = viewChild<ElementRef<HTMLInputElement>>('rate');
+
+  constructor() {
+    // The first run only records the current value, so a request made before this card existed doesn't reopen it.
+    let handled: number | null = null;
+    effect(() => {
+      const request = this.rateRequest();
+      if (handled !== null && request !== handled) untracked(() => this.openRateEditor());
+      handled = request;
+    });
+  }
 
   protected readonly hasPaymentsToReconcile = computed(
     () => Math.abs(this.card().statement?.check.paymentsToReconcile ?? 0) >= BALANCE_TOLERANCE,
@@ -187,6 +219,17 @@ export class CardSummaryComponent {
     if (pct >= CARD_RING_BANDS.warningFrom) return ProgressLevel.Warning;
     return ProgressLevel.Good;
   });
+
+  private openRateEditor(): void {
+    const reveal = () => {
+      this.host.nativeElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      this.rateInput()?.nativeElement.focus({ preventScroll: true });
+    };
+    // Already open: nothing re-renders, so reveal now; otherwise wait for the field to exist.
+    if (this.editingRate() && this.rateInput()) return reveal();
+    this.editingRate.set(true);
+    afterNextRender(reveal, { injector: this.injector });
+  }
 
   protected submitRate(raw: string): void {
     const value = Number(raw);

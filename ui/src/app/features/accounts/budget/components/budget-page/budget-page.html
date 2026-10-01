@@ -71,7 +71,7 @@
         <section>
           <h2 class="text-sm font-medium text-gray-500 mb-2">{{ text.summary }}</h2>
           <div class="grid grid-cols-2 gap-2">
-            <app-card-summary [card]="screen.card" [savingRate]="store.savingRate()"
+            <app-card-summary [card]="screen.card" [savingRate]="store.savingRate()" [rateRequest]="store.rateRequest()"
               (saveRate)="store.saveUsdRate($event)" />
             <app-savings-summary [savings]="screen.savings" />
           </div>
@@ -96,7 +96,9 @@
             [highlightId]="store.highlightId()"
             [noCardRate]="screen.card.usdRate === null"
             (budgetChange)="store.setDraft($event.accountId, $event.value)"
-            (choose)="store.chooseCategory($event.line, $event.categoryId)" />
+            (choose)="store.chooseCategory($event.line, $event.categoryId)"
+            (setRate)="store.requestRateEdit()"
+            (reload)="store.reloadMonth()" />
         </section>
 
         <app-save-bar [count]="store.dirtyCount()" [state]="store.budgetSaveState()" (save)="store.saveBudgets()" />

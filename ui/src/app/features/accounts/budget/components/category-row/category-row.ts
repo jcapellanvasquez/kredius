@@ -27,6 +27,8 @@ export class CategoryRowComponent {
 
   readonly budgetChange = output<number | null>();
   readonly choose = output<ChipSelection>();
+  readonly setRate = output<void>();
+  readonly reload = output<void>();
 
   protected readonly text = BUDGET_TEXT;
   protected readonly icons = UiIcon;

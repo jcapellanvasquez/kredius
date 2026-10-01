@@ -22,6 +22,7 @@ import { StatementImportSummaryResponse } from '../../../../api/models/statement
 import { StatementLineDto } from '../../../../api/models/statement-line-dto';
 import { StatementType } from '../../../../api/models/statement-type';
 import { AccountIcon } from '../../../../shared/constants/account-icons';
+import { byName } from '../../../../shared/utils/by-name';
 import { Period } from '../../../../shared/utils/period';
 import { KIND_ICON } from '../budget.constants';
 import { CurrencyCode, ImportStatus, LineStatus, LoanKind, StatementAccountKind } from '../budget.enums';
@@ -53,7 +54,8 @@ export class BudgetHttpApi extends BudgetApi {
     return getAccounts(this.http, this.rootUrl, { type: EXPENSE }).pipe(
       map(res => res.body
         .filter(a => a.active !== false && !a.loanAccount && a.id != null)
-        .map(a => ({ accountId: a.id as number, name: a.name ?? '', icon: a.icon ?? AccountIcon.Category }))),
+        .map(a => ({ accountId: a.id as number, name: a.name ?? '', icon: a.icon ?? AccountIcon.Category }))
+        .sort(byName)),
     );
   }
 

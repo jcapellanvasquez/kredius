@@ -3,6 +3,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { concatMap, from, toArray } from 'rxjs';
 import { AccountApiService } from '../../account-api.service';
+import { byName } from '../../../../shared/utils/by-name';
 import { Period, currentPeriod, fromMonthParam, toIsoDate, toMonthParam } from '../../../../shared/utils/period';
 import { percentOf, progressLevel } from '../../../../shared/utils/progress-level';
 import { BUDGET_QUERY, BUDGET_THRESHOLDS, SAVED_HINT_MS, STATEMENT_KIND_ORDER } from '../budget.constants';
@@ -60,12 +61,12 @@ export class BudgetStore {
   readonly historyLoading = signal(false);
 
   // ── Derived ───────────────────────────────────────────────────────────────
-  /** Extra groups in "Otra", after the expense categories. */
+  /** Extra groups in "Otra", after the expense categories; each sorted by name. */
   readonly optionGroups = computed<CategoryOptionGroup[]>(() => {
     const screen = this.screen();
     return [
-      { label: BUDGET_TEXT.incomes, options: screen?.incomeOptions ?? [] },
-      { label: BUDGET_TEXT.loans, options: screen?.loanOptions ?? [] },
+      { label: BUDGET_TEXT.incomes, options: [...(screen?.incomeOptions ?? [])].sort(byName) },
+      { label: BUDGET_TEXT.loans, options: [...(screen?.loanOptions ?? [])].sort(byName) },
     ].filter(g => g.options.length > 0);
   });
 

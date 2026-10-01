@@ -27,6 +27,7 @@ import com.kredius.be.parser.BhdSavingsPdfParser
 import com.kredius.be.parser.ParsedStatement
 import com.kredius.be.parser.ParsedStatementRow
 import com.kredius.be.parser.RowDirection
+import com.kredius.be.parser.StatementSummary
 import com.kredius.be.repository.AccountRepository
 import com.kredius.be.repository.ExchangeRateRepository
 import com.kredius.be.repository.JournalEntryRepository
@@ -422,6 +423,37 @@ class StatementServiceTest {
         assertEquals(0, net.getValue("Comida").signum())
         assertEquals(BigDecimal("100.00"), net.getValue("Supermercado"))
         assertEquals(BigDecimal("-100.00"), net.getValue("Tarjeta"))
+    }
+
+    @Test
+    fun `card rows count in the statement's cut-off month, savings rows in their own`() {
+        knownMerchant("SUPER", market)
+        `when`(cardParser.parse(any(InputStream::class.java) ?: InputStream.nullInputStream())).thenReturn(ParsedStatement(
+            listOf(row(27, "SUPER NACIONAL", "4787.11"), row(28, "TIENDA", "50.00")),
+            StatementSummary(cutOffDate = LocalDate.of(2026, 9, 26)),
+        ))
+        val cardStatement = upload(card, ApiStatementType.CREDIT_CARD)
+        val savingsStatement = uploadSavings(row(27, "SUPER BRAVO", "300.00"))
+
+        val september = LocalDate.of(2026, 9, 1)
+        assertEquals(listOf(september, september), cardStatement.lines.map { it.budgetPeriod })
+        assertEquals(LocalDate.of(2026, 8, 1), savingsStatement.lines.single().budgetPeriod)
+        val (cardEntry, savingsEntry) = savedEntries
+        assertEquals(LocalDate.of(2026, 8, 27) to september, cardEntry.entryDate to cardEntry.budgetPeriod)
+        assertEquals(LocalDate.of(2026, 8, 1), savingsEntry.budgetPeriod)
+    }
+
+    @Test
+    fun `corrections keep the original entry's budget period`() {
+        val import = cardImport(food, null)
+        import.lines[0].apply { lineDate = LocalDate.of(2026, 8, 27); budgetPeriod = LocalDate.of(2026, 9, 1) }
+        service.confirm(1)
+        recategorize(import.lines[0], market.id)
+
+        service.reverse(1)
+
+        assertEquals(4, savedEntries.size) // original, recategorization and their two reversals
+        assertTrue(savedEntries.all { it.entryDate == LocalDate.of(2026, 8, 27) && it.budgetPeriod == LocalDate.of(2026, 9, 1) })
     }
 
     @Test

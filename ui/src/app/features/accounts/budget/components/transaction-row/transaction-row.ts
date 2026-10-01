@@ -4,7 +4,7 @@ import { IconComponent } from '../../../../../shared/components/icon/icon';
 import { UiIcon } from '../../../../../shared/constants/ui-icons';
 import { MoneyPipe } from '../../../../../shared/pipes/money.pipe';
 import { ShortDatePipe } from '../../../../../shared/pipes/short-date.pipe';
-import { CurrencyCode, LineEffect, SaveState, StatementAccountKind } from '../../budget.enums';
+import { CurrencyCode, LineEffect, LineError, SaveState, StatementAccountKind } from '../../budget.enums';
 import { BUDGET_TEXT } from '../../budget.texts';
 import { CategoryOption, CategoryOptionGroup, LineUiState, TransactionLine } from '../../models/budget.models';
 import { CategoryChipsComponent } from '../category-chips/category-chips';
@@ -53,8 +53,32 @@ import { CategoryChipsComponent } from '../category-chips/category-chips';
       [suggestions]="line().suggestions"
       [options]="options()"
       [groups]="optionGroups()"
-      [state]="uiState()?.state ?? idle"
+      [state]="chipState()"
       (choose)="choose.emit($event)" />
+    @switch (knownError()) {
+      @case (errors.NoRate) {
+        <p animate.enter="fade-in" class="mt-2 flex items-start gap-1 text-xs text-gray-900" role="alert">
+          <app-icon [name]="icons.Alert" [size]="12" class="mt-0.5 shrink-0" />
+          <span>
+            {{ text.rateMissingError }}
+            <button type="button" (click)="setRate.emit()" class="font-medium underline underline-offset-2 hover:text-brand-800">
+              {{ text.setRate }}
+            </button>
+          </span>
+        </p>
+      }
+      @case (errors.Changed) {
+        <p animate.enter="fade-in" class="mt-2 flex items-start gap-1 text-xs text-gray-900" role="alert">
+          <app-icon [name]="icons.Alert" [size]="12" class="mt-0.5 shrink-0" />
+          <span>
+            {{ text.lineChanged }}
+            <button type="button" (click)="reload.emit()" class="font-medium underline underline-offset-2 hover:text-brand-800">
+              {{ text.reloadMonth }}
+            </button>
+          </span>
+        </p>
+      }
+    }
   `,
 })
 export class TransactionRowComponent {
@@ -65,16 +89,27 @@ export class TransactionRowComponent {
   /** The card has no US$ rate yet. */
   readonly noCardRate = input(false);
   readonly choose = output<number>();
+  /** "Poner tasa" under a NO_EXCHANGE_RATE error. */
+  readonly setRate = output<void>();
+  /** "Recargar el mes" under a conflict error. */
+  readonly reload = output<void>();
 
   protected readonly text = BUDGET_TEXT;
   protected readonly iconSize = AccountIconSize.Sm;
-  protected readonly idle = SaveState.Idle;
   protected readonly isUsd = computed(() => this.line().currency === CurrencyCode.Usd);
   /** A US$ card line can't be categorized until the card has a rate. */
   protected readonly rateMissing = computed(() =>
     this.noCardRate() && this.isUsd() && this.line().source === StatementAccountKind.CreditCard);
   protected readonly icons = UiIcon;
   protected readonly helpOpen = signal(false);
+  protected readonly errors = LineError;
+
+  /** An error with its own message under the chips (the generic one stays inside the chips). */
+  protected readonly knownError = computed(() => {
+    const ui = this.uiState();
+    return ui?.state === SaveState.Error && ui.error !== LineError.Failed ? ui.error ?? null : null;
+  });
+  protected readonly chipState = computed(() => (this.knownError() ? SaveState.Idle : this.uiState()?.state ?? SaveState.Idle));
 
   /** Charges are positive, payments/refunds/deposits negative; the source says card (debt) or savings. */
   protected readonly effectText = computed(() => {

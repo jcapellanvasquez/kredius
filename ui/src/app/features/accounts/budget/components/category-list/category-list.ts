@@ -30,7 +30,7 @@ export interface BudgetEdit {
         @for (line of uncategorized(); track line.lineId) {
           <app-transaction-row animate.leave="line-leave" [line]="line" [options]="options()" [optionGroups]="optionGroups()" [uiState]="lineStates().get(line.lineId)"
             [noCardRate]="noCardRate()"
-            (choose)="choose.emit({ line, categoryId: $event })" />
+            (choose)="choose.emit({ line, categoryId: $event })" (setRate)="setRate.emit()" (reload)="reload.emit()" />
         }
       </div>
     }
@@ -44,7 +44,9 @@ export interface BudgetEdit {
           [lineStates]="lineStates()"
           [highlight]="row.accountId === highlightId()"
           (budgetChange)="budgetChange.emit({ accountId: row.accountId, value: $event })"
-          (choose)="choose.emit($event)" />
+          (choose)="choose.emit($event)"
+          (setRate)="setRate.emit()"
+          (reload)="reload.emit()" />
       }
     </div>
   `,
@@ -61,6 +63,8 @@ export class CategoryListComponent {
 
   readonly budgetChange = output<BudgetEdit>();
   readonly choose = output<ChipSelection>();
+  readonly setRate = output<void>();
+  readonly reload = output<void>();
 
   protected readonly text = BUDGET_TEXT;
   protected readonly icons = UiIcon;

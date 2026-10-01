@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -6,8 +7,8 @@ import { AccountApiService } from '../../account-api.service';
 import { byName } from '../../../../shared/utils/by-name';
 import { Period, currentPeriod, fromMonthParam, toIsoDate, toMonthParam } from '../../../../shared/utils/period';
 import { percentOf, progressLevel } from '../../../../shared/utils/progress-level';
-import { BUDGET_QUERY, BUDGET_THRESHOLDS, SAVED_HINT_MS, STATEMENT_KIND_ORDER } from '../budget.constants';
-import { LineStatus, SaveState, StatementAccountKind } from '../budget.enums';
+import { API_ERROR_CODE, BUDGET_QUERY, BUDGET_THRESHOLDS, SAVED_HINT_MS, STATEMENT_KIND_ORDER } from '../budget.constants';
+import { LineError, LineStatus, SaveState, StatementAccountKind } from '../budget.enums';
 import { BUDGET_TEXT } from '../budget.texts';
 import { BudgetApi } from '../data/budget-api';
 import {
@@ -45,6 +46,8 @@ export class BudgetStore {
   private readonly settling = signal<ReadonlyMap<number, { line: TransactionLine; index: number }>>(new Map());
 
   readonly savingRate = signal(false);
+  /** Bumped by "Poner tasa": the card summary opens and focuses its rate field. */
+  readonly rateRequest = signal(0);
 
   // ── Upload ────────────────────────────────────────────────────────────────
   readonly uploadOpen = signal(false);
@@ -214,11 +217,22 @@ export class BudgetStore {
       .subscribe({
         next: () => {
           this.savingRate.set(false);
+          this.clearLineErrors(LineError.NoRate);
           this.load(true);
           this.refreshSidebar();
         },
         error: () => this.savingRate.set(false),
       });
+  }
+
+  requestRateEdit(): void {
+    this.rateRequest.update(n => n + 1);
+  }
+
+  /** "Recargar el mes" after a conflict: drop the stale errors and fetch the month again. */
+  reloadMonth(): void {
+    this.clearLineErrors();
+    this.load();
   }
 
   // ── Category chips ────────────────────────────────────────────────────────
@@ -248,7 +262,8 @@ export class BudgetStore {
           this.dropSettling(line.lineId);
         });
       },
-      error: () => this.setLineState(line.lineId, { state: SaveState.Error, pendingCategoryId: null }),
+      error: (err: unknown) =>
+        this.setLineState(line.lineId, { state: SaveState.Error, pendingCategoryId: null, error: lineErrorOf(err) }),
     });
   }
 
@@ -361,6 +376,15 @@ export class BudgetStore {
     this.lineStates.update(map => new Map(map).set(lineId, state));
   }
 
+  /** Removes the error state of every line, or only of lines with that error. */
+  private clearLineErrors(error?: LineError): void {
+    const next = new Map(this.lineStates());
+    for (const [id, ui] of next) {
+      if (ui.state === SaveState.Error && (error === undefined || ui.error === error)) next.delete(id);
+    }
+    this.lineStates.set(next);
+  }
+
   private clearLineState(lineId: number): void {
     this.lineStates.update(map => {
       const next = new Map(map);
@@ -373,4 +397,13 @@ export class BudgetStore {
     const id = setTimeout(fn, SAVED_HINT_MS);
     this.destroyRef.onDestroy(() => clearTimeout(id));
   }
+}
+
+/** Maps a failed categorize/recategorize call to the message the line shows. */
+function lineErrorOf(err: unknown): LineError {
+  if (!(err instanceof HttpErrorResponse)) return LineError.Failed;
+  const code = (err.error as { code?: string } | null)?.code;
+  if (code === API_ERROR_CODE.noExchangeRate) return LineError.NoRate;
+  if (code === API_ERROR_CODE.conflict || err.status === 409) return LineError.Changed;
+  return LineError.Failed;
 }

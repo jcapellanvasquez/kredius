@@ -40,6 +40,15 @@ export enum ImportStatus {
 }
 
 /** Save lifecycle shared by category chips, budget inputs and the save bar. */
+/** Why saving a line's category failed; picks the message shown under its chips. */
+export enum LineError {
+  /** 422 NO_EXCHANGE_RATE: a US$ card line and the card has no rate. */
+  NoRate  = 'no-rate',
+  /** 409: the line changed on the server (e.g. posted or excluded elsewhere). */
+  Changed = 'changed',
+  Failed  = 'failed',
+}
+
 export enum SaveState {
   Idle   = 'idle',
   Dirty  = 'dirty',

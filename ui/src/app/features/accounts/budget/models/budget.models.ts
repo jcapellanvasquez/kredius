@@ -4,7 +4,7 @@
  */
 import { Period } from '../../../../shared/utils/period';
 import { ProgressLevel } from '../../../../shared/utils/progress-level';
-import { CurrencyCode, ImportStatus, LineStatus, LoanKind, SaveState, StatementAccountKind } from '../budget.enums';
+import { CurrencyCode, ImportStatus, LineError, LineStatus, LoanKind, SaveState, StatementAccountKind } from '../budget.enums';
 
 export interface CategoryOption {
   accountId: number;
@@ -209,4 +209,6 @@ export interface LineUiState {
   state: SaveState;
   /** Category optimistically shown while saving. */
   pendingCategoryId: number | null;
+  /** Set when `state` is Error. */
+  error?: LineError;
 }

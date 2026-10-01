@@ -36,6 +36,7 @@ class JournalService(
         val savedEntry = journalEntryRepo.save(
             JournalEntry(
                 entryDate = line.lineDate,
+                budgetPeriod = line.budgetPeriod,
                 description = line.description,
                 source = source,
                 referenceId = importStatement.id,
@@ -73,7 +74,7 @@ class JournalService(
 
     /**
      * Moves [posted]'s amount from its account (the old category) to [newCategory] with a new entry,
-     * dated like the original so it lands in the same month. The original entry is never edited. The
+     * dated like the original and in its budget period so it lands in the same month. The original entry is never edited. The
      * new category takes the side the old one had, and the amounts, currency and rate are copied, so
      * the old category nets to zero.
      */
@@ -82,6 +83,7 @@ class JournalService(
         val entry = journalEntryRepo.save(
             JournalEntry(
                 entryDate = original.entryDate,
+                budgetPeriod = original.budgetPeriod,
                 description = "Recategorización: ${oldCategory.name} → ${newCategory.name}",
                 source = original.source,
                 referenceId = original.referenceId,

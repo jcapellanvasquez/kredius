@@ -69,6 +69,7 @@ class LoanService(
         savings: Account,
         source: JournalSource = JournalSource.LOAN,
         referenceId: Long? = null,
+        budgetPeriod: LocalDate = date.withDayOfMonth(1),
     ): JournalEntry {
         val userId = currentUser.id
         val interest = (installment.scheduledInterest ?: BigDecimal.ZERO).min(amount)
@@ -76,6 +77,7 @@ class LoanService(
         val verb = if (loan.type == LoanType.GIVEN) "Cobro" else "Pago"
         val entry = journalEntryRepo.save(JournalEntry(
             entryDate   = date,
+            budgetPeriod = budgetPeriod,
             description = "$verb cuota ${installment.number} – ${loan.counterpartyName}",
             source      = source,
             referenceId = referenceId,
@@ -129,7 +131,9 @@ class LoanService(
             .filter { it.status == InstallmentStatus.PENDING }
             .minByOrNull { it.number } ?: return null
         val statementAccount = line.account
-        val entry = payInstallment(loan, installment, amount, line.lineDate, statementAccount, source, referenceId)
+        val entry = payInstallment(
+            loan, installment, amount, line.lineDate, statementAccount, source, referenceId, line.budgetPeriod,
+        )
         return StatementPayment(entry.lines.first { it.account === statementAccount }, alreadyRecorded = false)
     }
 

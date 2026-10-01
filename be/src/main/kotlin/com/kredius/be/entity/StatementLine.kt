@@ -23,6 +23,13 @@ class StatementLine(
     @Column(name = "line_date", nullable = false)
     var lineDate: LocalDate = LocalDate.now(),
 
+    /**
+     * First day of the month whose budget the line counts in: a card line counts in its statement's
+     * cut-off month (a statement cut on 26/09 also holds 27/08–31/08), any other line in its own month.
+     */
+    @Column(name = "budget_period", nullable = false)
+    var budgetPeriod: LocalDate = lineDate.withDayOfMonth(1),
+
     @Column(nullable = false, length = 200)
     var description: String = "",
 

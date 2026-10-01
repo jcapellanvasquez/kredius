@@ -91,6 +91,7 @@ class StatementService(
                 statementImport = import,
                 account = account,
                 lineDate = row.date,
+                budgetPeriod = import.budgetPeriodOf(row.date),
                 description = row.description,
                 currency = row.currency,
                 amount = row.amount,
@@ -332,6 +333,10 @@ class StatementService(
         return pending.count { !it.isExcluded } // a row linked to a hand payment posted nothing
     }
 
+    /** A card statement's rows count in its cut-off month; savings rows (or no cut-off found) in their own. */
+    private fun StatementImport.budgetPeriodOf(date: LocalDate): LocalDate =
+        (cutOffDate?.takeIf { type == EntityStatementType.CREDIT_CARD } ?: date).withDayOfMonth(1)
+
     private fun StatementImport.journalSource() =
         if (type == EntityStatementType.CREDIT_CARD) JournalSource.CARD_STATEMENT else JournalSource.SAVINGS_STATEMENT
 
@@ -349,11 +354,12 @@ class StatementService(
         val originals = journalEntryRepo.findByReferenceIdAndSource(import.id, source)
             .filter { it.correctionType != CorrectionType.REVERSAL }
         for (original in originals) {
-            // Dated like the entry it mirrors, so the month the original landed in nets to zero
-            // instead of this month turning negative.
+            // Dated like the entry it mirrors and in its budget period, so the month the original landed
+            // in nets to zero instead of this month turning negative.
             val reversal = journalEntryRepo.save(
                 JournalEntry(
                     entryDate = original.entryDate,
+                    budgetPeriod = original.budgetPeriod,
                     description = "REVERSAL: ${original.description}",
                     source = source,
                     referenceId = import.id,

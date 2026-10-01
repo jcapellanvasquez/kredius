@@ -13,6 +13,13 @@ class JournalEntry(
     @Column(name = "entry_date", nullable = false)
     var entryDate: LocalDate = LocalDate.now(),
 
+    /**
+     * First day of the month whose budget the entry counts in. Usually [entryDate]'s month; a card
+     * statement line counts in its statement's cut-off month, and corrections copy the original's.
+     */
+    @Column(name = "budget_period", nullable = false)
+    var budgetPeriod: LocalDate = entryDate.withDayOfMonth(1),
+
     @Column(nullable = false, length = 200)
     var description: String = "",
 

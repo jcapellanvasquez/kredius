@@ -10,6 +10,7 @@ import com.kredius.be.parser.BhdSavingsPdfParser
 import com.kredius.be.parser.ParsedStatementRow
 import com.kredius.be.parser.RowDirection
 import com.kredius.be.repository.*
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.stereotype.Service
@@ -37,9 +38,12 @@ class StatementService(
     private val journalService: JournalService,
     private val loanRepo: LoanRepository,
     private val loanService: LoanService,
+    // Off for now: one pattern can't tell apart rows like "Pago al Instante Transf. # …" that go to different categories.
+    @Value("\${kredius.statement.auto-categorize:false}") private val autoCategorize: Boolean,
 ) {
     /**
-     * Stores the statement's new rows and posts the ones the merchant dictionary categorizes, in one
+     * Stores the statement's new rows and posts the ones the merchant dictionary categorizes (only with
+     * `kredius.statement.auto-categorize`; otherwise every row waits for review), in one
      * transaction: a posting failure rolls back the whole upload. Only a parse error is recorded, as FAILED.
      */
     @Transactional
@@ -77,7 +81,7 @@ class StatementService(
         import.minimumPaymentUsd = parsed.summary.minimumPaymentUsd
         import.paymentDueDate = parsed.summary.paymentDueDate
 
-        val merchants = merchantRepo.findByUserIdOrderByTextPatternAsc(userId)
+        val merchants = if (!autoCategorize) emptyMap() else merchantRepo.findByUserIdOrderByTextPatternAsc(userId)
             .associateBy { it.textPattern.uppercase() }
 
         fun matchAccount(description: String) = merchants.entries
@@ -276,6 +280,7 @@ class StatementService(
     }
 
     private fun learnMerchant(description: String, account: Account) {
+        if (!autoCategorize) return
         val pattern = extractPattern(description)
         val existing = merchantRepo.findByUserIdAndTextPattern(currentUser.id, pattern)
         if (existing == null) {

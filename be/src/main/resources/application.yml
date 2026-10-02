@@ -30,3 +30,8 @@ springdoc:
     operations-sorter: alpha
     tags-sorter: alpha
   show-actuator: false
+
+kredius:
+  statement:
+    # Guess categories from the merchant dictionary at upload and learn patterns on categorize.
+    auto-categorize: ${KREDIUS_AUTO_CATEGORIZE:false}

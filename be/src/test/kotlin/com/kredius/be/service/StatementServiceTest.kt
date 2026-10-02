@@ -54,6 +54,7 @@ import org.mockito.Mockito.verify
 import org.mockito.Mockito.anyList
 import org.mockito.Mockito.anyLong
 import org.mockito.Mockito.mock
+import org.mockito.Mockito.never
 import org.mockito.Mockito.`when`
 import org.springframework.mock.web.MockMultipartFile
 import java.io.InputStream
@@ -94,7 +95,9 @@ class StatementServiceTest {
     private val exchangeRateRepo = mock(ExchangeRateRepository::class.java)
     private var cardRate: ExchangeRate? = null
 
-    private val service = run {
+    private val service = newService(autoCategorize = true)
+
+    private fun newService(autoCategorize: Boolean): StatementService {
         val userRepo = mock(UserRepository::class.java)
         `when`(userRepo.findById(0L)).thenReturn(Optional.of(User()))
         val accountRepo = mock(AccountRepository::class.java)
@@ -135,7 +138,7 @@ class StatementServiceTest {
             mock(PrincipalPaymentRepository::class.java), CurrentUserService(userRepo, 0L), statementLineRepo,
         )
 
-        StatementService(
+        return StatementService(
             currentUser = CurrentUserService(userRepo, 0L),
             accountRepo = accountRepo,
             importRepo = importRepo,
@@ -148,6 +151,7 @@ class StatementServiceTest {
             journalService = JournalService(entryRepo, lineRepo),
             loanRepo = loanRepo,
             loanService = loanService,
+            autoCategorize = autoCategorize,
         )
     }
 
@@ -200,11 +204,11 @@ class StatementServiceTest {
 
     private var lastUpload: StatementImportResponse? = null
 
-    private fun upload(account: Account, type: ApiStatementType): StatementImport {
+    private fun upload(account: Account, type: ApiStatementType, using: StatementService = service): StatementImport {
         var saved: StatementImport? = null
         `when`(importRepo.save(any(StatementImport::class.java)))
             .thenAnswer { (it.arguments[0] as StatementImport).also { i -> saved = i } }
-        lastUpload = service.upload(MockMultipartFile("file", ByteArray(0)), account.id, type, LocalDate.of(2026, 8, 26))
+        lastUpload = using.upload(MockMultipartFile("file", ByteArray(0)), account.id, type, LocalDate.of(2026, 8, 26))
         return saved!!.also { imp -> storedLines += imp.lines.filter { it.account === account } }
     }
 
@@ -309,6 +313,23 @@ class StatementServiceTest {
 
         assertEquals(2, savedEntries.size)
         assertEquals(StatementImportStatus.CONFIRMED, import.status)
+    }
+
+    @Test
+    fun `with auto-categorize off, upload leaves every row pending and categorizing learns nothing`() {
+        knownMerchant("CAFE", food)
+        val manual = newService(autoCategorize = false)
+        `when`(cardParser.parse(any(InputStream::class.java) ?: InputStream.nullInputStream()))
+            .thenReturn(ParsedStatement(listOf(row(1, "CAFE SANTO DOMINGO", "100.00"))))
+
+        val import = upload(card, ApiStatementType.CREDIT_CARD, using = manual)
+        assertNull(import.lines.single().categoryAccount)
+        assertEquals(StatementImportStatus.PENDING_REVIEW, import.status)
+
+        `when`(statementLineRepo.findByIdAndStatementImportUserId(anyLong(), anyLong())).thenReturn(import.lines.single())
+        manual.patchLine(import.lines.single().id, PatchStatementLineRequest(categoryAccountId = food.id))
+        assertEquals(1, savedEntries.size)
+        verify(merchantRepo, never()).save(any(MerchantDictionary::class.java))
     }
 
     @Test

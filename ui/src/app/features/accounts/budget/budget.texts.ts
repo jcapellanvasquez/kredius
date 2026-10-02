@@ -9,8 +9,9 @@ export const BUDGET_TEXT = {
   update:           'Actualizar',
   process:          'Procesar',
   processing:       'Procesando…',
-  /** Shown one after another while a statement is processed (one request, so they're timed, not real steps). */
-  processingSteps:  ['Leyendo el PDF…', 'Buscando movimientos nuevos…', 'Categorizando…'],
+  /** Upload progress (loading system §5): bytes being sent, then the server working on the statement. */
+  sending:          'Subiendo…',
+  processingStatement: 'Procesando estado…',
   uploadHint:       'Puedes subir uno, el otro, o ambos.',
   statementDate:    'Fecha del corte',
   uploadError:      'No se pudo procesar el archivo. Intenta de nuevo.',
@@ -140,6 +141,7 @@ export const BUDGET_TEXT = {
   sameAs:       (month: string) => `igual que ${month}`,
   /** Screen-reader wording of the savings arrow. */
   savingsTrend: (direction: 'up' | 'down', month: string) => `${direction === 'up' ? 'Subió' : 'Bajó'} desde ${month}:`,
+  uploadStep:   (index: number, total: number, kind: string) => `Estado ${index} de ${total} · ${kind}`,
   chargesTitle: (from: string, to: string) => `Compras del estado ${from} – ${to}`,
   chargesExclude: (credits: string) => `No incluye pagos ni créditos (${credits}).`,
   saveCountSuffix: (n: number) => (n > 0 ? `(${n})` : ''),

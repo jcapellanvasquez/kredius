@@ -172,6 +172,23 @@ export interface UploadResult {
   uploadedAt: string;
 }
 
+/** What one statement upload reports: bytes sent so far, then the server's result. */
+export type UploadEvent =
+  | { type: 'progress'; /** 0–100, or null when the browser can't tell the size. */ percent: number | null }
+  | { type: 'done'; result: UploadResult };
+
+/** Where "Procesar" is, for the upload panel (loading system §5, option A). */
+export interface UploadProgress {
+  /** 1-based position of the statement being sent, of `total`. */
+  index: number;
+  total: number;
+  kind: StatementAccountKind;
+  /** Sending: bytes sent (0–100). Null once the file is sent and the server is processing it. */
+  percent: number | null;
+  /** Statements already processed, in order. */
+  done: UploadResult[];
+}
+
 export interface BudgetUpdate {
   accountId: number;
   amount: number;

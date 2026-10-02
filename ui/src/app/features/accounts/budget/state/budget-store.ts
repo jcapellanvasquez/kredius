@@ -2,7 +2,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
-import { concatMap, forkJoin, from, timer, toArray } from 'rxjs';
+import { concatMap, filter, forkJoin, from, map, tap, timer, toArray } from 'rxjs';
 import { AccountApiService } from '../../account-api.service';
 import { byName } from '../../../../shared/utils/by-name';
 import { Period, currentPeriod, fromMonthParam, toIsoDate, toMonthParam } from '../../../../shared/utils/period';
@@ -14,8 +14,8 @@ import { LineError, LineStatus, SaveState, StatementAccountKind } from '../budge
 import { BUDGET_TEXT } from '../budget.texts';
 import { BudgetApi } from '../data/budget-api';
 import {
-  BudgetScreen, CardBudgetView, CategoryOption, CategoryOptionGroup, CategoryRowView, ImportSummary, LineUiState,
-  TransactionLine, UploadResult,
+  BudgetScreen, CardBudgetView, CategoryOption, CategoryOptionGroup, CategoryRowView, ImportSummary,
+  LineUiState, TransactionLine, UploadProgress, UploadResult,
 } from '../models/budget.models';
 
 /** Page-level state for the budget screen. Provided by `BudgetPageComponent`. */
@@ -58,6 +58,8 @@ export class BudgetStore {
   /** Statement date sent with the upload (`YYYY-MM-DD`); defaults to today. */
   readonly uploadDate = signal(toIsoDate());
   readonly uploading = signal(false);
+  /** Real progress of "Procesar": which statement, bytes sent, then processing; null when idle. */
+  readonly uploadProgress = signal<UploadProgress | null>(null);
   readonly uploadError = signal(false);
   readonly lastUploadResults = signal<UploadResult[] | null>(null);
 
@@ -320,15 +322,33 @@ export class BudgetStore {
 
     this.uploading.set(true);
     this.uploadError.set(false);
+    const done: UploadResult[] = [];
     from(picked)
       .pipe(
-        concatMap(kind => this.api.upload(kind, files[kind] as File, statementDate)),
+        concatMap((kind, i) => {
+          this.uploadProgress.set({ index: i + 1, total: picked.length, kind, percent: 0, done: [...done] });
+          return this.api.upload(kind, files[kind] as File, statementDate).pipe(
+            tap(event => {
+              if (event.type === 'progress') {
+                // All bytes sent: the server is parsing and posting now, which can't be measured.
+                const percent = event.percent === null || event.percent >= 100 ? null : event.percent;
+                this.uploadProgress.update(p => (p ? { ...p, percent } : p));
+              } else {
+                done.push(event.result);
+                this.uploadProgress.update(p => (p ? { ...p, percent: null, done: [...done] } : p));
+              }
+            }),
+            filter(event => event.type === 'done'),
+            map(() => done[done.length - 1]),
+          );
+        }),
         toArray(),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
         next: results => {
           this.uploading.set(false);
+          this.uploadProgress.set(null);
           this.lastUploadResults.set(results);
           this.uploadFiles.set({});
           this.uploadOpen.set(false);
@@ -339,6 +359,7 @@ export class BudgetStore {
         },
         error: () => {
           this.uploading.set(false);
+          this.uploadProgress.set(null);
           this.uploadError.set(true);
         },
       });

@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { IconComponent } from '../../../../../shared/components/icon/icon';
+import { SpinnerComponent, SpinnerSize, SpinnerTone } from '../../../../../shared/components/spinner/spinner';
 import { UiIcon } from '../../../../../shared/constants/ui-icons';
 import { SaveState } from '../../budget.enums';
 import { BUDGET_TEXT } from '../../budget.texts';
@@ -19,7 +20,7 @@ const BUTTON_BASE =
 
 @Component({
   selector: 'app-save-bar',
-  imports: [IconComponent],
+  imports: [IconComponent, SpinnerComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '[class]': 'hostClass()' },
   template: `
@@ -42,7 +43,7 @@ const BUTTON_BASE =
       <button type="button" (click)="save.emit()" [disabled]="disabled()" [class]="buttonClass">
         @switch (state()) {
           @case (states.Saving) {
-            <app-icon [name]="icons.Loader" [size]="16" class="animate-spin" /> {{ text.saving }}
+            <app-spinner [size]="spinner.size" [tone]="spinner.tone" /> {{ text.saving }}
           }
           @case (states.Saved) {
             <app-icon [name]="icons.Check" [size]="16" /> {{ text.saved }}
@@ -67,6 +68,7 @@ export class SaveBarComponent {
   protected readonly text = BUDGET_TEXT;
   protected readonly icons = UiIcon;
   protected readonly states = SaveState;
+  protected readonly spinner = { size: SpinnerSize.Md, tone: SpinnerTone.OnAccent };
   protected readonly buttonClass = `${BUTTON_BASE} w-full py-2.5 xl:w-auto xl:px-4 xl:py-2 xl:shrink-0`;
 
   protected readonly disabled = computed(() => this.count() === 0 || this.state() === SaveState.Saving);

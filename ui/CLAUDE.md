@@ -61,7 +61,7 @@ Some older scaffolding is leftover and has no effect:
   - `warning-*` (amber `bg`/`border`/`text`) marks a notice that needs the user's action, such as a missing US$ rate. It is not an error color.
 - Shared component classes `.card`, `.card-row` and `.account-row` are defined in `src/styles.css` and use hairline 0.5px borders. `styles.css` also defines print styles: only `#schedule-card` and `#report-card` are visible when printing.
 - Loading states (design: `../be/external-files/loading_system.html`). Use violet (`brand-*`) and grays only, never income/expense colors:
-  - Brand loader (`app-brand-loader`): app start only, at most ~2 s.
+  - Brand loader: app start only. It's static markup inside `<app-root>` in `src/index.html` (it must show before Angular runs) and disappears when the app renders.
   - Skeleton (`.skel` in `styles.css`): first load of a screen; shape it like the real content so nothing shifts when data arrives.
   - Spinner (`app-spinner`, `sm` in chips and next to text, `md` in buttons): one element working. Pair it with a word ("Guardando…").
   - Button in flight: same width, disabled, label replaced by `app-spinner` (`on-accent` on the primary button) plus a short label.

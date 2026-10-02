@@ -87,7 +87,7 @@ class BudgetScreenService(
         return BudgetScreenResponse(
             period = from,
             card = card?.let { account ->
-                cardSummary(account, savings, lines.filter { it.account.id == account.id }, ::rd, categories, next.minusDays(1))
+                cardSummary(account, savings, lines.filter { it.account.id == account.id }, ::rd, from, next.minusDays(1))
             },
             savings = savings?.let { account ->
                 savingsSummary(account, from, next, loanPayments.map { (_, payment) -> payment },
@@ -238,20 +238,20 @@ class BudgetScreenService(
         savings: Account?,
         cardLines: List<StatementLine>,
         rd: (StatementLine) -> BigDecimal,
-        categories: List<BudgetCategoryRow>,
+        from: LocalDate,
         monthEnd: LocalDate,
     ): BudgetCardSummary {
         val charges = cardLines.filter { it.type == StatementLineType.DEBIT }
-        val budget = categories
-            .filter { ApiStatementType.CREDIT_CARD in it.origins }
-            .mapNotNull { it.budget }
-            .sum()
+        // The card's own budget carries forward: the latest one saved for this month or before. A saved 0 clears it.
+        val budget = budgetRepo.findTopByAccountIdAndPeriodLessThanEqualOrderByPeriodDesc(card.id, from)
+            ?.takeIf { it.amount.signum() > 0 }
         return BudgetCardSummary(
             accountId = card.id,
             name = card.name,
             icon = card.icon,
             spent = charges.filter { it.journalLine != null }.sumOf(rd).toDouble(),
-            budget = budget.takeIf { it > 0 },
+            budget = budget?.amount?.toDouble(),
+            budgetFromMonth = budget?.period,
             usdRate = exchangeRateRepo.findTopByContextOrderByRateDateDesc(RateContext.CREDIT_CARD)?.value?.toDouble(),
             statement = cardStatement(card, savings, monthEnd),
         )

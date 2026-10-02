@@ -31,13 +31,13 @@ import { CardBudgetView, CardSummary } from '../../models/budget.models';
       <div class="flex items-center gap-2.5">
         <app-progress-ring [pct]="pct()" [level]="level()" [size]="40" />
         <div class="min-w-0">
-          <p class="flex items-center gap-1 text-xs text-gray-500">
+          <p class="flex items-center gap-1 text-meta text-gray-500">
             <app-icon [name]="card().icon" [size]="12" /> {{ text.kind[kind] }}
           </p>
-          <p class="text-sm font-medium text-gray-900 tabular-nums whitespace-nowrap">{{ card().spent | money }}</p>
+          <p class="text-body font-medium text-gray-900 tabular-nums whitespace-nowrap">{{ card().spent | money }}</p>
           @if (!editingBudget()) {
             <button type="button" (click)="startBudgetEdit()" [attr.aria-label]="text.editCardBudget"
-              class="group inline-flex items-center gap-1 text-xs text-gray-400 tabular-nums whitespace-nowrap hover:text-gray-900 transition-colors">
+              class="group inline-flex items-center gap-1 text-meta text-gray-400 tabular-nums whitespace-nowrap hover:text-gray-900 transition-colors">
               @if (budgetValue() !== null) {
                 {{ text.of }} {{ budgetValue() | money }}
               } @else {
@@ -47,18 +47,18 @@ import { CardBudgetView, CardSummary } from '../../models/budget.models';
             </button>
             @switch (budgetHint()) {
               @case ('carried') {
-                <p class="text-[11px] text-gray-400">{{ text.sameAs(carriedMonth()) }}</p>
+                <p class="text-caption text-gray-400">{{ text.sameAs(carriedMonth()) }}</p>
               }
               @case ('unsaved') {
-                <p class="text-[11px] text-gray-900">• {{ text.unsaved }}</p>
+                <p class="text-caption text-gray-900">• {{ text.unsaved }}</p>
               }
               @case ('saved') {
-                <p class="flex items-center gap-0.5 text-[11px] text-gray-500" role="status">
+                <p class="flex items-center gap-0.5 text-caption text-gray-500" role="status">
                   <app-icon [name]="icons.Check" [size]="12" /> {{ text.saved }}
                 </p>
               }
               @case ('none') {
-                <p class="text-[11px] text-gray-400">{{ text.setCardBudgetHint }}</p>
+                <p class="text-caption text-gray-400">{{ text.setCardBudgetHint }}</p>
               }
             }
           } @else {
@@ -66,21 +66,21 @@ import { CardBudgetView, CardSummary } from '../../models/budget.models';
               <input #budgetField type="number" inputmode="decimal" enterkeyhint="done" min="0" step="100" [value]="budgetValue() ?? ''"
                 [attr.aria-label]="text.cardBudget" (keydown.enter)="finishBudgetEdit(budgetField)"
                 (keydown.escape)="$event.stopPropagation(); editingBudget.set(false)"
-                class="w-24 px-1.5 py-0.5 text-xs text-gray-900 tabular-nums bg-white rounded-md border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-300" />
+                class="w-24 px-1.5 py-0.5 text-body text-gray-900 tabular-nums bg-white rounded-md border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-300" />
               <button type="button" (click)="finishBudgetEdit(budgetField)"
-                class="text-xs text-gray-700 underline underline-offset-2 hover:text-gray-900">
+                class="text-meta text-gray-700 underline underline-offset-2 hover:text-gray-900">
                 {{ text.done }}
               </button>
             </div>
             @if (budgetUnreadable()) {
-              <p class="mt-0.5 text-[11px] text-gray-900" role="alert">{{ text.unreadableNumber }}</p>
+              <p class="mt-0.5 text-caption text-gray-900" role="alert">{{ text.unreadableNumber }}</p>
             }
           }
         </div>
       </div>
 
       @if (card().statement; as st) {
-        <div class="mt-3 pt-2 border-t border-gray-100 flex flex-col gap-1 flex-1 text-xs tabular-nums">
+        <div class="mt-3 pt-2 border-t border-gray-100 flex flex-col gap-1 flex-1 text-meta tabular-nums">
           <p class="text-gray-500">{{ text.statement }} {{ st.cycleStart | shortDate }} – {{ st.cutOffDate | shortDate }}</p>
           @if (st.rd.previousBalance !== null) {
             <div class="flex justify-between gap-2">
@@ -175,7 +175,7 @@ import { CardBudgetView, CardSummary } from '../../models/budget.models';
         </div>
       } @else if (editingRate()) {
         <!-- "Poner tasa" with no card statement this month: the rate field alone -->
-        <div class="mt-3 pt-2 border-t border-gray-100 text-xs tabular-nums">
+        <div class="mt-3 pt-2 border-t border-gray-100 text-meta tabular-nums">
           <ng-container *ngTemplateOutlet="rateEditor" />
         </div>
       }
@@ -197,7 +197,7 @@ import { CardBudgetView, CardSummary } from '../../models/budget.models';
           <input [id]="rateId" #rate type="number" inputmode="decimal" enterkeyhint="done" min="0" step="0.01"
             [value]="card().usdRate ?? ''" [disabled]="savingRate()" (keydown.enter)="submitRate(rate)"
             (input)="rateToConfirm.set(null); rateUnreadable.set(false)"
-            class="w-20 px-2 py-1 text-xs text-gray-900 tabular-nums bg-white rounded-md border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-300" />
+            class="w-20 px-2 py-1 text-body text-gray-900 tabular-nums bg-white rounded-md border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-300" />
           <button type="button" (click)="submitRate(rate)" [disabled]="savingRate() || rateToConfirm() !== null"
             class="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-gray-200 text-gray-700 hover:border-gray-400 disabled:opacity-40">
             @if (savingRate()) {

@@ -17,7 +17,7 @@ import { BUDGET_TEXT } from '../../budget.texts';
       <div class="flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-start">
         <app-month-picker [value]="period()" [disabled]="busy()" (valueChange)="periodChange.emit($event)" />
         <button type="button" (click)="toggleUpload.emit()" [attr.aria-expanded]="uploadOpen()"
-          class="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs text-gray-600 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-colors"
+          class="inline-flex items-center gap-1 px-2.5 py-1.5 text-meta text-gray-600 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-colors"
           [class.border-gray-900]="uploadOpen()">
           <app-icon [name]="icons.Refresh" [size]="14" />
           {{ text.update }}
@@ -25,7 +25,7 @@ import { BUDGET_TEXT } from '../../budget.texts';
       </div>
     </div>
     @if (summary(); as s) {
-      <p animate.enter="fade-in" class="mt-1 text-xs text-gray-500" role="status">{{ s }}</p>
+      <p animate.enter="fade-in" class="mt-1 text-meta text-gray-500" role="status">{{ s }}</p>
     }
   `,
 })

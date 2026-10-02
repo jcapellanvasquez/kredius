@@ -25,7 +25,7 @@ export interface BudgetEdit {
         <p class="flex items-center gap-1.5 mb-1.5 text-base font-medium text-gray-900">
           <app-icon [name]="icons.Alert" [size]="16" class="text-gray-500" />
           {{ text.uncategorized }}
-          <span class="text-sm font-normal text-gray-500">({{ pendingCount() }})</span>
+          <span class="text-body font-normal text-gray-500">({{ pendingCount() }})</span>
         </p>
         @for (line of uncategorized(); track line.lineId) {
           <app-transaction-row animate.leave="line-leave" [line]="line" [options]="options()" [optionGroups]="optionGroups()" [uiState]="lineStates().get(line.lineId)"

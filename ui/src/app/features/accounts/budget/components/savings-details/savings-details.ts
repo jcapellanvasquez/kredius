@@ -14,7 +14,7 @@ import { SavingsSummary } from '../../models/budget.models';
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'block' },
   template: `
-    <div class="max-w-md flex flex-col gap-3 text-xs tabular-nums">
+    <div class="max-w-md flex flex-col gap-3 text-meta tabular-nums">
       @if (savings().bankBalance; as bb) {
         <div class="flex flex-col gap-0.5">
           <div class="flex flex-wrap justify-between gap-x-2">

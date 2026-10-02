@@ -16,7 +16,7 @@
 
   <div class="relative">
     <button #trigger type="button" (click)="toggle(trigger)" [disabled]="saving()" [attr.aria-expanded]="open()"
-      class="inline-flex items-center gap-0.5 px-2.5 py-1 rounded-full border border-gray-200 text-xs text-gray-500 hover:border-gray-400 disabled:opacity-40 transition-colors">
+      class="inline-flex items-center gap-0.5 px-2.5 py-1 rounded-full border border-gray-200 text-meta text-gray-500 hover:border-gray-400 disabled:opacity-40 transition-colors">
       {{ text.other }}
       <app-icon [name]="icons.ChevronDown" [size]="12" />
     </button>
@@ -28,7 +28,7 @@
         [style.left.px]="panelLeft()">
         <label class="flex items-center gap-1.5 px-2 py-1.5 mb-1 rounded-md border border-gray-200 focus-within:border-gray-400">
           <app-icon [name]="icons.Search" [size]="14" class="text-gray-400" />
-          <input type="text" class="flex-1 min-w-0 text-xs outline-none" [placeholder]="text.searchCategory"
+          <input type="text" class="flex-1 min-w-0 text-body outline-none" [placeholder]="text.searchCategory"
             [attr.aria-label]="text.searchCategory" [value]="query()" (input)="onSearch($event)" />
         </label>
         <ul class="max-h-56 overflow-y-auto">
@@ -38,11 +38,11 @@
             </li>
           } @empty {
             @if (filteredGroups().length === 0) {
-              <li class="px-2 py-1.5 text-xs text-gray-400">{{ text.noMatches }}</li>
+              <li class="px-2 py-1.5 text-meta text-gray-400">{{ text.noMatches }}</li>
             }
           }
           @for (group of filteredGroups(); track group.label) {
-            <li class="px-2 pt-2 pb-1 text-xs font-medium text-gray-400" role="presentation">{{ group.label }}</li>
+            <li class="px-2 pt-2 pb-1 text-meta font-medium text-gray-400" role="presentation">{{ group.label }}</li>
             @for (opt of group.options; track opt.accountId) {
               <li>
                 <ng-container *ngTemplateOutlet="option; context: { $implicit: opt }" />
@@ -56,15 +56,15 @@
 
   @switch (state()) {
     @case (states.Saving) {
-      <span class="text-xs text-gray-500" role="status">{{ text.saving }}</span>
+      <span class="text-meta text-gray-500" role="status">{{ text.saving }}</span>
     }
     @case (states.Saved) {
-      <span class="inline-flex items-center gap-0.5 text-xs text-gray-500" role="status">
+      <span class="inline-flex items-center gap-0.5 text-meta text-gray-500" role="status">
         <app-icon [name]="icons.Check" [size]="12" /> {{ text.saved }}
       </span>
     }
     @case (states.Error) {
-      <span class="inline-flex items-center gap-0.5 text-xs text-gray-900" role="alert">
+      <span class="inline-flex items-center gap-0.5 text-meta text-gray-900" role="alert">
         <app-icon [name]="icons.Alert" [size]="12" /> {{ text.saveFailed }}
       </span>
     }
@@ -73,7 +73,7 @@
 
 <ng-template #option let-opt>
   <button type="button" (click)="pick(opt.accountId)"
-    class="w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-md text-left text-xs text-gray-700 hover:bg-gray-50">
+    class="w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-md text-left text-meta text-gray-700 hover:bg-gray-50">
     <span class="flex items-center gap-1.5">
       <app-icon [name]="opt.icon" [size]="14" class="text-gray-400" />
       {{ opt.name }}

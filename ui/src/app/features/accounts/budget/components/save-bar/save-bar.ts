@@ -15,7 +15,7 @@ const HOST_CLASS =
   'xl:bg-none xl:pt-2 xl:pb-4';
 
 const BUTTON_BASE =
-  'inline-flex items-center justify-center gap-1.5 text-sm font-medium text-white bg-brand-500 rounded-lg ' +
+  'inline-flex items-center justify-center gap-1.5 text-body font-medium text-white bg-brand-500 rounded-lg ' +
   'hover:bg-brand-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors';
 
 @Component({
@@ -25,7 +25,7 @@ const BUTTON_BASE =
   host: { '[class]': 'hostClass()' },
   template: `
     <div class="xl:flex xl:items-center xl:gap-3 xl:rounded-lg xl:border xl:border-gray-200 xl:bg-white xl:shadow-lg xl:pl-4 xl:pr-2 xl:py-2">
-      <p class="hidden xl:flex items-center gap-1.5 flex-1 min-w-0 text-sm text-gray-600" role="status">
+      <p class="hidden xl:flex items-center gap-1.5 flex-1 min-w-0 text-body text-gray-600" role="status">
         @switch (state()) {
           @case (states.Saving) { {{ text.saving }} }
           @case (states.Saved) {

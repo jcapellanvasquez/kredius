@@ -19,12 +19,12 @@ import { SavingsSummary } from '../../models/budget.models';
   host: { class: 'block' },
   template: `
     <div class="card p-3 h-full flex flex-col">
-      <p class="flex items-center gap-1 text-xs text-gray-500">
+      <p class="flex items-center gap-1 text-meta text-gray-500">
         <app-icon [name]="savings().icon" [size]="12" /> {{ text.kind[kind] }}
       </p>
-      <p class="text-sm font-medium text-gray-900 tabular-nums">{{ savings().balance | money }}</p>
+      <p class="text-body font-medium text-gray-900 tabular-nums">{{ savings().balance | money }}</p>
       @if (trend(); as t) {
-        <p class="text-xs tabular-nums">
+        <p class="text-meta tabular-nums">
           @switch (t.direction) {
             @case ('up') {
               <span class="sr-only">{{ text.savingsTrend('up', previousMonth()) }}</span>
@@ -44,7 +44,7 @@ import { SavingsSummary } from '../../models/budget.models';
         </p>
       }
 
-      <div class="mt-3 pt-2 border-t border-gray-100 flex flex-col gap-1 flex-1 text-xs tabular-nums">
+      <div class="mt-3 pt-2 border-t border-gray-100 flex flex-col gap-1 flex-1 text-meta tabular-nums">
         <p class="text-gray-500">{{ text.outsideCategories }}</p>
         <div class="flex justify-between gap-2">
           <span class="text-gray-500">{{ text.monthIncome }}</span>

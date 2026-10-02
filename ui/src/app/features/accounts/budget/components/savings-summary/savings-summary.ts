@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, input, output } from '@an
 import { IconComponent } from '../../../../../shared/components/icon/icon';
 import { UiIcon } from '../../../../../shared/constants/ui-icons';
 import { MoneyPipe } from '../../../../../shared/pipes/money.pipe';
+import { Period, monthName, shiftPeriod } from '../../../../../shared/utils/period';
 import { BALANCE_TOLERANCE } from '../../budget.constants';
 import { StatementAccountKind } from '../../budget.enums';
 import { BUDGET_TEXT } from '../../budget.texts';
@@ -22,6 +23,26 @@ import { SavingsSummary } from '../../models/budget.models';
         <app-icon [name]="savings().icon" [size]="12" /> {{ text.kind[kind] }}
       </p>
       <p class="text-sm font-medium text-gray-900 tabular-nums">{{ savings().balance | money }}</p>
+      @if (trend(); as t) {
+        <p class="text-xs tabular-nums">
+          @switch (t.direction) {
+            @case ('up') {
+              <span class="sr-only">{{ text.savingsTrend('up', previousMonth()) }}</span>
+              <span class="font-medium text-income" aria-hidden="true">↑</span>
+              <span class="font-medium text-income">{{ t.change | money: 2 : false }}</span>
+            }
+            @case ('down') {
+              <span class="sr-only">{{ text.savingsTrend('down', previousMonth()) }}</span>
+              <span class="font-medium text-bar-warning" aria-hidden="true">↓</span>
+              <span class="font-medium text-bar-warning">{{ t.change | money: 2 : false }}</span>
+            }
+            @default {
+              <span class="text-gray-400">= {{ text.noChange }}</span>
+            }
+          }
+          <span class="text-gray-400">{{ text.versus(previousMonth()) }}</span>
+        </p>
+      }
 
       <div class="mt-3 pt-2 border-t border-gray-100 flex flex-col gap-1 flex-1 text-xs tabular-nums">
         <p class="text-gray-500">{{ text.outsideCategories }}</p>
@@ -66,6 +87,8 @@ import { SavingsSummary } from '../../models/budget.models';
 })
 export class SavingsSummaryComponent {
   readonly savings = input.required<SavingsSummary>();
+  /** The month shown, for the "vs <previous month>" label. */
+  readonly period = input.required<Period>();
   /** Whether the shared details panel shows the savings details. */
   readonly detailsOpen = input(false);
   /** Id of the details panel, for `aria-controls`. */
@@ -85,6 +108,16 @@ export class SavingsSummaryComponent {
     const s = this.savings();
     return !!s.bankBalance || s.loanPayments.length > 0 || s.cardPayments.length > 0;
   });
+
+  /** Change against the previous month's closing balance; null in the account's first month. */
+  protected readonly trend = computed(() => {
+    const { balance, previousBalance } = this.savings();
+    if (previousBalance === null) return null;
+    const diff = balance - previousBalance;
+    const direction = Math.abs(diff) < BALANCE_TOLERANCE ? 'flat' : diff > 0 ? 'up' : 'down';
+    return { direction, change: Math.abs(diff) } as const;
+  });
+  protected readonly previousMonth = computed(() => monthName(shiftPeriod(this.period(), -1)));
 
   protected readonly cardPaid = computed(() => this.savings().cardPayments.reduce((sum, p) => sum + p.amount, 0));
   protected readonly loansPaid = computed(() => this.savings().loanPayments.reduce((sum, p) => sum + p.amount, 0));

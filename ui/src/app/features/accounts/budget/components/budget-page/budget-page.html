@@ -70,7 +70,7 @@
         <!-- Heading keeps both columns' first boxes aligned on wide screens -->
         <section>
           <h2 class="text-sm font-medium text-gray-500 mb-2">{{ text.summary }}</h2>
-          <app-summary-cards [card]="screen.card" [savings]="screen.savings" [savingRate]="store.savingRate()"
+          <app-summary-cards [card]="screen.card" [savings]="screen.savings" [period]="store.period()" [savingRate]="store.savingRate()"
             [rateRequest]="store.rateRequest()" (saveRate)="store.saveUsdRate($event)" />
         </section>
 

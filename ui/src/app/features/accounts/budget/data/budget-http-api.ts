@@ -158,6 +158,7 @@ export class BudgetHttpApi extends BudgetApi {
         name: savings.name,
         icon: savings.icon ?? KIND_ICON[StatementAccountKind.Savings],
         balance: savings.balance,
+        previousBalance: savings.previousBalance ?? null,
         income: savings.income,
         loanPayments: (savings.loanPayments ?? []).map(toLoanPayment),
         cardPayments: savings.cardPayments ?? [],

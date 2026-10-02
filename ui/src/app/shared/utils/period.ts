@@ -50,6 +50,12 @@ export function periodLabel(period: Period): string {
   return `${month.replace('.', '')} ${year}`;
 }
 
+/** e.g. "agosto" */
+export function monthName(period: Period): string {
+  const { year, monthIndex } = parsePeriod(period);
+  return new Date(year, monthIndex, 1).toLocaleDateString(APP_LOCALE, { month: 'long' });
+}
+
 /** True when an ISO date (`YYYY-MM-DD…`) falls inside the period's month. */
 export function isInPeriod(isoDate: string, period: Period): boolean {
   return isoDate.slice(0, 7) === period.slice(0, 7);

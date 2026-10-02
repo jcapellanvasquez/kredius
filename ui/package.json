@@ -7,6 +7,9 @@
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
+    "e2e": "playwright test",
+    "e2e:report": "playwright show-report",
+    "e2e:typecheck": "tsc -p e2e/tsconfig.json",
     "lint": "ng lint",
     "generate": "ng-openapi-gen"
   },
@@ -42,6 +45,7 @@
     "@angular/build": "^20.3.3",
     "@angular/cli": "^20.3.3",
     "@angular/compiler-cli": "^20.3.0",
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/jasmine": "~5.1.0",
     "angular-eslint": "^22.5.0",

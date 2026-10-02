@@ -1,0 +1,143 @@
+import { Locator, Page, expect, test } from '@playwright/test';
+import { MONTH_PARAM } from './fixtures/budget';
+import { MockApi } from './support/mock-api';
+
+/**
+ * The budget screen at phone and desktop width (projects in playwright.config.ts). Covers the fixes from
+ * the phone testing in be/external-files/statament/mobile-fixes-plan.md: A1 "Otra" menu, A2 summary cards,
+ * A3 names, A4 rate check, B categorize in place, C text sizes.
+ */
+
+let api: MockApi;
+
+const isPhone = () => test.info().project.name === 'phone';
+
+async function openBudget(page: Page): Promise<void> {
+  api = new MockApi();
+  await api.install(page);
+  await page.goto(`/accounts/budget?month=${MONTH_PARAM}`);
+  await expect(uncategorizedTitle(page)).toBeVisible();
+}
+
+/** The "Sin categorizar (n)" title; `count` checks the number too. */
+const uncategorizedTitle = (page: Page, count?: number) =>
+  page.locator('p').filter({ hasText: count === undefined ? /Sin categorizar \(\d+\)/ : `Sin categorizar (${count})` });
+const row = (page: Page, text: string) => page.locator('app-transaction-row').filter({ hasText: text });
+/**
+ * Distance from the "Sin categorizar" title: the row's place in the list. Viewport positions change when
+ * Playwright scrolls to click (inside the layout's scroll container on phones, so window.scrollY stays 0).
+ */
+const topInList = async (page: Page, locator: Locator) =>
+  (await box(locator)).y - (await box(uncategorizedTitle(page))).y;
+const box = async (locator: Locator) => {
+  const b = await locator.boundingBox();
+  expect(b, 'element is on the page').not.toBeNull();
+  return b!;
+};
+
+test.beforeEach(async ({ page }) => openBudget(page));
+
+test.afterEach(async ({ page }, info) => {
+  await info.attach('screen', { body: await page.screenshot({ fullPage: true }), contentType: 'image/png' });
+  expect(api.unhandled, 'API calls the mock doesn\'t answer').toEqual([]);
+});
+
+test('nothing on the screen is wider than the viewport', async ({ page }) => {
+  const { scroll, viewport } = await page.evaluate(() => ({
+    scroll: document.documentElement.scrollWidth, viewport: window.innerWidth,
+  }));
+  expect(scroll).toBeLessThanOrEqual(viewport);
+});
+
+test('A1: the "Otra" menu opens inside the screen', async ({ page }) => {
+  const viewport = page.viewportSize()!;
+  for (const text of ['Pago Intereses CA', 'Google YouTube']) {
+    await row(page, text).getByRole('button', { name: 'Otra' }).click();
+    const panel = page.getByRole('textbox', { name: 'Buscar categoría' }).locator('xpath=ancestor::div[contains(@class, "absolute")][1]');
+    const b = await box(panel);
+    expect(b.x, `${text}: left edge`).toBeGreaterThanOrEqual(0);
+    expect(b.x + b.width, `${text}: right edge`).toBeLessThanOrEqual(viewport.width);
+    await page.keyboard.press('Escape');
+  }
+});
+
+test('A2: summary cards stack on phones, details open under the card that opened them', async ({ page }) => {
+  const card = page.locator('app-card-summary');
+  const savings = page.locator('app-savings-summary');
+  const [c, s] = [await box(card), await box(savings)];
+  if (isPhone()) {
+    expect(s.y, 'savings below the card').toBeGreaterThanOrEqual(c.y + c.height - 1);
+    expect(Math.abs(s.x - c.x)).toBeLessThan(2);
+  } else {
+    expect(Math.abs(s.y - c.y), 'side by side').toBeLessThan(2);
+  }
+
+  await card.getByRole('button', { name: /Ver detalles/ }).click();
+  const panel = page.getByRole('region', { name: 'Detalles de la tarjeta' });
+  const p = await box(panel);
+  const s2 = await box(savings);
+  if (isPhone()) {
+    expect(p.y, 'panel under the card').toBeGreaterThanOrEqual(c.y + c.height - 1);
+    expect(p.y + p.height, 'panel above savings').toBeLessThanOrEqual(s2.y + 1);
+  } else {
+    expect(p.y, 'panel below both cards').toBeGreaterThanOrEqual(Math.max(c.y + c.height, s2.y + s2.height) - 1);
+  }
+});
+
+test('A3: long descriptions use up to 2 lines and open in full on tap', async ({ page }) => {
+  const description = row(page, '818700000').getByRole('button', { name: /Imp\. transferencia/ });
+  await expect(description).toHaveAttribute('aria-expanded', 'false');
+  await expect(description).toHaveClass(/line-clamp-2/);
+  await description.click();
+  await expect(description).toHaveAttribute('aria-expanded', 'true');
+  await expect(description).not.toHaveClass(/line-clamp-2/);
+});
+
+test('A4: a rate far from the last one asks before saving', async ({ page }) => {
+  const card = page.locator('app-card-summary');
+  await card.getByRole('button', { name: 'cambiar', exact: true }).click();
+  await card.getByLabel('Tasa US$').fill('6140');
+  await card.getByRole('button', { name: 'Guardar', exact: true }).click();
+
+  await expect(card.getByRole('alert')).toContainText('¿Seguro?');
+  expect(api.writes(/exchange-rates/), 'nothing saved before confirming').toEqual([]);
+
+  await card.getByRole('button', { name: 'Sí, guardar' }).click();
+  await expect.poll(() => api.writes(/exchange-rates/).map(c => c.body)).toEqual([{ value: 6140 }]);
+});
+
+test('A4: a usual rate saves right away, rounded to 2 decimals', async ({ page }) => {
+  const card = page.locator('app-card-summary');
+  await card.getByRole('button', { name: 'cambiar', exact: true }).click();
+  await card.getByLabel('Tasa US$').fill('62.305');
+  await card.getByLabel('Tasa US$').press('Enter');
+  await expect.poll(() => api.writes(/exchange-rates/).map(c => c.body)).toEqual([{ value: 62.31 }]);
+});
+
+test('B: a categorized line stays in place as a confirmation row; "Cambiar" recategorizes', async ({ page }) => {
+  const line = row(page, 'SUPERMERCADO PLAZA CENTRAL');
+  const before = await topInList(page, line);
+  await expect(uncategorizedTitle(page, 5)).toBeVisible();
+
+  await line.getByRole('button', { name: 'Supermercado', exact: true }).click();
+  const confirmation = line.getByRole('status');
+  await expect(confirmation).toContainText('→ Supermercado');
+  await expect(uncategorizedTitle(page, 4), 'the count leaves it out').toBeVisible();
+  expect(Math.abs(await topInList(page, line) - before), 'the row didn\'t move').toBeLessThan(2);
+  expect(api.writes(/statement-lines\/102$/)).toHaveLength(1);
+
+  await line.getByRole('button', { name: 'Cambiar', exact: true }).click();
+  await line.getByRole('button', { name: 'Hogar', exact: true }).click();
+  await expect(line.getByRole('status')).toContainText('→ Hogar');
+  expect(api.writes(/statement-lines\/102\/recategorize$/), 'Cambiar recategorizes').toHaveLength(1);
+  expect(api.writes(/statement-lines\/102$/), 'no second categorize').toHaveLength(1);
+});
+
+test('C: text is 16px on phones and 14px on desktop; inputs are 16px on phones', async ({ page }) => {
+  const fontSize = (locator: Locator) => locator.evaluate(el => getComputedStyle(el).fontSize);
+  const description = row(page, 'SUPERMERCADO PLAZA CENTRAL').getByRole('button', { name: /SUPERMERCADO/ });
+  const budgetInput = page.locator('app-budget-input input').first();
+
+  expect(await fontSize(description)).toBe(isPhone() ? '16px' : '14px');
+  expect(await fontSize(budgetInput)).toBe(isPhone() ? '16px' : '14px');
+});

@@ -14,4 +14,5 @@ export enum UiIcon {
   Alert        = 'alert-circle',
   Search       = 'search',
   Info         = 'info-circle',
+  Pencil       = 'pencil',
 }

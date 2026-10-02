@@ -5,7 +5,6 @@ import {
 } from '@angular/core';
 import { IconComponent } from '../../../../../shared/components/icon/icon';
 import { ProgressRingComponent } from '../../../../../shared/components/progress-ring/progress-ring';
-import { CURRENCY_PREFIX, USD_PREFIX } from '../../../../../shared/constants/locale';
 import { MoneyPipe } from '../../../../../shared/pipes/money.pipe';
 import { ShortDatePipe } from '../../../../../shared/pipes/short-date.pipe';
 import { ProgressLevel, percentOf } from '../../../../../shared/utils/progress-level';
@@ -15,14 +14,17 @@ import { StatementAccountKind } from '../../budget.enums';
 import { BUDGET_TEXT } from '../../budget.texts';
 import { CardSummary } from '../../models/budget.models';
 
-/** Credit card: % of its budget consumed, plus the month's statement result (charges − payments). */
+/**
+ * Credit card, collapsed: % of its budget consumed and the statement's key RD$ figures.
+ * The full statement (RD$/US$ table, balance check) is in the shared details panel ("Ver detalles").
+ */
 @Component({
   selector: 'app-card-summary',
   imports: [IconComponent, NgTemplateOutlet, ProgressRingComponent, MoneyPipe, ShortDatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'block' },
   template: `
-    <div class="card p-3 h-full">
+    <div class="card p-3 h-full flex flex-col">
       <div class="flex items-center gap-2.5">
         <app-progress-ring [pct]="pct()" [level]="level()" [size]="40" />
         <div class="min-w-0">
@@ -41,56 +43,25 @@ import { CardSummary } from '../../models/budget.models';
       </div>
 
       @if (card().statement; as st) {
-        <div class="mt-3 pt-2 border-t border-gray-100 text-xs tabular-nums">
-          <p class="text-gray-500 mb-1">
-            {{ text.statement }} {{ st.cycleStart | shortDate }} – {{ st.cutOffDate | shortDate }}
-            @if (st.paymentDueDate) { · {{ text.dueDate }} {{ st.paymentDueDate | shortDate }} }
-          </p>
-          <table class="w-full">
-            @if (st.usd) {
-              <thead>
-                <tr class="text-gray-400">
-                  <th class="sr-only">{{ text.cutOff }}</th>
-                  <th class="text-right font-normal">{{ prefix.rd }}</th>
-                  <th class="text-right font-normal pl-2">{{ prefix.usd }}</th>
-                </tr>
-              </thead>
-            }
-            <tbody>
-              @for (row of statementRows(); track row.label) {
-                <tr [class.font-medium]="row.strong" [class.text-gray-900]="row.strong">
-                  <th scope="row" class="text-left font-normal text-gray-500 pr-2">{{ row.label }}</th>
-                  <td class="text-right whitespace-nowrap">{{ row.rd | money: 2 : !st.usd }}</td>
-                  @if (st.usd) {
-                    <td class="text-right whitespace-nowrap pl-2">{{ row.usd | money: 2 : false }}</td>
-                  }
-                </tr>
-              }
-            </tbody>
-          </table>
-
-          <div class="mt-2 flex flex-col gap-0.5" role="status">
-            <div class="flex flex-wrap justify-between gap-x-2">
-              <span class="text-gray-500">{{ text.ledgerBalanceAt }} {{ st.cutOffDate | shortDate }}</span>
-              <span class="ml-auto whitespace-nowrap text-gray-700">{{ st.check.ledger | money }}</span>
+        <div class="mt-3 pt-2 border-t border-gray-100 flex flex-col gap-1 flex-1 text-xs tabular-nums">
+          <p class="text-gray-500">{{ text.statement }} {{ st.cycleStart | shortDate }} – {{ st.cutOffDate | shortDate }}</p>
+          @if (st.rd.previousBalance !== null) {
+            <div class="flex justify-between gap-2">
+              <span class="text-gray-500">{{ text.previousBalance }}</span>
+              <span class="whitespace-nowrap text-gray-700">{{ st.rd.previousBalance | money }}</span>
             </div>
-            <div class="flex flex-wrap justify-between gap-x-2">
-              <span class="text-gray-500">{{ text.bankBalanceAt }} {{ st.cutOffDate | shortDate }}</span>
-              <span class="ml-auto whitespace-nowrap text-gray-700">{{ st.rd.balance | money }}</span>
+          }
+          <div class="flex justify-between gap-2">
+            <span class="text-gray-500">{{ text.charges }}</span>
+            <span class="whitespace-nowrap text-gray-700">{{ st.rd.charges | money }}</span>
+          </div>
+          @if (st.rd.balance !== null) {
+            <div class="flex justify-between gap-2 font-medium text-gray-900">
+              <span>{{ text.statementBalance }}</span>
+              <span class="whitespace-nowrap">{{ st.rd.balance | money }}</span>
             </div>
-            @if (st.check.pendingCount > 0) {
-              <div class="flex flex-wrap justify-between gap-x-2 pl-2">
-                <span class="text-gray-500">{{ text.cardPending(st.check.pendingCount) }}</span>
-                <span class="ml-auto whitespace-nowrap text-gray-700">{{ st.check.pending | money }}</span>
-              </div>
-            }
-            @if (hasPaymentsToReconcile()) {
-              <div class="flex flex-wrap justify-between gap-x-2 pl-2">
-                <span class="text-gray-500">{{ text.cardPaymentsToReconcile }}</span>
-                <span class="ml-auto whitespace-nowrap text-gray-700">{{ st.check.paymentsToReconcile | money }}</span>
-              </div>
-              <p class="pl-2 text-gray-400">{{ text.cardPaymentsHint }}</p>
-            }
+          }
+          <div role="status">
             @switch (gapState()) {
               @case ('matches') {
                 <p class="flex items-center gap-0.5 text-gray-500">
@@ -109,17 +80,18 @@ import { CardSummary } from '../../models/budget.models';
                 </div>
               }
             }
-            @if (st.check.usdCharges > 0) {
-              <p class="text-gray-500">
-                {{ text.usdPosted(st.check.usdPosted, st.check.usdCharges) }}
-                @if (card().usdRate === null) { · {{ text.usdNeedsRate }} }
-              </p>
-            }
           </div>
 
           @if (st.usd || editingRate()) {
             <ng-container *ngTemplateOutlet="rateEditor" />
           }
+
+          <button type="button" (click)="toggleDetails.emit()" [attr.aria-expanded]="detailsOpen()" [attr.aria-controls]="detailsId()"
+            class="mt-auto pt-1 self-end inline-flex items-center gap-0.5 hover:text-gray-900 transition-colors"
+            [class.text-gray-900]="detailsOpen()" [class.text-gray-500]="!detailsOpen()">
+            {{ detailsOpen() ? text.hideDetails : text.showDetails }}
+            <app-icon [name]="icons.ChevronDown" [size]="12" class="transition-transform" [class.rotate-180]="detailsOpen()" />
+          </button>
         </div>
       } @else if (editingRate()) {
         <!-- "Poner tasa" with no card statement this month: the rate field alone -->
@@ -130,9 +102,9 @@ import { CardSummary } from '../../models/budget.models';
     </div>
 
     <ng-template #rateEditor>
-      <div class="mt-2 flex flex-wrap items-center gap-1.5 text-gray-500">
+      <div class="flex flex-wrap items-center gap-1.5 text-gray-500">
         @if (card().usdRate !== null && !editingRate()) {
-          <span>{{ text.usdRate }}: {{ card().usdRate | money: 2 : false }}</span>
+          <span>{{ text.usdRate }} {{ card().usdRate | money: 2 : false }} ·</span>
           <button type="button" (click)="editingRate.set(true)" class="underline underline-offset-2 hover:text-gray-900">
             {{ text.changeRate }}
           </button>
@@ -161,13 +133,17 @@ export class CardSummaryComponent {
   readonly savingRate = input(false);
   /** Bumped by "Poner tasa" (store.rateRequest): open the rate field, scroll to it and focus it. */
   readonly rateRequest = input(0);
+  /** Whether the shared details panel shows this card's details. */
+  readonly detailsOpen = input(false);
+  /** Id of the details panel, for `aria-controls`. */
+  readonly detailsId = input<string | null>(null);
   readonly saveRate = output<number>();
+  readonly toggleDetails = output<void>();
 
   protected readonly text = BUDGET_TEXT;
   protected readonly kind = StatementAccountKind.CreditCard;
   protected readonly editingRate = signal(false);
   protected readonly rateId = 'card-usd-rate';
-  protected readonly prefix = { rd: CURRENCY_PREFIX, usd: USD_PREFIX };
   protected readonly icons = UiIcon;
 
   private readonly host = inject(ElementRef<HTMLElement>);
@@ -184,31 +160,12 @@ export class CardSummaryComponent {
     });
   }
 
-  protected readonly hasPaymentsToReconcile = computed(
-    () => Math.abs(this.card().statement?.check.paymentsToReconcile ?? 0) >= BALANCE_TOLERANCE,
-  );
-
   /** `matches`: bank = ledger; `explained`: the gap is pending lines and payments; else something's missing. */
   protected readonly gapState = computed(() => {
     const st = this.card().statement;
     if (!st) return null;
     if (Math.abs((st.rd.balance ?? 0) - st.check.ledger) < BALANCE_TOLERANCE) return 'matches';
     return Math.abs(st.check.difference) < BALANCE_TOLERANCE ? 'explained' : 'unexplained';
-  });
-
-  /** Previous balance, charges, credits (negative), balance and minimum payment; empty rows are left out. */
-  protected readonly statementRows = computed(() => {
-    const st = this.card().statement;
-    if (!st) return [];
-    const t = this.text;
-    const rows = [
-      { label: t.previousBalance, rd: st.rd.previousBalance, usd: st.usd?.previousBalance ?? null, strong: false },
-      { label: t.charges, rd: st.rd.charges, usd: st.usd?.charges ?? null, strong: false },
-      { label: t.credits, rd: -st.rd.credits, usd: st.usd ? -st.usd.credits : null, strong: false },
-      { label: t.statementBalance, rd: st.rd.balance, usd: st.usd?.balance ?? null, strong: true },
-      { label: t.minimumPayment, rd: st.rd.minimumPayment, usd: st.usd?.minimumPayment ?? null, strong: false },
-    ];
-    return rows.filter(r => r.rd !== null || r.usd !== null);
   });
 
   /** Ring-specific bands (green / amber / red); category bars keep the gray / amber / red rule. */

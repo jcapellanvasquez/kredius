@@ -76,6 +76,14 @@ export const BUDGET_TEXT = {
   saveRate:         'Guardar',
   changeRate:       'cambiar',
 
+  showDetails:      'Ver detalles',
+  hideDetails:      'Ocultar detalles',
+  cardDetails:      'Detalles de la tarjeta',
+  savingsDetails:   'Detalles de ahorros',
+  /** Savings card: money that moved but isn't in any budget category. */
+  outsideCategories:'Fuera de categorías',
+  monthIncome:      'Ingreso del mes',
+
   loadError:        'No se pudo cargar el presupuesto.',
   loadingMonth:     'Cargando el mes',
   retry:            'Reintentar',

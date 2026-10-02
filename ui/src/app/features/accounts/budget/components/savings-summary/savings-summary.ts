@@ -1,82 +1,76 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { IconComponent } from '../../../../../shared/components/icon/icon';
 import { UiIcon } from '../../../../../shared/constants/ui-icons';
 import { MoneyPipe } from '../../../../../shared/pipes/money.pipe';
-import { ShortDatePipe } from '../../../../../shared/pipes/short-date.pipe';
 import { BALANCE_TOLERANCE } from '../../budget.constants';
 import { StatementAccountKind } from '../../budget.enums';
 import { BUDGET_TEXT } from '../../budget.texts';
 import { SavingsSummary } from '../../models/budget.models';
 
+/**
+ * Savings, collapsed: the balance and the month's money outside the budget categories (income, card
+ * and loan payments), plus whether it matches the bank. Lists and the bank figures are in "Ver detalles".
+ */
 @Component({
   selector: 'app-savings-summary',
-  imports: [IconComponent, MoneyPipe, ShortDatePipe],
+  imports: [IconComponent, MoneyPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'block' },
   template: `
-    <div class="card p-3 h-full">
+    <div class="card p-3 h-full flex flex-col">
       <p class="flex items-center gap-1 text-xs text-gray-500">
         <app-icon [name]="savings().icon" [size]="12" /> {{ text.kind[kind] }}
       </p>
-      <p class="text-base font-medium text-gray-900 tabular-nums">{{ savings().balance | money }}</p>
-      <p class="mt-1 text-xs text-gray-400 tabular-nums">{{ text.income }}: {{ savings().income | money }}</p>
+      <p class="text-sm font-medium text-gray-900 tabular-nums">{{ savings().balance | money }}</p>
 
-      @if (savings().bankBalance; as bb) {
-        <div class="mt-2 flex flex-col gap-0.5 text-xs tabular-nums" role="status">
-          <div class="flex flex-wrap justify-between gap-x-2">
-            <span class="text-gray-500">{{ text.ledgerBalanceAt }} {{ bb.date | shortDate }}</span>
-            <span class="ml-auto whitespace-nowrap text-gray-700">{{ bb.ledger | money }}</span>
-          </div>
-          <div class="flex flex-wrap justify-between gap-x-2">
-            <span class="text-gray-500">{{ text.bankBalanceAt }} {{ bb.date | shortDate }}</span>
-            <span class="ml-auto whitespace-nowrap text-gray-700">{{ bb.bank | money }}</span>
-          </div>
-          @if (difference() === null) {
-            <p class="flex items-center gap-0.5 text-gray-500">
-              <app-icon [name]="icons.Check" [size]="12" /> {{ text.balanceMatches }}
-            </p>
-          } @else {
-            <div class="flex flex-wrap justify-between gap-x-2 font-medium text-gray-900">
-              <span>{{ text.balanceDifference }}</span>
-              <span class="ml-auto whitespace-nowrap">{{ difference() | money }}</span>
-            </div>
-            <p class="text-gray-400">{{ text.balanceDifferenceHint }}</p>
-          }
+      <div class="mt-3 pt-2 border-t border-gray-100 flex flex-col gap-1 flex-1 text-xs tabular-nums">
+        <p class="text-gray-500">{{ text.outsideCategories }}</p>
+        <div class="flex justify-between gap-2">
+          <span class="text-gray-500">{{ text.monthIncome }}</span>
+          <span class="whitespace-nowrap text-gray-700">{{ savings().income | money }}</span>
         </div>
-      }
-
-      @if (savings().loanPayments.length > 0) {
-        <ul class="mt-3 pt-2 border-t border-gray-100 flex flex-col gap-1.5 text-xs tabular-nums" [attr.aria-label]="text.loans">
-          @for (p of savings().loanPayments; track p.loanAccountId + '-' + p.installmentNumber) {
-            <li>
-              <p class="text-gray-700 truncate">{{ p.loanName }}</p>
-              <p class="flex justify-between gap-2">
-                <span class="text-gray-500">{{ text.installment(p.installmentNumber, p.totalInstallments) }}</span>
-                <span class="whitespace-nowrap text-gray-700">{{ p.amount | money }}</span>
+        <div class="flex justify-between gap-2">
+          <span class="text-gray-500">{{ text.cardPayments }}</span>
+          <span class="whitespace-nowrap text-gray-700">{{ cardPaid() | money }}</span>
+        </div>
+        <div class="flex justify-between gap-2">
+          <span class="text-gray-500">{{ text.loans }}</span>
+          <span class="whitespace-nowrap text-gray-700">{{ loansPaid() | money }}</span>
+        </div>
+        @if (savings().bankBalance) {
+          <div role="status">
+            @if (difference() === null) {
+              <p class="flex items-center gap-0.5 text-gray-500">
+                <app-icon [name]="icons.Check" [size]="12" /> {{ text.balanceMatches }}
               </p>
-            </li>
-          }
-        </ul>
-      }
-
-      @if (savings().cardPayments.length > 0) {
-        <div class="mt-3 pt-2 border-t border-gray-100 text-xs tabular-nums">
-          <p class="text-gray-700 mb-0.5">{{ text.cardPayments }}</p>
-          <ul class="flex flex-col gap-0.5" [attr.aria-label]="text.cardPayments">
-            @for (p of savings().cardPayments; track p.lineId) {
-              <li class="flex justify-between gap-2">
-                <span class="text-gray-500">{{ p.date | shortDate }}</span>
-                <span class="whitespace-nowrap text-gray-700">{{ p.amount | money }}</span>
-              </li>
+            } @else {
+              <div class="flex flex-wrap justify-between gap-x-2 font-medium text-gray-900">
+                <span>{{ text.balanceDifference }}</span>
+                <span class="ml-auto whitespace-nowrap">{{ difference() | money }}</span>
+              </div>
             }
-          </ul>
-        </div>
-      }
+          </div>
+        }
+
+        @if (hasDetails()) {
+          <button type="button" (click)="toggleDetails.emit()" [attr.aria-expanded]="detailsOpen()" [attr.aria-controls]="detailsId()"
+            class="mt-auto pt-1 self-end inline-flex items-center gap-0.5 hover:text-gray-900 transition-colors"
+            [class.text-gray-900]="detailsOpen()" [class.text-gray-500]="!detailsOpen()">
+            {{ detailsOpen() ? text.hideDetails : text.showDetails }}
+            <app-icon [name]="icons.ChevronDown" [size]="12" class="transition-transform" [class.rotate-180]="detailsOpen()" />
+          </button>
+        }
+      </div>
     </div>
   `,
 })
 export class SavingsSummaryComponent {
   readonly savings = input.required<SavingsSummary>();
+  /** Whether the shared details panel shows the savings details. */
+  readonly detailsOpen = input(false);
+  /** Id of the details panel, for `aria-controls`. */
+  readonly detailsId = input<string | null>(null);
+  readonly toggleDetails = output<void>();
 
   /** Ledger − bank at the statement date, or null when they match. */
   protected readonly difference = computed(() => {
@@ -85,6 +79,15 @@ export class SavingsSummaryComponent {
     const diff = bb.ledger - bb.bank;
     return Math.abs(diff) < BALANCE_TOLERANCE ? null : diff;
   });
+
+  /** The details panel has the bank check or a payment list to show. */
+  protected readonly hasDetails = computed(() => {
+    const s = this.savings();
+    return !!s.bankBalance || s.loanPayments.length > 0 || s.cardPayments.length > 0;
+  });
+
+  protected readonly cardPaid = computed(() => this.savings().cardPayments.reduce((sum, p) => sum + p.amount, 0));
+  protected readonly loansPaid = computed(() => this.savings().loanPayments.reduce((sum, p) => sum + p.amount, 0));
 
   protected readonly text = BUDGET_TEXT;
   protected readonly icons = UiIcon;

@@ -141,3 +141,11 @@ test('C: text is 16px on phones and 14px on desktop; inputs are 16px on phones',
   expect(await fontSize(description)).toBe(isPhone() ? '16px' : '14px');
   expect(await fontSize(budgetInput)).toBe(isPhone() ? '16px' : '14px');
 });
+
+test('A3: quick compare doesn\'t break a name mid-word next to a long amount (phone)', async ({ page }) => {
+  test.skip(!isPhone(), 'phone layout only');
+  const name = page.locator('app-quick-compare').getByText('Supermercados y colmados del barrio');
+  const lineHeight = await name.evaluate(el => parseFloat(getComputedStyle(el).lineHeight));
+  // Fits on one line at full width; squeezed by the amount it broke as "Supermercado / s y colmados…".
+  expect((await box(name)).height).toBeLessThan(lineHeight * 1.5);
+});

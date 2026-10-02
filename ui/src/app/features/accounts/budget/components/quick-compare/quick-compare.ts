@@ -15,12 +15,14 @@ import { CategoryRowView } from '../../models/budget.models';
     <div class="card p-3.5">
       @for (row of rows(); track row.accountId) {
         <div class="mb-3 last:mb-0">
-          <div class="flex items-center justify-between gap-2 mb-1.5">
-            <span class="flex items-center gap-1.5 min-w-0 text-body font-medium text-gray-900">
+          <!-- The name asks for 12rem; when the amount doesn't fit next to it, the amount wraps under it
+               instead of squeezing the name into mid-word breaks ("Supermercado / s y…") on phones. -->
+          <div class="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 mb-1.5">
+            <span class="flex flex-[1_1_12rem] items-center gap-1.5 min-w-0 text-body font-medium text-gray-900">
               <app-account-icon [icon]="row.icon" [size]="iconSize" />
               <span class="line-clamp-2 break-words">{{ row.name }}</span>
             </span>
-            <span class="text-meta text-gray-500 tabular-nums shrink-0">
+            <span class="ml-auto text-meta text-gray-500 tabular-nums shrink-0">
               {{ row.actual | money: 0 }}
               @if (row.budgetInput !== null) {
                 / {{ row.budgetInput | money: 0 : false }} · {{ row.pct }}{{ text.percent }}

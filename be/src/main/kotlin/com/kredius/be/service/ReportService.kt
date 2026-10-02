@@ -4,6 +4,7 @@ import com.kredius.be.entity.AccountType
 import com.kredius.be.entity.Budget
 import com.kredius.be.entity.BudgetHistory
 import com.kredius.be.entity.BudgetOrigin
+import com.kredius.be.entity.StatementType
 import com.kredius.be.exception.ApiException
 import org.springframework.http.HttpStatus
 import com.kredius.be.model.BatchBudgetUpdateRequest
@@ -124,8 +125,10 @@ class ReportService(
 
             val account = accountRepo.findByIdAndUserId(update.accountId, userId)
                 ?: throw ApiException("NOT_FOUND", "Account ${update.accountId} not found", HttpStatus.NOT_FOUND)
-            if (account.type != AccountType.EXPENSE)
-                throw ApiException("VALIDATION_ERROR", "Account ${update.accountId} is not an expense account", HttpStatus.UNPROCESSABLE_ENTITY)
+            // Expense categories, and the credit card's own budget (it carries forward until changed; see BudgetScreenService).
+            if (account.type != AccountType.EXPENSE && account.statementType != StatementType.CREDIT_CARD)
+                throw ApiException("VALIDATION_ERROR", "Account ${update.accountId} is not an expense account or the credit card",
+                    HttpStatus.UNPROCESSABLE_ENTITY)
 
             val existing      = budgetRepo.findByAccountIdAndPeriod(account.id, period)
             val previousValue = existing?.amount

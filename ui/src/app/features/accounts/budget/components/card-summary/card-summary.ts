@@ -5,6 +5,7 @@ import {
 } from '@angular/core';
 import { IconComponent } from '../../../../../shared/components/icon/icon';
 import { ProgressRingComponent } from '../../../../../shared/components/progress-ring/progress-ring';
+import { SpinnerComponent } from '../../../../../shared/components/spinner/spinner';
 import { CURRENCY_PREFIX, USD_PREFIX } from '../../../../../shared/constants/locale';
 import { MoneyPipe } from '../../../../../shared/pipes/money.pipe';
 import { ShortDatePipe } from '../../../../../shared/pipes/short-date.pipe';
@@ -22,7 +23,7 @@ import { CardBudgetView, CardSummary } from '../../models/budget.models';
  */
 @Component({
   selector: 'app-card-summary',
-  imports: [IconComponent, NgTemplateOutlet, ProgressRingComponent, MoneyPipe, ShortDatePipe],
+  imports: [IconComponent, NgTemplateOutlet, ProgressRingComponent, SpinnerComponent, MoneyPipe, ShortDatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'block', '(document:click)': 'chargesHelpOpen.set(false)', '(keydown.escape)': 'chargesHelpOpen.set(false)' },
   template: `
@@ -181,17 +182,25 @@ import { CardBudgetView, CardSummary } from '../../models/budget.models';
       <div class="flex flex-wrap items-center gap-1.5 text-gray-500">
         @if (card().usdRate !== null && !editingRate()) {
           <span>{{ text.usdRate }} {{ card().usdRate | money: 2 : false }} ·</span>
-          <button type="button" (click)="editingRate.set(true)" class="underline underline-offset-2 hover:text-gray-900">
-            {{ text.changeRate }}
-          </button>
+          @if (savingRate()) {
+            <span class="inline-flex items-center gap-1" role="status"><app-spinner /> {{ text.saving }}</span>
+          } @else {
+            <button type="button" (click)="editingRate.set(true)" class="underline underline-offset-2 hover:text-gray-900">
+              {{ text.changeRate }}
+            </button>
+          }
         } @else {
           <label [for]="rateId" class="shrink-0">{{ text.usdRate }}</label>
           <input [id]="rateId" #rate type="number" inputmode="decimal" min="0" step="0.01"
             [value]="card().usdRate ?? ''" [disabled]="savingRate()"
             class="w-20 px-2 py-1 text-xs text-gray-900 tabular-nums bg-white rounded-md border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-300" />
           <button type="button" (click)="submitRate(rate.value)" [disabled]="savingRate()"
-            class="px-2 py-1 rounded-md border border-gray-200 text-gray-700 hover:border-gray-400 disabled:opacity-40">
-            {{ text.saveRate }}
+            class="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-gray-200 text-gray-700 hover:border-gray-400 disabled:opacity-40">
+            @if (savingRate()) {
+              <app-spinner /> {{ text.saving }}
+            } @else {
+              {{ text.saveRate }}
+            }
           </button>
           @if (card().usdRate === null) {
             <span class="inline-flex items-center px-2 py-0.5 rounded-full border border-warning-border bg-warning-bg text-warning-text">

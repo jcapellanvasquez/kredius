@@ -89,7 +89,7 @@
   animation: progress-indeterminate 1.1s ease-in-out infinite;
 }
 
-/* Brand loader (loading system §1): the K mark breathes inside a spinning ring. */
+/* Brand loader (loading system §1, in index.html): the K mark breathes inside a spinning ring. */
 @keyframes brand-pulse {
   0%, 100% { opacity: 1; transform: scale(1); }
   50%      { opacity: 0.55; transform: scale(0.94); }

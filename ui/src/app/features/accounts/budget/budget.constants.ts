@@ -25,6 +25,13 @@ export const SAVED_HINT_MS = 1500;
 /** "Guardando…" stays at least this long, so a fast save is still seen (loading system §4). */
 export const MIN_SAVING_MS = 600;
 
+/**
+ * The card's US$ rate asks "¿Seguro?" before saving when it's further than this from the last saved
+ * rate (0.2 = ±20 %), or outside [RATE_USUAL_RANGE] when there's no rate yet. It never blocks.
+ */
+export const RATE_CONFIRM_TOLERANCE = 0.2;
+export const RATE_USUAL_RANGE = { min: 40, max: 100 } as const;
+
 /** Suggested category chips shown next to the current one (plus "Otra"). */
 export const SUGGESTED_CHIPS = 2;
 

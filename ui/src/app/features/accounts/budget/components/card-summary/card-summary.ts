@@ -12,7 +12,7 @@ import { ShortDatePipe } from '../../../../../shared/pipes/short-date.pipe';
 import { monthName } from '../../../../../shared/utils/period';
 import { ProgressLevel, percentOf } from '../../../../../shared/utils/progress-level';
 import { UiIcon } from '../../../../../shared/constants/ui-icons';
-import { BALANCE_TOLERANCE, CARD_RING_BANDS } from '../../budget.constants';
+import { BALANCE_TOLERANCE, CARD_RING_BANDS, RATE_CONFIRM_TOLERANCE, RATE_USUAL_RANGE } from '../../budget.constants';
 import { SaveState, StatementAccountKind } from '../../budget.enums';
 import { BUDGET_TEXT } from '../../budget.texts';
 import { CardBudgetView, CardSummary } from '../../models/budget.models';
@@ -194,10 +194,11 @@ import { CardBudgetView, CardSummary } from '../../models/budget.models';
           }
         } @else {
           <label [for]="rateId" class="shrink-0">{{ text.usdRate }}</label>
-          <input [id]="rateId" #rate type="number" inputmode="decimal" min="0" step="0.01"
-            [value]="card().usdRate ?? ''" [disabled]="savingRate()"
+          <input [id]="rateId" #rate type="number" inputmode="decimal" enterkeyhint="done" min="0" step="0.01"
+            [value]="card().usdRate ?? ''" [disabled]="savingRate()" (keydown.enter)="submitRate(rate)"
+            (input)="rateToConfirm.set(null); rateUnreadable.set(false)"
             class="w-20 px-2 py-1 text-xs text-gray-900 tabular-nums bg-white rounded-md border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-300" />
-          <button type="button" (click)="submitRate(rate.value)" [disabled]="savingRate()"
+          <button type="button" (click)="submitRate(rate)" [disabled]="savingRate() || rateToConfirm() !== null"
             class="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-gray-200 text-gray-700 hover:border-gray-400 disabled:opacity-40">
             @if (savingRate()) {
               <app-spinner /> {{ text.saving }}
@@ -205,6 +206,18 @@ import { CardBudgetView, CardSummary } from '../../models/budget.models';
               {{ text.saveRate }}
             }
           </button>
+          @if (rateUnreadable()) {
+            <p class="basis-full text-gray-900" role="alert">{{ text.unreadableNumber }}</p>
+          }
+          @if (rateToConfirm(); as pending) {
+            <div class="basis-full flex flex-wrap items-center gap-1.5 text-gray-900" role="alert">
+              <span>{{ text.rateLooksWrong(rateText(pending), lastRateText()) }}</span>
+              <button type="button" (click)="confirmRate(pending)"
+                class="px-2 py-1 rounded-md border border-gray-900 font-medium hover:bg-gray-50">{{ text.confirmRate }}</button>
+              <button type="button" (click)="rateToConfirm.set(null); rate.focus(); rate.select()"
+                class="px-2 py-1 rounded-md border border-gray-200 text-gray-700 hover:border-gray-400">{{ text.fixRate }}</button>
+            </div>
+          }
           @if (card().usdRate === null) {
             <span class="inline-flex items-center px-2 py-0.5 rounded-full border border-warning-border bg-warning-bg text-warning-text">
               {{ text.rateMissing }}
@@ -235,6 +248,9 @@ export class CardSummaryComponent {
   protected readonly text = BUDGET_TEXT;
   protected readonly kind = StatementAccountKind.CreditCard;
   protected readonly editingRate = signal(false);
+  /** A rate far from the last one, waiting for "Sí, guardar" (MQ8 in mobile-fixes-plan.md). */
+  protected readonly rateToConfirm = signal<number | null>(null);
+  protected readonly rateUnreadable = signal(false);
   protected readonly rateId = 'card-usd-rate';
   protected readonly chargesHelpId = 'card-charges-help';
   protected readonly editingBudget = signal(false);
@@ -350,10 +366,37 @@ export class CardSummaryComponent {
     return this.money.transform(-amount);
   }
 
-  protected submitRate(raw: string): void {
-    const value = Number(raw);
-    if (!raw || Number.isNaN(value) || value <= 0) return;
+  protected submitRate(field: HTMLInputElement): void {
+    this.rateUnreadable.set(field.validity.badInput);
+    const value = Number(field.value);
+    if (!field.value || Number.isNaN(value) || value <= 0) return;
+    const rate = Math.round(value * 100) / 100;
+    if (this.rateLooksWrong(rate)) {
+      this.rateToConfirm.set(rate);
+      return;
+    }
+    this.confirmRate(rate);
+  }
+
+  protected confirmRate(rate: number): void {
+    this.rateToConfirm.set(null);
     this.editingRate.set(false);
-    this.saveRate.emit(value);
+    this.saveRate.emit(rate);
+  }
+
+  protected rateText(rate: number): string {
+    return this.money.transform(rate, 2, false);
+  }
+
+  protected lastRateText(): string | null {
+    const last = this.card().usdRate;
+    return last === null ? null : this.rateText(last);
+  }
+
+  /** Further than ±RATE_CONFIRM_TOLERANCE from the last saved rate, or outside the usual range when there's none. */
+  private rateLooksWrong(rate: number): boolean {
+    const last = this.card().usdRate;
+    if (last === null) return rate < RATE_USUAL_RANGE.min || rate > RATE_USUAL_RANGE.max;
+    return Math.abs(rate - last) / last > RATE_CONFIRM_TOLERANCE;
   }
 }

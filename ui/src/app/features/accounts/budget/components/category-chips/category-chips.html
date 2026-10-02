@@ -15,7 +15,7 @@
   }
 
   <div class="relative">
-    <button type="button" (click)="toggle()" [disabled]="saving()" [attr.aria-expanded]="open()"
+    <button #trigger type="button" (click)="toggle(trigger)" [disabled]="saving()" [attr.aria-expanded]="open()"
       class="inline-flex items-center gap-0.5 px-2.5 py-1 rounded-full border border-gray-200 text-xs text-gray-500 hover:border-gray-400 disabled:opacity-40 transition-colors">
       {{ text.other }}
       <app-icon [name]="icons.ChevronDown" [size]="12" />
@@ -24,7 +24,8 @@
     @if (open()) {
       <button type="button" tabindex="-1" class="fixed inset-0 z-10 cursor-default" [attr.aria-label]="text.close"
         (click)="close()"></button>
-      <div class="absolute left-0 top-full mt-1 z-20 w-56 max-w-[calc(100vw-3rem)] rounded-lg border border-gray-200 bg-white shadow-lg p-1.5">
+      <div class="absolute top-full mt-1 z-20 w-56 max-w-[calc(100vw-3rem)] rounded-lg border border-gray-200 bg-white shadow-lg p-1.5"
+        [style.left.px]="panelLeft()">
         <label class="flex items-center gap-1.5 px-2 py-1.5 mb-1 rounded-md border border-gray-200 focus-within:border-gray-400">
           <app-icon [name]="icons.Search" [size]="14" class="text-gray-400" />
           <input type="text" class="flex-1 min-w-0 text-xs outline-none" [placeholder]="text.searchCategory"

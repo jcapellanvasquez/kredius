@@ -13,6 +13,7 @@ import { SavingsSummaryComponent } from '../savings-summary/savings-summary';
 /**
  * Card and savings summaries side by side, same height, plus one shared full-width details panel
  * below both ("Ver detalles" on either card opens it; the cards themselves never grow).
+ * On phones they stack, and the panel moves right under the card that opened it (CSS `order`).
  */
 @Component({
   selector: 'app-summary-cards',
@@ -20,17 +21,18 @@ import { SavingsSummaryComponent } from '../savings-summary/savings-summary';
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'block' },
   template: `
-    <div class="grid grid-cols-2 gap-2">
-      <app-card-summary [card]="card()" [budget]="cardBudget()" [savingRate]="savingRate()"
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+      <app-card-summary class="order-1" [card]="card()" [budget]="cardBudget()" [savingRate]="savingRate()"
         [rateRequest]="rateRequest()" [detailsOpen]="open() === kinds.CreditCard" [detailsId]="panelId"
         (saveRate)="saveRate.emit($event)" (budgetChange)="cardBudgetChange.emit($event)"
         (toggleDetails)="toggle(kinds.CreditCard)" />
-      <app-savings-summary [savings]="savings()" [period]="period()"
+      <app-savings-summary class="order-3 sm:order-2" [savings]="savings()" [period]="period()"
         [detailsOpen]="open() === kinds.Savings" [detailsId]="panelId"
         (toggleDetails)="toggle(kinds.Savings)" />
 
       @if (open(); as kind) {
-        <div [id]="panelId" animate.enter="fade-in" class="col-span-2 card p-3" role="region"
+        <div [id]="panelId" animate.enter="fade-in" class="sm:col-span-2 sm:order-3 card p-3" role="region"
+          [class.order-2]="kind === kinds.CreditCard" [class.order-4]="kind === kinds.Savings"
           [attr.aria-label]="kind === kinds.CreditCard ? text.cardDetails : text.savingsDetails">
           <div class="flex items-center justify-between gap-2 mb-2">
             <p class="text-sm font-medium text-gray-900">

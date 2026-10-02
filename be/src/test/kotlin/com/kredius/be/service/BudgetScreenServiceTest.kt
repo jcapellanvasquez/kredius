@@ -171,6 +171,51 @@ class BudgetScreenServiceTest {
     }
 
     @Test
+    fun `the card budget saved this month is the card's budget`() {
+        monthLines()
+        `when`(budgetRepo.findTopByAccountIdAndPeriodLessThanEqualOrderByPeriodDesc(2L, august))
+            .thenReturn(Budget(account = card, period = august, amount = BigDecimal("45000.00")))
+
+        val summary = service.get(august).card!!
+
+        assertEquals(45000.0, summary.budget)
+        assertEquals(august, summary.budgetFromMonth)
+    }
+
+    @Test
+    fun `a card budget saved in an earlier month carries forward`() {
+        monthLines()
+        val july = august.minusMonths(1)
+        `when`(budgetRepo.findTopByAccountIdAndPeriodLessThanEqualOrderByPeriodDesc(2L, august))
+            .thenReturn(Budget(account = card, period = july, amount = BigDecimal("35000.00")))
+
+        val summary = service.get(august).card!!
+
+        assertEquals(35000.0, summary.budget)
+        assertEquals(july, summary.budgetFromMonth)
+    }
+
+    @Test
+    fun `a card budget saved as 0 means no budget`() {
+        monthLines()
+        `when`(budgetRepo.findTopByAccountIdAndPeriodLessThanEqualOrderByPeriodDesc(2L, august))
+            .thenReturn(Budget(account = card, period = august, amount = BigDecimal.ZERO))
+
+        val summary = service.get(august).card!!
+
+        assertNull(summary.budget)
+        assertNull(summary.budgetFromMonth)
+    }
+
+    @Test
+    fun `the card budget no longer sums the category budgets`() {
+        ledger()
+        monthLines(cardLine("1000.00", postedRd = "1000.00").apply { categoryAccount = food }) // Comida has a 2,000 budget
+
+        assertNull(service.get(august).card!!.budget)
+    }
+
+    @Test
     fun `card spent counts the whole statement cut in the month, rows of the previous month included`() {
         monthLines(
             cardLine("300.00", postedRd = "300.00").apply { lineDate = LocalDate.of(2026, 7, 28) },
@@ -347,7 +392,6 @@ class BudgetScreenServiceTest {
         assertEquals(listOf(500.0, 1000.0, -100.0), comida.transactions.map { it.amount })
         assertEquals(BudgetTransactionLine.Status.POSTED, comida.transactions[0].status)
         assertEquals("building-bank", comida.transactions[0].sourceIcon)
-        assertEquals(2000.0, screen.card!!.budget) // only Comida has card spend
     }
 
     @Test

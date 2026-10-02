@@ -12,7 +12,8 @@ import { LineError, LineStatus, SaveState, StatementAccountKind } from '../budge
 import { BUDGET_TEXT } from '../budget.texts';
 import { BudgetApi } from '../data/budget-api';
 import {
-  BudgetScreen, CategoryOption, CategoryOptionGroup, CategoryRowView, ImportSummary, LineUiState, TransactionLine, UploadResult,
+  BudgetScreen, CardBudgetView, CategoryOption, CategoryOptionGroup, CategoryRowView, ImportSummary, LineUiState,
+  TransactionLine, UploadResult,
 } from '../models/budget.models';
 
 /** Page-level state for the budget screen. Provided by `BudgetPageComponent`. */
@@ -102,6 +103,24 @@ export class BudgetStore {
   /** Categories worth showing in "Comparativo rápido": any spend or budget. */
   readonly compareRows = computed(() => this.categories().filter(c => c.actual > 0 || (c.budgetInput ?? 0) > 0));
 
+  /** The card's budget with its draft applied (the card saves through the same "Guardar cambios" batch). */
+  readonly cardBudget = computed<CardBudgetView | null>(() => {
+    const card = this.screen()?.card;
+    if (!card) return null;
+    const drafts = this.drafts();
+    const batch = this.budgetSaveState();
+    const dirty = drafts.has(card.accountId);
+    const carried = card.budgetFromMonth !== null && card.budgetFromMonth < this.period();
+    return {
+      value: dirty ? drafts.get(card.accountId) ?? null : card.budget,
+      dirty,
+      saveState: dirty
+        ? (batch === SaveState.Saving || batch === SaveState.Error ? batch : SaveState.Dirty)
+        : (this.recentlySaved().has(card.accountId) ? SaveState.Saved : SaveState.Idle),
+      carriedFrom: !dirty && carried ? card.budgetFromMonth : null,
+    };
+  });
+
   readonly dirtyCount = computed(() => this.drafts().size);
   readonly hasUnsavedChanges = computed(() => this.dirtyCount() > 0);
 
@@ -172,7 +191,10 @@ export class BudgetStore {
   // ── Budget edits ──────────────────────────────────────────────────────────
 
   setDraft(accountId: number, value: number | null): void {
-    const saved = this.screen()?.categories.find(c => c.accountId === accountId)?.budget ?? null;
+    const screen = this.screen();
+    const saved = accountId === screen?.card.accountId
+      ? screen.card.budget
+      : screen?.categories.find(c => c.accountId === accountId)?.budget ?? null;
     const next = new Map(this.drafts());
     if (value === saved) next.delete(accountId);
     else next.set(accountId, value);

@@ -83,7 +83,10 @@ export interface CardSummary {
   name: string;
   icon: string;
   spent: number;
+  /** The card's own budget: the latest saved for this month or before (it carries forward); null when none. */
   budget: number | null;
+  /** First day (`YYYY-MM-01`) of the month that budget was saved for; earlier than the period when carried forward. */
+  budgetFromMonth: string | null;
   statement: CardStatement | null;
   /** The latest card RD$ per US$ rate; null until one is saved (US$ lines wait for it). */
   usdRate: number | null;
@@ -200,6 +203,16 @@ export interface CategoryRowView extends CategoryRow {
   level: ProgressLevel;
   dirty: boolean;
   saveState: SaveState;
+}
+
+/** The card budget as shown and edited on the card summary. */
+export interface CardBudgetView {
+  /** Draft if edited, else the saved (or carried-forward) value. */
+  value: number | null;
+  dirty: boolean;
+  saveState: SaveState;
+  /** The month it was carried from (`YYYY-MM-01`), when it wasn't saved for this month; null otherwise. */
+  carriedFrom: string | null;
 }
 
 export interface ChipSelection {

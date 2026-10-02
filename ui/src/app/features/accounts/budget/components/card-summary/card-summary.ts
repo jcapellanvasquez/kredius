@@ -8,12 +8,13 @@ import { ProgressRingComponent } from '../../../../../shared/components/progress
 import { CURRENCY_PREFIX, USD_PREFIX } from '../../../../../shared/constants/locale';
 import { MoneyPipe } from '../../../../../shared/pipes/money.pipe';
 import { ShortDatePipe } from '../../../../../shared/pipes/short-date.pipe';
+import { monthName } from '../../../../../shared/utils/period';
 import { ProgressLevel, percentOf } from '../../../../../shared/utils/progress-level';
 import { UiIcon } from '../../../../../shared/constants/ui-icons';
 import { BALANCE_TOLERANCE, CARD_RING_BANDS } from '../../budget.constants';
-import { StatementAccountKind } from '../../budget.enums';
+import { SaveState, StatementAccountKind } from '../../budget.enums';
 import { BUDGET_TEXT } from '../../budget.texts';
-import { CardSummary } from '../../models/budget.models';
+import { CardBudgetView, CardSummary } from '../../models/budget.models';
 
 /**
  * Credit card, collapsed: % of its budget consumed and the statement's key RD$ figures.
@@ -33,13 +34,44 @@ import { CardSummary } from '../../models/budget.models';
             <app-icon [name]="card().icon" [size]="12" /> {{ text.kind[kind] }}
           </p>
           <p class="text-sm font-medium text-gray-900 tabular-nums whitespace-nowrap">{{ card().spent | money }}</p>
-          <p class="text-xs text-gray-400 tabular-nums whitespace-nowrap">
-            @if (card().budget !== null) {
-              {{ text.of }} {{ card().budget | money }}
-            } @else {
-              {{ text.noBudget }}
+          @if (!editingBudget()) {
+            <button type="button" (click)="startBudgetEdit()" [attr.aria-label]="text.editCardBudget"
+              class="group inline-flex items-center gap-1 text-xs text-gray-400 tabular-nums whitespace-nowrap hover:text-gray-900 transition-colors">
+              @if (budgetValue() !== null) {
+                {{ text.of }} {{ budgetValue() | money }}
+              } @else {
+                {{ text.noBudget }}
+              }
+              <app-icon [name]="icons.Pencil" [size]="12" class="opacity-60 group-hover:opacity-100" />
+            </button>
+            @switch (budgetHint()) {
+              @case ('carried') {
+                <p class="text-[11px] text-gray-400">{{ text.sameAs(carriedMonth()) }}</p>
+              }
+              @case ('unsaved') {
+                <p class="text-[11px] text-gray-900">• {{ text.unsaved }}</p>
+              }
+              @case ('saved') {
+                <p class="flex items-center gap-0.5 text-[11px] text-gray-500" role="status">
+                  <app-icon [name]="icons.Check" [size]="12" /> {{ text.saved }}
+                </p>
+              }
+              @case ('none') {
+                <p class="text-[11px] text-gray-400">{{ text.setCardBudgetHint }}</p>
+              }
             }
-          </p>
+          } @else {
+            <div class="mt-0.5 flex items-center gap-1">
+              <input #budgetField type="number" inputmode="decimal" min="0" step="100" [value]="budgetValue() ?? ''"
+                [attr.aria-label]="text.cardBudget" (keydown.enter)="finishBudgetEdit(budgetField.value)"
+                (keydown.escape)="$event.stopPropagation(); editingBudget.set(false)"
+                class="w-24 px-1.5 py-0.5 text-xs text-gray-900 tabular-nums bg-white rounded-md border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-300" />
+              <button type="button" (click)="finishBudgetEdit(budgetField.value)"
+                class="text-xs text-gray-700 underline underline-offset-2 hover:text-gray-900">
+                {{ text.done }}
+              </button>
+            </div>
+          }
         </div>
       </div>
 
@@ -181,14 +213,19 @@ export class CardSummaryComponent {
   readonly detailsOpen = input(false);
   /** Id of the details panel, for `aria-controls`. */
   readonly detailsId = input<string | null>(null);
+  /** The card budget with its draft; null falls back to the saved one on `card`. */
+  readonly budget = input<CardBudgetView | null>(null);
   readonly saveRate = output<number>();
   readonly toggleDetails = output<void>();
+  /** A new card budget draft (null clears it); saved with "Guardar cambios". */
+  readonly budgetChange = output<number | null>();
 
   protected readonly text = BUDGET_TEXT;
   protected readonly kind = StatementAccountKind.CreditCard;
   protected readonly editingRate = signal(false);
   protected readonly rateId = 'card-usd-rate';
   protected readonly chargesHelpId = 'card-charges-help';
+  protected readonly editingBudget = signal(false);
   /** The Consumos tooltip, opened by tap/click (hover also shows it). */
   protected readonly chargesHelpOpen = signal(false);
   protected readonly prefix = { rd: CURRENCY_PREFIX, usd: USD_PREFIX };
@@ -197,6 +234,7 @@ export class CardSummaryComponent {
   private readonly host = inject(ElementRef<HTMLElement>);
   private readonly injector = inject(Injector);
   private readonly rateInput = viewChild<ElementRef<HTMLInputElement>>('rate');
+  private readonly budgetField = viewChild<ElementRef<HTMLInputElement>>('budgetField');
   private readonly dates = new ShortDatePipe();
   private readonly money = new MoneyPipe();
 
@@ -233,7 +271,24 @@ export class CardSummaryComponent {
   });
 
   /** Ring-specific bands (green / amber / red); category bars keep the gray / amber / red rule. */
-  protected readonly pct = computed(() => percentOf(this.card().spent, this.card().budget));
+  protected readonly budgetValue = computed(() => {
+    const budget = this.budget();
+    return budget ? budget.value : this.card().budget;
+  });
+  /** The line under the amount: where the budget comes from, or its save state. */
+  protected readonly budgetHint = computed(() => {
+    const budget = this.budget();
+    if (!budget) return null;
+    if (budget.saveState === SaveState.Saved) return 'saved';
+    if (budget.dirty) return 'unsaved';
+    if (budget.carriedFrom) return 'carried';
+    return budget.value === null ? 'none' : null;
+  });
+  protected readonly carriedMonth = computed(() => {
+    const from = this.budget()?.carriedFrom;
+    return from ? monthName(from) : '';
+  });
+  protected readonly pct = computed(() => percentOf(this.card().spent, this.budgetValue()));
   protected readonly level = computed(() => {
     const pct = this.pct() ?? 0;
     if (pct >= CARD_RING_BANDS.dangerFrom) return ProgressLevel.Danger;
@@ -250,6 +305,18 @@ export class CardSummaryComponent {
     if (this.editingRate() && this.rateInput()) return reveal();
     this.editingRate.set(true);
     afterNextRender(reveal, { injector: this.injector });
+  }
+
+  protected startBudgetEdit(): void {
+    this.editingBudget.set(true);
+    afterNextRender(() => this.budgetField()?.nativeElement.select(), { injector: this.injector });
+  }
+
+  protected finishBudgetEdit(raw: string): void {
+    this.editingBudget.set(false);
+    const value = raw.trim() === '' ? null : Number(raw);
+    if (value !== null && (Number.isNaN(value) || value < 0)) return;
+    this.budgetChange.emit(value === 0 ? null : value);
   }
 
   protected toggleChargesHelp(event: Event): void {

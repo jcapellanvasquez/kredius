@@ -76,6 +76,10 @@ export const BUDGET_TEXT = {
   saveRate:         'Guardar',
   changeRate:       'cambiar',
 
+  cardBudget:       'Presupuesto de la tarjeta',
+  editCardBudget:   'Cambiar el presupuesto de la tarjeta',
+  setCardBudgetHint:'toca ✎ para poner uno',
+  done:             'listo',
   showDetails:      'Ver detalles',
   hideDetails:      'Ocultar detalles',
   cardDetails:      'Detalles de la tarjeta',
@@ -133,6 +137,7 @@ export const BUDGET_TEXT = {
   usdPosted:    (posted: number, total: number) =>
     `US$: ${posted} de ${total} ${total === 1 ? 'compra registrada' : 'compras registradas'}`,
   versus:       (month: string) => `vs ${month}`,
+  sameAs:       (month: string) => `igual que ${month}`,
   /** Screen-reader wording of the savings arrow. */
   savingsTrend: (direction: 'up' | 'down', month: string) => `${direction === 'up' ? 'Subió' : 'Bajó'} desde ${month}:`,
   chargesTitle: (from: string, to: string) => `Compras del estado ${from} – ${to}`,

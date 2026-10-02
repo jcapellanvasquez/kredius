@@ -4,7 +4,7 @@ import { UiIcon } from '../../../../../shared/constants/ui-icons';
 import { Period } from '../../../../../shared/utils/period';
 import { StatementAccountKind } from '../../budget.enums';
 import { BUDGET_TEXT } from '../../budget.texts';
-import { CardSummary, SavingsSummary } from '../../models/budget.models';
+import { CardBudgetView, CardSummary, SavingsSummary } from '../../models/budget.models';
 import { CardDetailsComponent } from '../card-details/card-details';
 import { CardSummaryComponent } from '../card-summary/card-summary';
 import { SavingsDetailsComponent } from '../savings-details/savings-details';
@@ -21,9 +21,10 @@ import { SavingsSummaryComponent } from '../savings-summary/savings-summary';
   host: { class: 'block' },
   template: `
     <div class="grid grid-cols-2 gap-2">
-      <app-card-summary [card]="card()" [savingRate]="savingRate()" [rateRequest]="rateRequest()"
-        [detailsOpen]="open() === kinds.CreditCard" [detailsId]="panelId"
-        (saveRate)="saveRate.emit($event)" (toggleDetails)="toggle(kinds.CreditCard)" />
+      <app-card-summary [card]="card()" [budget]="cardBudget()" [savingRate]="savingRate()"
+        [rateRequest]="rateRequest()" [detailsOpen]="open() === kinds.CreditCard" [detailsId]="panelId"
+        (saveRate)="saveRate.emit($event)" (budgetChange)="cardBudgetChange.emit($event)"
+        (toggleDetails)="toggle(kinds.CreditCard)" />
       <app-savings-summary [savings]="savings()" [period]="period()"
         [detailsOpen]="open() === kinds.Savings" [detailsId]="panelId"
         (toggleDetails)="toggle(kinds.Savings)" />
@@ -59,7 +60,9 @@ export class SummaryCardsComponent {
   readonly period = input.required<Period>();
   readonly savingRate = input(false);
   readonly rateRequest = input(0);
+  readonly cardBudget = input<CardBudgetView | null>(null);
   readonly saveRate = output<number>();
+  readonly cardBudgetChange = output<number | null>();
 
   protected readonly text = BUDGET_TEXT;
   protected readonly icons = UiIcon;

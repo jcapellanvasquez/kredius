@@ -143,6 +143,7 @@ export class BudgetHttpApi extends BudgetApi {
         icon: card.icon ?? KIND_ICON[StatementAccountKind.CreditCard],
         spent: card.spent,
         budget: positiveOrNull(card.budget),
+        budgetFromMonth: card.budgetFromMonth ?? null,
         statement: card.statement ? {
           cycleStart: card.statement.cycleStart,
           cutOffDate: card.statement.cutOffDate,

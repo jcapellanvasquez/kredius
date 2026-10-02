@@ -138,6 +138,7 @@
             [options]="store.categoryOptions()"
             [optionGroups]="store.optionGroups()"
             [lineStates]="store.lineStates()"
+            [doneLineIds]="store.doneLineIds()"
             [highlightId]="store.highlightId()"
             [noCardRate]="screen.card.usdRate === null"
             (budgetChange)="store.setDraft($event.accountId, $event.value)"

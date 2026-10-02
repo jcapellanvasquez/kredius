@@ -120,6 +120,25 @@ interface JournalLineRepository : JpaRepository<JournalLine, Long> {
         @Param("before") before: LocalDate,
     ): TotalsView
 
+    /** Whether [accountId] has any line dated before [before] (tells a zero balance from no history). */
+    @Query(
+        value = """
+            SELECT EXISTS (
+                SELECT 1
+                FROM journal_lines jl
+                JOIN journal_entries je ON jl.journal_entry_id = je.id
+                WHERE je.user_id = :userId AND jl.account_id = :accountId
+                  AND je.entry_date < :before
+            )
+        """,
+        nativeQuery = true,
+    )
+    fun existsLineBefore(
+        @Param("userId") userId: Long,
+        @Param("accountId") accountId: Long,
+        @Param("before") before: LocalDate,
+    ): Boolean
+
     /** Debit and credit totals of [accountId]'s lines in [currency], in that currency, dated up to [onOrBefore]. */
     @Query(
         value = """

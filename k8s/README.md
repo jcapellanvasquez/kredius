@@ -1,6 +1,6 @@
 # Kredius: k3s lab deployment
 
-Kredius runs on the lab server (`coolestserver`, 10.0.0.49) in the `kredius` namespace:
+Kredius runs on the lab server (`coolestserver`, 10.0.0.49) in the `kredius` namespace (server setup, sudo rules, backups and restore: [`SERVER.md`](SERVER.md)):
 
 | File | What |
 |---|---|
@@ -18,7 +18,8 @@ All of it is already applied. Images are built on the server and imported into k
 The full procedure (backup, build, import, apply, verify, rollback, cleanup) lives in the `/lab` Claude skill and in `be/external-files/lab-deploy-plan.md`. In short, from `~/kredius` on the server, with `main` pulled and the new tag already committed in `20-backend.yaml` and `30-frontend.yaml`:
 
 ```bash
-# 1. Back up the DB first (see 10-postgres.yaml)
+# 1. Back up the DB first
+~/bin/kredius-backup deploy <tag>
 # 2. Build and import, one image at a time (memory is limited)
 docker build -t kredius-backend:<tag> ./be
 docker save kredius-backend:<tag> | sudo -n k3s ctr images import -

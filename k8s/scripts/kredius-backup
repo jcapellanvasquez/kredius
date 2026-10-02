@@ -1,0 +1,32 @@
+#!/bin/sh
+# Dumps the k3s Kredius database (postgres-0) to ~/kredius-backups and checks the dump.
+#   kredius-backup daily               cron, keeps the 14 newest   daily/kredius-<date>.dump
+#   kredius-backup deploy <version>    before a deploy, keeps 3    kredius-<date>-before-<version>.dump
+# A dump is kept only if it is non-empty, has the PGDMP header and its table of contents lists
+# accounts, journal_entries and statement_lines; old dumps are deleted only after a valid new one.
+# Runs as jcapellan (no root). Installed to ~/bin; see k8s/SERVER.md.
+set -eu
+PATH=/usr/local/bin:/usr/bin:/bin
+umask 077
+
+DIR="$HOME/kredius-backups"
+STAMP=$(date -u +%Y%m%d-%H%M)
+case "${1:-}" in
+  daily)  mkdir -p "$DIR/daily"; FILE="$DIR/daily/kredius-$STAMP.dump"; PATTERN="$DIR/daily/kredius-*.dump"; KEEP=14 ;;
+  deploy) [ -n "${2:-}" ] || { echo "usage: kredius-backup deploy <version>" >&2; exit 2; }
+          FILE="$DIR/kredius-$STAMP-before-$2.dump"; PATTERN="$DIR/kredius-*-before-*.dump"; KEEP=3 ;;
+  *)      echo "usage: kredius-backup daily | deploy <version>" >&2; exit 2 ;;
+esac
+
+fail() { echo "$(date -u +%FT%TZ) FAILED $FILE: $1" >&2; rm -f "$FILE"; exit 1; }
+
+kubectl exec postgres-0 -n kredius -- pg_dump -U kredius -Fc kredius > "$FILE" || fail "pg_dump"
+[ -s "$FILE" ] || fail "empty file"
+[ "$(head -c 5 "$FILE")" = "PGDMP" ] || fail "no PGDMP header"
+tables=$(kubectl exec -i postgres-0 -n kredius -- pg_restore --list < "$FILE" \
+  | grep -cE "TABLE DATA public (accounts|journal_entries|statement_lines) ") || true
+[ "$tables" = 3 ] || fail "table of contents has $tables of 3 main tables"
+
+# shellcheck disable=SC2086
+ls -1t $PATTERN | tail -n +$((KEEP + 1)) | xargs -r rm --
+echo "$(date -u +%FT%TZ) OK $FILE $(wc -c < "$FILE") bytes"

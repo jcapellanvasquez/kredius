@@ -157,10 +157,12 @@ class BudgetScreenService(
         if (expenses.isEmpty()) return emptyList()
         val ids = expenses.map { it.id }
         val totals = journalLineRepo.findTotalsByBudgetPeriod(userId, from, ids).associateBy { it.accountId }
-        // Clearing a budget in the UI saves 0, which means "no budget" here.
-        val budgets = budgetRepo.findByAccountIdInAndPeriod(ids, from)
-            .filter { it.amount.signum() > 0 }
-            .associate { it.account.id to it.amount }
+        // A budget carries forward: the latest one saved for this month or before. Clearing it in the UI
+        // saves 0, which means "no budget" from that month on.
+        val budgets = budgetRepo.findByAccountIdInAndPeriodLessThanEqual(ids, from)
+            .groupBy { it.account.id }
+            .mapValues { (_, saved) -> saved.maxBy { it.period }.amount }
+            .filterValues { it.signum() > 0 }
         val postedByCategory = lines
             .filter { it.journalLine != null && it.categoryAccount != null }
             .groupBy { it.categoryAccount!!.id }
@@ -177,8 +179,6 @@ class BudgetScreenService(
                 icon = category.icon,
                 actual = actual.toDouble(),
                 budget = budget?.toDouble(),
-                previousBudget = if (budget != null) null
-                    else budgetRepo.findTopByAccountIdAndPeriodLessThanOrderByPeriodDesc(category.id, from)?.amount?.toDouble(),
                 origins = transactions.map { it.source }.distinct().sortedBy { it.ordinal },
                 transactions = transactions,
                 loanInterest = loanPayments

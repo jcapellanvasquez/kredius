@@ -99,7 +99,7 @@ class BudgetScreenServiceTest {
         override val totalCredit = BigDecimal(credit)
     }
 
-    /** Comida 1,400 of 2,000; Supermercado 300 of 200; Diversión 0 of 500; Transporte 50, no budget (900 last time). */
+    /** Comida 1,400 of 2,000; Supermercado 300 of 200; Diversión 0 of 500; Transporte 50 of 900 (carried from July); Gasolina cleared. */
     private fun ledger() {
         `when`(accountRepo.findByUserIdAndType(0L, AccountType.EXPENSE)).thenReturn(expenses)
         val ids = expenses.map { it.id }
@@ -108,16 +108,16 @@ class BudgetScreenServiceTest {
             accountTotals(7, "300.00"),
             accountTotals(10, "50.00"),
         ))
-        `when`(budgetRepo.findByAccountIdInAndPeriod(ids, august)).thenReturn(listOf(
+        val july = august.minusMonths(1)
+        `when`(budgetRepo.findByAccountIdInAndPeriodLessThanEqual(ids, august)).thenReturn(listOf(
+            Budget(account = food, period = july, amount = BigDecimal("1800.00")),
             Budget(account = food, period = august, amount = BigDecimal("2000.00")),
             Budget(account = market, period = august, amount = BigDecimal("200.00")),
             Budget(account = leisure, period = august, amount = BigDecimal("500.00")),
-            Budget(account = gas, period = august, amount = BigDecimal.ZERO), // cleared: no budget
+            Budget(account = gas, period = july, amount = BigDecimal("800.00")),
+            Budget(account = gas, period = august, amount = BigDecimal.ZERO), // cleared: no budget from August on
+            Budget(account = transport, period = july, amount = BigDecimal("900.00")),
         ))
-        `when`(budgetRepo.findTopByAccountIdAndPeriodLessThanOrderByPeriodDesc(9L, august))
-            .thenReturn(Budget(account = gas, amount = BigDecimal("800.00")))
-        `when`(budgetRepo.findTopByAccountIdAndPeriodLessThanOrderByPeriodDesc(10L, august))
-            .thenReturn(Budget(account = transport, amount = BigDecimal("900.00")))
     }
 
     private fun savingsLine(amount: String, type: StatementLineType = StatementLineType.DEBIT, postedRd: String? = null) =
@@ -365,16 +365,15 @@ class BudgetScreenServiceTest {
     }
 
     @Test
-    fun `categories list spend or a saved budget, sorted by actual over budget`() {
+    fun `categories list spend or a budget in force, sorted by actual over budget`() {
         ledger()
         monthLines()
 
         val rows = service.get(august).categories
 
-        assertEquals(listOf("Supermercado", "Comida", "Diversión", "Transporte"), rows.map { it.name })
-        assertEquals(listOf(300.0, 1400.0, 0.0, 50.0), rows.map { it.actual })
-        assertEquals(listOf(200.0, 2000.0, 500.0, null), rows.map { it.budget })
-        assertEquals(listOf(null, null, null, 900.0), rows.map { it.previousBudget })
+        assertEquals(listOf("Supermercado", "Comida", "Transporte", "Diversión"), rows.map { it.name })
+        assertEquals(listOf(300.0, 1400.0, 50.0, 0.0), rows.map { it.actual })
+        assertEquals(listOf(200.0, 2000.0, 900.0, 500.0), rows.map { it.budget })
     }
 
     @Test

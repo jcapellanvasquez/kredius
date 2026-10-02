@@ -149,3 +149,7 @@ test('A3: quick compare doesn\'t break a name mid-word next to a long amount (ph
   // Fits on one line at full width; squeezed by the amount it broke as "Supermercado / s y colmados…".
   expect((await box(name)).height).toBeLessThan(lineHeight * 1.5);
 });
+
+test('savings: the month-over-month change reads "… vs julio" with a space', async ({ page }) => {
+  await expect(page.locator('app-savings-summary')).toContainText(/\d vs julio/);
+});

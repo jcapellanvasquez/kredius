@@ -1,0 +1,32 @@
+#!/bin/sh
+# Deletes old kredius-backend / kredius-frontend images from k3s's containerd.
+# Keeps the 2 newest version tags of each, plus any tag a kredius ReplicaSet still
+# references (rollback targets). Installed root-owned in /usr/local/sbin and run with
+# `sudo -n kredius-prune-images [--dry-run]` (see k8s/README.md).
+set -eu
+PATH=/usr/local/bin:/usr/bin:/bin
+
+KEEP=2
+DRY_RUN=0
+[ "${1:-}" = "--dry-run" ] && DRY_RUN=1
+
+in_use=$(k3s kubectl get rs -n kredius \
+  -o jsonpath='{range .items[*]}{range .spec.template.spec.containers[*]}{.image}{"\n"}{end}{end}' | sort -u)
+
+for repo in kredius-backend kredius-frontend; do
+  refs=$(k3s ctr images ls -q | grep -E "(^|/)${repo}:[0-9]+\.[0-9]+\.[0-9]+$" | sort -t: -k2 -V || true)
+  keep=$(printf '%s\n' "$refs" | tail -n "$KEEP")
+  for ref in $refs; do
+    image=${ref##*/}
+    if printf '%s\n' "$keep" | grep -qxF "$ref"; then
+      echo "keep (newest)  $ref"
+    elif printf '%s\n' "$in_use" | grep -qxF "$image"; then
+      echo "keep (in use)  $ref"
+    elif [ "$DRY_RUN" = 1 ]; then
+      echo "would delete   $ref"
+    else
+      echo "delete         $ref"
+      k3s ctr images rm "$ref" > /dev/null
+    fi
+  done
+done

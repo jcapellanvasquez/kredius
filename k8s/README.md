@@ -34,6 +34,18 @@ Recreate strategy: the old backend pod stops before the new one starts. On start
 
 **Rollback:** `kubectl rollout undo deployment/kredius-backend -n kredius` (2 old ReplicaSets are kept), then revert the tag commit so git matches what runs. Restore the backup only if a migration broke the schema.
 
+## Disk cleanup
+
+Every deploy leaves old images in k3s. `scripts/kredius-prune-images` deletes all but the 2 newest tags of each image, and never a tag a ReplicaSet still references. It needs root, so it is installed once:
+
+```bash
+sudo install -o root -g root -m 755 k8s/scripts/kredius-prune-images /usr/local/sbin/
+echo 'jcapellan ALL=(root) NOPASSWD: /usr/local/sbin/kredius-prune-images' | sudo tee /etc/sudoers.d/kredius-prune
+sudo chmod 440 /etc/sudoers.d/kredius-prune && sudo visudo -cf /etc/sudoers.d/kredius-prune
+```
+
+Then, after a verified deploy: `sudo -n /usr/local/sbin/kredius-prune-images --dry-run`, and without `--dry-run` to delete. Re-run the `install` line when the script changes.
+
 ## Verify
 
 ```bash

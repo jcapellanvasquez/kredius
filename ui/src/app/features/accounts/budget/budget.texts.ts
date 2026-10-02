@@ -83,6 +83,7 @@ export const BUDGET_TEXT = {
   /** Savings card: money that moved but isn't in any budget category. */
   outsideCategories:'Fuera de categorías',
   monthIncome:      'Ingreso del mes',
+  noChange:         'sin cambio',
   chargesHelp:      'Qué incluye Consumos',
   chargesIn:        'En',
   chargesTotal:     'Total para el presupuesto',
@@ -131,6 +132,9 @@ export const BUDGET_TEXT = {
   cardPending:  (n: number) => `Sin registrar (${n})`,
   usdPosted:    (posted: number, total: number) =>
     `US$: ${posted} de ${total} ${total === 1 ? 'compra registrada' : 'compras registradas'}`,
+  versus:       (month: string) => `vs ${month}`,
+  /** Screen-reader wording of the savings arrow. */
+  savingsTrend: (direction: 'up' | 'down', month: string) => `${direction === 'up' ? 'Subió' : 'Bajó'} desde ${month}:`,
   chargesTitle: (from: string, to: string) => `Compras del estado ${from} – ${to}`,
   chargesExclude: (credits: string) => `No incluye pagos ni créditos (${credits}).`,
   saveCountSuffix: (n: number) => (n > 0 ? `(${n})` : ''),

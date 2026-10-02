@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, effect, input, output, signal, untracked } from '@angular/core';
 import { IconComponent } from '../../../../../shared/components/icon/icon';
 import { UiIcon } from '../../../../../shared/constants/ui-icons';
+import { Period } from '../../../../../shared/utils/period';
 import { StatementAccountKind } from '../../budget.enums';
 import { BUDGET_TEXT } from '../../budget.texts';
 import { CardSummary, SavingsSummary } from '../../models/budget.models';
@@ -23,7 +24,7 @@ import { SavingsSummaryComponent } from '../savings-summary/savings-summary';
       <app-card-summary [card]="card()" [savingRate]="savingRate()" [rateRequest]="rateRequest()"
         [detailsOpen]="open() === kinds.CreditCard" [detailsId]="panelId"
         (saveRate)="saveRate.emit($event)" (toggleDetails)="toggle(kinds.CreditCard)" />
-      <app-savings-summary [savings]="savings()"
+      <app-savings-summary [savings]="savings()" [period]="period()"
         [detailsOpen]="open() === kinds.Savings" [detailsId]="panelId"
         (toggleDetails)="toggle(kinds.Savings)" />
 
@@ -55,6 +56,7 @@ import { SavingsSummaryComponent } from '../savings-summary/savings-summary';
 export class SummaryCardsComponent {
   readonly card = input.required<CardSummary>();
   readonly savings = input.required<SavingsSummary>();
+  readonly period = input.required<Period>();
   readonly savingRate = input(false);
   readonly rateRequest = input(0);
   readonly saveRate = output<number>();

@@ -94,6 +94,8 @@ export interface SavingsSummary {
   name: string;
   icon: string;
   balance: number;
+  /** Balance at the end of the previous month; null in the account's first month. */
+  previousBalance: number | null;
   income: number;
   /** The month's loan installments, oldest first (plan Q8). */
   loanPayments: LoanPayment[];

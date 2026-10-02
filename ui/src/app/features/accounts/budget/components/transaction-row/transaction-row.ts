@@ -13,7 +13,12 @@ import { CategoryChipsComponent } from '../category-chips/category-chips';
   selector: 'app-transaction-row',
   imports: [AccountIconComponent, CategoryChipsComponent, IconComponent, MoneyPipe, ShortDatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { class: 'relative block py-2.5 border-t border-gray-100 first:border-t-0' },
+  host: {
+    class: 'relative block py-2.5 border-t border-gray-100 first:border-t-0 transition-opacity',
+    // The line being saved dims, so it's clear which one is busy (loading system §4).
+    '[class.opacity-70]': 'saving()',
+    '[attr.aria-busy]': 'saving()',
+  },
   template: `
     <div class="flex items-center justify-between gap-2 mb-2">
       <div class="flex items-center gap-2 min-w-0">
@@ -103,6 +108,7 @@ export class TransactionRowComponent {
   protected readonly icons = UiIcon;
   protected readonly helpOpen = signal(false);
   protected readonly errors = LineError;
+  protected readonly saving = computed(() => this.uiState()?.state === SaveState.Saving);
 
   /** An error with its own message under the chips (the generic one stays inside the chips). */
   protected readonly knownError = computed(() => {

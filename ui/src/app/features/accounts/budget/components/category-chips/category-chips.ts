@@ -1,6 +1,7 @@
 import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
 import { IconComponent } from '../../../../../shared/components/icon/icon';
+import { SpinnerComponent } from '../../../../../shared/components/spinner/spinner';
 import { UiIcon } from '../../../../../shared/constants/ui-icons';
 import { SaveState } from '../../budget.enums';
 import { BUDGET_TEXT } from '../../budget.texts';
@@ -14,7 +15,7 @@ const CHIP_BASE = 'inline-flex items-center gap-1 px-2.5 py-1 rounded-full borde
  */
 @Component({
   selector: 'app-category-chips',
-  imports: [IconComponent, NgTemplateOutlet],
+  imports: [IconComponent, NgTemplateOutlet, SpinnerComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'block', '(keydown.escape)': 'close()' },
   templateUrl: './category-chips.html',

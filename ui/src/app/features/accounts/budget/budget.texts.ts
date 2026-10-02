@@ -83,6 +83,10 @@ export const BUDGET_TEXT = {
   /** Savings card: money that moved but isn't in any budget category. */
   outsideCategories:'Fuera de categorías',
   monthIncome:      'Ingreso del mes',
+  chargesHelp:      'Qué incluye Consumos',
+  chargesIn:        'En',
+  chargesTotal:     'Total para el presupuesto',
+  chargesNotPosted: 'Aún sin registrar',
 
   loadError:        'No se pudo cargar el presupuesto.',
   loadingMonth:     'Cargando el mes',
@@ -127,6 +131,8 @@ export const BUDGET_TEXT = {
   cardPending:  (n: number) => `Sin registrar (${n})`,
   usdPosted:    (posted: number, total: number) =>
     `US$: ${posted} de ${total} ${total === 1 ? 'compra registrada' : 'compras registradas'}`,
+  chargesTitle: (from: string, to: string) => `Compras del estado ${from} – ${to}`,
+  chargesExclude: (credits: string) => `No incluye pagos ni créditos (${credits}).`,
   saveCountSuffix: (n: number) => (n > 0 ? `(${n})` : ''),
   pendingChanges:  (n: number) => `${n} ${n === 1 ? 'cambio sin guardar' : 'cambios sin guardar'}`,
   uploadResult: (newCount: number, uncategorized: number) =>

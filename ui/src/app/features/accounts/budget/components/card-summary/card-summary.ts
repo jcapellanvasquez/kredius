@@ -5,6 +5,7 @@ import {
 } from '@angular/core';
 import { IconComponent } from '../../../../../shared/components/icon/icon';
 import { ProgressRingComponent } from '../../../../../shared/components/progress-ring/progress-ring';
+import { CURRENCY_PREFIX, USD_PREFIX } from '../../../../../shared/constants/locale';
 import { MoneyPipe } from '../../../../../shared/pipes/money.pipe';
 import { ShortDatePipe } from '../../../../../shared/pipes/short-date.pipe';
 import { ProgressLevel, percentOf } from '../../../../../shared/utils/progress-level';
@@ -22,7 +23,7 @@ import { CardSummary } from '../../models/budget.models';
   selector: 'app-card-summary',
   imports: [IconComponent, NgTemplateOutlet, ProgressRingComponent, MoneyPipe, ShortDatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { class: 'block' },
+  host: { class: 'block', '(document:click)': 'chargesHelpOpen.set(false)', '(keydown.escape)': 'chargesHelpOpen.set(false)' },
   template: `
     <div class="card p-3 h-full flex flex-col">
       <div class="flex items-center gap-2.5">
@@ -52,7 +53,50 @@ import { CardSummary } from '../../models/budget.models';
             </div>
           }
           <div class="flex justify-between gap-2">
-            <span class="text-gray-500">{{ text.charges }}</span>
+            <span class="group relative inline-flex items-center gap-1 text-gray-500">
+              {{ text.charges }}
+              <button type="button" (click)="toggleChargesHelp($event)" [attr.aria-expanded]="chargesHelpOpen()"
+                [attr.aria-describedby]="chargesHelpId" [attr.aria-label]="text.chargesHelp"
+                class="text-gray-400 hover:text-gray-900 transition-colors">
+                <app-icon [name]="icons.Info" [size]="12" />
+              </button>
+              <span [id]="chargesHelpId" role="tooltip"
+                class="absolute left-0 top-full mt-1 z-20 w-64 max-w-[calc(100vw-3rem)] rounded-lg border border-gray-200 bg-white shadow-lg p-3 text-gray-600 group-hover:block"
+                [class.hidden]="!chargesHelpOpen()">
+                <span class="block mb-1.5 font-medium text-gray-900">
+                  {{ text.chargesTitle(shortDate(st.cycleStart), shortDate(st.cutOffDate)) }}
+                </span>
+                <span class="flex justify-between gap-2">
+                  <span>{{ text.chargesIn }} {{ prefix.rd }}</span>
+                  <span class="whitespace-nowrap">{{ st.rd.charges | money: 2 : false }}</span>
+                </span>
+                @if (st.usd && st.usd.charges > 0) {
+                  @let rate = card().usdRate;
+                  <span class="flex justify-between gap-2">
+                    <span>
+                      {{ text.chargesIn }} {{ prefix.usd }} · {{ st.usd.charges | money: 2 : false }}
+                      @if (rate !== null) { × {{ rate | money: 2 : false }} }
+                    </span>
+                    <span class="whitespace-nowrap">
+                      @if (rate !== null) { {{ st.usd.charges * rate | money: 2 : false }} } @else { {{ text.rateMissing }} }
+                    </span>
+                  </span>
+                }
+                @if (notPosted() > 0) {
+                  <span class="flex justify-between gap-2">
+                    <span>{{ text.chargesNotPosted }}</span>
+                    <span class="whitespace-nowrap">−{{ notPosted() | money: 2 : false }}</span>
+                  </span>
+                }
+                <span class="flex justify-between gap-2 mt-1 pt-1 border-t border-gray-100 font-medium text-gray-900">
+                  <span>{{ text.chargesTotal }}</span>
+                  <span class="whitespace-nowrap">{{ card().spent | money: 2 : false }}</span>
+                </span>
+                @if (st.rd.credits > 0) {
+                  <span class="block mt-1.5 text-gray-400">{{ text.chargesExclude(negative(st.rd.credits)) }}</span>
+                }
+              </span>
+            </span>
             <span class="whitespace-nowrap text-gray-700">{{ st.rd.charges | money }}</span>
           </div>
           @if (st.rd.balance !== null) {
@@ -144,11 +188,17 @@ export class CardSummaryComponent {
   protected readonly kind = StatementAccountKind.CreditCard;
   protected readonly editingRate = signal(false);
   protected readonly rateId = 'card-usd-rate';
+  protected readonly chargesHelpId = 'card-charges-help';
+  /** The Consumos tooltip, opened by tap/click (hover also shows it). */
+  protected readonly chargesHelpOpen = signal(false);
+  protected readonly prefix = { rd: CURRENCY_PREFIX, usd: USD_PREFIX };
   protected readonly icons = UiIcon;
 
   private readonly host = inject(ElementRef<HTMLElement>);
   private readonly injector = inject(Injector);
   private readonly rateInput = viewChild<ElementRef<HTMLInputElement>>('rate');
+  private readonly dates = new ShortDatePipe();
+  private readonly money = new MoneyPipe();
 
   constructor() {
     // The first run only records the current value, so a request made before this card existed doesn't reopen it.
@@ -166,6 +216,20 @@ export class CardSummaryComponent {
     if (!st) return null;
     if (Math.abs((st.rd.balance ?? 0) - st.check.ledger) < BALANCE_TOLERANCE) return 'matches';
     return Math.abs(st.check.difference) < BALANCE_TOLERANCE ? 'explained' : 'unexplained';
+  });
+
+  /**
+   * Statement charges (RD$ + US$ at the rate) not counted in `spent` yet: lines still unposted.
+   * 0 when they add up or there's no rate to convert the US$ ones.
+   */
+  protected readonly notPosted = computed(() => {
+    const card = this.card();
+    const st = card.statement;
+    if (!st) return 0;
+    const usd = st.usd?.charges ?? 0;
+    if (usd > 0 && card.usdRate === null) return 0;
+    const gap = st.rd.charges + usd * (card.usdRate ?? 0) - card.spent;
+    return gap >= BALANCE_TOLERANCE ? gap : 0;
   });
 
   /** Ring-specific bands (green / amber / red); category bars keep the gray / amber / red rule. */
@@ -186,6 +250,19 @@ export class CardSummaryComponent {
     if (this.editingRate() && this.rateInput()) return reveal();
     this.editingRate.set(true);
     afterNextRender(reveal, { injector: this.injector });
+  }
+
+  protected toggleChargesHelp(event: Event): void {
+    event.stopPropagation(); // the document click would close it right away
+    this.chargesHelpOpen.update(open => !open);
+  }
+
+  protected shortDate(iso: string): string {
+    return this.dates.transform(iso);
+  }
+
+  protected negative(amount: number): string {
+    return this.money.transform(-amount);
   }
 
   protected submitRate(raw: string): void {

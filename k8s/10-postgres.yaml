@@ -1,15 +1,9 @@
-# DO NOT APPLY until you are ready to switch from embedded to real Postgres.
-#
-# To switch:
-# 1. Apply this file:          kubectl apply -f 10-postgres.yaml
-# 2. Add postgres credentials to 01-secret.yaml (postgres-user, postgres-password)
-#    and re-apply:             kubectl apply -f 01-secret.yaml
-# 3. In 20-backend.yaml, uncomment the SPRING_DATASOURCE_* env vars and re-apply:
-#                              kubectl apply -f 20-backend.yaml
-# 4. The backend pod will restart (Recreate strategy), connect to the postgres
-#    Service, and run Flyway/Liquibase migrations on first boot.
-# NOTE: on first boot with real Postgres the database is empty — DataInitializer
-#       will re-seed the test data automatically since it checks for existing rows.
+# Kredius Postgres: a single-replica StatefulSet with its data on a 2Gi PVC (local-path).
+# Applied and running since 2026-09; the backend reaches it at postgres:5432.
+# Credentials come from kredius-secret (postgres-user, postgres-password).
+# The schema is owned by the backend's Flyway migrations (be/src/main/resources/db/migration);
+# DataInitializer seeds a user and the chart of accounts only when the tables are empty.
+# Back up before every deploy: kubectl exec postgres-0 -n kredius -- pg_dump -U kredius -Fc kredius > <file>.dump
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:

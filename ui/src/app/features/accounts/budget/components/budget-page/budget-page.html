@@ -94,9 +94,9 @@
   } @else if (store.loadError()) {
     <div class="card p-6 flex flex-col items-center gap-3 text-center" role="alert">
       <app-icon [name]="icons.Alert" [size]="24" class="text-gray-400" />
-      <p class="text-sm text-gray-700">{{ text.loadError }}</p>
+      <p class="text-body text-gray-700">{{ text.loadError }}</p>
       <button type="button" (click)="store.load()"
-        class="px-3 py-1.5 text-sm text-gray-700 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-colors">
+        class="px-3 py-1.5 text-body text-gray-700 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-colors">
         {{ text.retry }}
       </button>
     </div>
@@ -116,14 +116,14 @@
       <div [class]="layout.aside">
         <!-- Heading keeps both columns' first boxes aligned on wide screens -->
         <section>
-          <h2 class="text-sm font-medium text-gray-500 mb-2">{{ text.summary }}</h2>
+          <h2 class="text-body font-medium text-gray-500 mb-2">{{ text.summary }}</h2>
           <app-summary-cards [card]="screen.card" [savings]="screen.savings" [period]="store.period()"
             [cardBudget]="store.cardBudget()" [savingRate]="store.savingRate()" [rateRequest]="store.rateRequest()"
             (cardBudgetChange)="store.setDraft(screen.card.accountId, $event)" (saveRate)="store.saveUsdRate($event)" />
         </section>
 
         <section>
-          <h2 class="text-sm font-medium text-gray-500 mb-2">{{ text.quickCompare }}</h2>
+          <h2 class="text-body font-medium text-gray-500 mb-2">{{ text.quickCompare }}</h2>
           <app-quick-compare [rows]="store.compareRows()" />
         </section>
       </div>
@@ -131,7 +131,7 @@
       <!-- Editable detail (right column on wide screens) -->
       <div [class]="layout.detail">
         <section>
-          <h2 class="text-sm font-medium text-gray-500 mb-2">{{ text.detail }}</h2>
+          <h2 class="text-body font-medium text-gray-500 mb-2">{{ text.detail }}</h2>
           <app-category-list
             [uncategorized]="store.uncategorized()"
             [rows]="store.categories()"

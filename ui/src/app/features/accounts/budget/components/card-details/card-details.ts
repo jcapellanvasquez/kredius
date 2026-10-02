@@ -14,7 +14,7 @@ import { CardStatement } from '../../models/budget.models';
   host: { class: 'block' },
   template: `
     @let st = statement();
-    <div class="max-w-md text-xs tabular-nums">
+    <div class="max-w-md text-meta tabular-nums">
       <table class="w-full">
         @if (st.usd) {
           <thead>

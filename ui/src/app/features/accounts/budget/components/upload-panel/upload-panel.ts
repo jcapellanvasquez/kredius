@@ -33,13 +33,13 @@ export interface FilePick {
             (fileChange)="fileChange.emit({ kind: slot.kind, file: $event })" />
         }
       </div>
-      <p class="text-xs text-gray-400 mb-2.5">{{ text.uploadHint }}</p>
+      <p class="text-meta text-gray-400 mb-2.5">{{ text.uploadHint }}</p>
 
       <div class="flex items-center gap-2 mb-2.5">
-        <label [for]="dateId" class="text-sm text-gray-500 shrink-0">{{ text.statementDate }}</label>
+        <label [for]="dateId" class="text-body text-gray-500 shrink-0">{{ text.statementDate }}</label>
         <input [id]="dateId" type="date" [value]="statementDate()" [disabled]="uploading()"
           (change)="onDateChange($event)"
-          class="flex-1 min-w-0 px-3 py-1.5 text-sm text-gray-900 tabular-nums bg-white rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-300 disabled:bg-gray-50" />
+          class="flex-1 min-w-0 px-3 py-1.5 text-body text-gray-900 tabular-nums bg-white rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-300 disabled:bg-gray-50" />
       </div>
 
       @if (uploading() && progress(); as p) {
@@ -49,7 +49,7 @@ export interface FilePick {
             [status]="p.percent === null ? text.processingStatement : text.sending"
             [value]="p.percent" />
           @for (r of p.done; track r.kind) {
-            <p class="mt-1.5 flex items-center gap-1 text-xs text-gray-500">
+            <p class="mt-1.5 flex items-center gap-1 text-meta text-gray-500">
               <app-icon [name]="icons.Check" [size]="12" /> {{ text.kind[r.kind] }}: {{ text.uploadResult(r.newCount, r.uncategorizedCount) }}
             </p>
           }
@@ -57,13 +57,13 @@ export interface FilePick {
       }
 
       @if (error()) {
-        <p class="flex items-center gap-1 text-xs text-gray-900 mb-2.5" role="alert">
+        <p class="flex items-center gap-1 text-meta text-gray-900 mb-2.5" role="alert">
           <app-icon [name]="icons.Alert" [size]="14" /> {{ text.uploadError }}
         </p>
       }
 
       <button type="button" (click)="process.emit()" [disabled]="!canProcess()"
-        class="w-full inline-flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium text-white bg-brand-500 rounded-lg hover:bg-brand-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+        class="w-full inline-flex items-center justify-center gap-1.5 py-2.5 text-body font-medium text-white bg-brand-500 rounded-lg hover:bg-brand-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
         @if (uploading()) {
           <app-spinner [size]="spinner.size" [tone]="spinner.tone" />
           {{ text.processing }}
@@ -73,7 +73,7 @@ export interface FilePick {
       </button>
 
       <button type="button" (click)="toggleHistory.emit()" [attr.aria-expanded]="historyOpen()"
-        class="mt-3 inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-900 transition-colors">
+        class="mt-3 inline-flex items-center gap-1 text-meta text-gray-500 hover:text-gray-900 transition-colors">
         <app-icon [name]="icons.History" [size]="14" />
         {{ text.history }}
         <app-icon [name]="icons.ChevronDown" [size]="12" class="transition-transform" [class.rotate-180]="historyOpen()" />

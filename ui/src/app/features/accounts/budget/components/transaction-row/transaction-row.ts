@@ -23,7 +23,7 @@ import { CategoryChipsComponent } from '../category-chips/category-chips';
     @if (showDone()) {
       <!-- Categorized here: one confirmation line in place of the row, so nothing below moves up. -->
       <div animate.enter="done-tint" class="-mx-2 px-2 py-0.5 rounded-md" role="status">
-        <div class="flex items-center justify-between gap-2 text-sm text-gray-500">
+        <div class="flex items-center justify-between gap-2 text-body text-gray-500">
           <span class="flex items-center gap-1.5 min-w-0">
             <app-icon [name]="icons.Check" [size]="14" class="shrink-0 text-brand-700" />
             <span class="truncate">{{ line().description }}</span>
@@ -36,7 +36,7 @@ import { CategoryChipsComponent } from '../category-chips/category-chips';
             }
           </span>
         </div>
-        <div class="flex items-center justify-between gap-2 mt-0.5 pl-5 text-sm">
+        <div class="flex items-center justify-between gap-2 mt-0.5 pl-5 text-body">
           <span class="min-w-0 text-gray-700">→ <span class="font-medium text-gray-900">{{ categoryName() }}</span></span>
           <button type="button" (click)="changingFrom.set(line().categoryId)"
             class="shrink-0 text-gray-600 underline underline-offset-2 hover:text-gray-900">
@@ -51,11 +51,11 @@ import { CategoryChipsComponent } from '../category-chips/category-chips';
           <span class="sr-only">{{ text.kind[line().source] }}</span>
           <!-- Up to 2 lines; tap to show the rest (A3 in mobile-fixes-plan.md). -->
           <button type="button" (click)="expanded.set(!expanded())" [attr.aria-expanded]="expanded()"
-            class="min-w-0 text-left text-sm text-gray-700 break-words" [class.line-clamp-2]="!expanded()">
+            class="min-w-0 text-left text-body text-gray-700 break-words" [class.line-clamp-2]="!expanded()">
             {{ line().description }}
           </button>
         </div>
-        <span class="text-sm text-gray-900 tabular-nums shrink-0">
+        <span class="text-body text-gray-900 tabular-nums shrink-0">
           @if (isUsd()) {
             {{ line().originalAmount | money: 2 : true : true }}
           } @else {
@@ -65,20 +65,20 @@ import { CategoryChipsComponent } from '../category-chips/category-chips';
       </div>
       <div class="mb-2">
         <div class="flex flex-wrap items-center gap-1.5">
-          <span class="text-xs text-gray-500">{{ line().date | shortDate }} ·</span>
+          <span class="text-meta text-gray-500">{{ line().date | shortDate }} ·</span>
           <button type="button" (click)="helpOpen.set(!helpOpen())" [attr.aria-expanded]="helpOpen()"
-            class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-50 text-xs text-gray-500 hover:text-gray-900 transition-colors">
+            class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-50 text-meta text-gray-500 hover:text-gray-900 transition-colors">
             <app-icon [name]="icons.Info" [size]="12" />
             {{ effectText().tag }}
           </button>
           @if (rateMissing()) {
-            <span class="inline-flex items-center px-2 py-0.5 rounded-full border border-warning-border bg-warning-bg text-xs text-warning-text">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full border border-warning-border bg-warning-bg text-meta text-warning-text">
               {{ text.rateMissing }}
             </span>
           }
         </div>
         @if (helpOpen()) {
-          <p animate.enter="fade-in" class="mt-1 text-xs text-gray-500">{{ effectText().help }}</p>
+          <p animate.enter="fade-in" class="mt-1 text-meta text-gray-500">{{ effectText().help }}</p>
         }
       </div>
       <app-category-chips
@@ -90,7 +90,7 @@ import { CategoryChipsComponent } from '../category-chips/category-chips';
         (choose)="onChoose($event)" />
       @switch (knownError()) {
         @case (errors.NoRate) {
-          <p animate.enter="fade-in" class="mt-2 flex items-start gap-1 text-xs text-gray-900" role="alert">
+          <p animate.enter="fade-in" class="mt-2 flex items-start gap-1 text-meta text-gray-900" role="alert">
             <app-icon [name]="icons.Alert" [size]="12" class="mt-0.5 shrink-0" />
             <span>
               {{ text.rateMissingError }}
@@ -101,7 +101,7 @@ import { CategoryChipsComponent } from '../category-chips/category-chips';
           </p>
         }
         @case (errors.Changed) {
-          <p animate.enter="fade-in" class="mt-2 flex items-start gap-1 text-xs text-gray-900" role="alert">
+          <p animate.enter="fade-in" class="mt-2 flex items-start gap-1 text-meta text-gray-900" role="alert">
             <app-icon [name]="icons.Alert" [size]="12" class="mt-0.5 shrink-0" />
             <span>
               {{ text.lineChanged }}

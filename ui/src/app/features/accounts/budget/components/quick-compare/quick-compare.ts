@@ -16,11 +16,11 @@ import { CategoryRowView } from '../../models/budget.models';
       @for (row of rows(); track row.accountId) {
         <div class="mb-3 last:mb-0">
           <div class="flex items-center justify-between gap-2 mb-1.5">
-            <span class="flex items-center gap-1.5 min-w-0 text-sm font-medium text-gray-900">
+            <span class="flex items-center gap-1.5 min-w-0 text-body font-medium text-gray-900">
               <app-account-icon [icon]="row.icon" [size]="iconSize" />
               <span class="line-clamp-2 break-words">{{ row.name }}</span>
             </span>
-            <span class="text-xs text-gray-500 tabular-nums shrink-0">
+            <span class="text-meta text-gray-500 tabular-nums shrink-0">
               {{ row.actual | money: 0 }}
               @if (row.budgetInput !== null) {
                 / {{ row.budgetInput | money: 0 : false }} · {{ row.pct }}{{ text.percent }}
@@ -32,7 +32,7 @@ import { CategoryRowView } from '../../models/budget.models';
           <app-progress-bar [pct]="row.pct" [level]="row.level" />
         </div>
       } @empty {
-        <p class="text-sm text-gray-400">{{ text.quickCompareEmpty }}</p>
+        <p class="text-body text-gray-400">{{ text.quickCompareEmpty }}</p>
       }
     </div>
   `,

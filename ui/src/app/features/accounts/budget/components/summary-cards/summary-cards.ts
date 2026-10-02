@@ -35,11 +35,11 @@ import { SavingsSummaryComponent } from '../savings-summary/savings-summary';
           [class.order-2]="kind === kinds.CreditCard" [class.order-4]="kind === kinds.Savings"
           [attr.aria-label]="kind === kinds.CreditCard ? text.cardDetails : text.savingsDetails">
           <div class="flex items-center justify-between gap-2 mb-2">
-            <p class="text-sm font-medium text-gray-900">
+            <p class="text-body font-medium text-gray-900">
               {{ kind === kinds.CreditCard ? text.cardDetails : text.savingsDetails }}
             </p>
             <button type="button" (click)="open.set(null)"
-              class="inline-flex items-center gap-0.5 text-xs text-gray-500 hover:text-gray-900 transition-colors">
+              class="inline-flex items-center gap-0.5 text-meta text-gray-500 hover:text-gray-900 transition-colors">
               {{ text.close }}
               <app-icon [name]="icons.ChevronDown" [size]="12" class="rotate-180" />
             </button>

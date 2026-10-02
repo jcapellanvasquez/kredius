@@ -21,7 +21,7 @@ import { ImportDetail } from '../../models/budget.models';
   template: `
     <div class="max-w-2xl mx-auto flex flex-col gap-4">
       <a [routerLink]="routes.root" queryParamsHandling="preserve"
-        class="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-900 transition-colors w-fit">
+        class="inline-flex items-center gap-1 text-body text-gray-500 hover:text-gray-900 transition-colors w-fit">
         <app-icon [name]="icons.ArrowLeft" [size]="16" /> {{ text.back }}
       </a>
 
@@ -35,29 +35,29 @@ import { ImportDetail } from '../../models/budget.models';
             <h1 class="text-base font-semibold text-gray-900">
               {{ text.kind[d.kind] }} · {{ d.statementDate | shortDate: true }}
             </h1>
-            <p class="text-xs text-gray-400 truncate">{{ d.fileName }} · {{ text.lines(d.lineCount) }}</p>
+            <p class="text-meta text-gray-400 truncate">{{ d.fileName }} · {{ text.lines(d.lineCount) }}</p>
           </div>
-          <span class="text-xs text-gray-500 bg-gray-50 px-2 py-0.5 rounded-full shrink-0">
+          <span class="text-meta text-gray-500 bg-gray-50 px-2 py-0.5 rounded-full shrink-0">
             {{ text.importStatus[d.status] }}
           </span>
         </div>
 
         <section>
-          <h2 class="text-sm font-medium text-gray-500 mb-2">{{ text.importLines }}</h2>
+          <h2 class="text-body font-medium text-gray-500 mb-2">{{ text.importLines }}</h2>
           <ul class="card">
             @for (line of d.lines; track line.lineId) {
               <li class="card-row gap-3">
                 <div class="min-w-0">
-                  <p class="text-sm text-gray-700 truncate">{{ line.date | shortDate }} · {{ line.description }}</p>
-                  <p class="text-xs text-gray-400">{{ line.categoryName ?? text.uncategorized }}</p>
+                  <p class="text-body text-gray-700 truncate">{{ line.date | shortDate }} · {{ line.description }}</p>
+                  <p class="text-meta text-gray-400">{{ line.categoryName ?? text.uncategorized }}</p>
                 </div>
-                <span class="text-sm text-gray-900 tabular-nums shrink-0">{{ line.originalAmount | money: 2 : true : line.currency === usd }}</span>
+                <span class="text-body text-gray-900 tabular-nums shrink-0">{{ line.originalAmount | money: 2 : true : line.currency === usd }}</span>
               </li>
             }
           </ul>
         </section>
       } @else {
-        <p class="text-sm text-gray-500" role="alert">{{ text.importNotFound }}</p>
+        <p class="text-body text-gray-500" role="alert">{{ text.importNotFound }}</p>
       }
     </div>
   `,

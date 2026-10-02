@@ -2,6 +2,23 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Named text sizes (C in mobile-fixes-plan.md): bigger on phones, today's sizes from `sm` (640px) up.
+ *   text-body     16px / 14px  descriptions, names, amounts, inputs (16px keeps iOS from zooming on focus)
+ *   text-meta     14px / 12px  dates, tags, chips, hints
+ *   text-caption  12px         units, footnotes; never below 12px
+ * rem-based, so the phone's text-size setting still applies.
+ */
+@layer utilities {
+  .text-body    { font-size: 1rem;     line-height: 1.5rem; }
+  .text-meta    { font-size: 0.875rem; line-height: 1.25rem; }
+  .text-caption { font-size: 0.75rem;  line-height: 1rem; }
+  @screen sm {
+    .text-body { font-size: 0.875rem; line-height: 1.25rem; }
+    .text-meta { font-size: 0.75rem;  line-height: 1rem; }
+  }
+}
+
 @layer base {
   body {
     font-feature-settings: "tnum";

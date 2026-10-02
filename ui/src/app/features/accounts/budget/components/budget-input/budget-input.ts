@@ -16,32 +16,32 @@ let nextId = 0;
   host: { class: 'block' },
   template: `
     <div class="flex items-center gap-2">
-      <label [for]="inputId" class="text-sm text-gray-500 shrink-0 w-24">{{ text.budget }}</label>
+      <label [for]="inputId" class="text-body text-gray-500 shrink-0 w-24">{{ text.budget }}</label>
       <div class="relative flex-1">
-        <span class="absolute inset-y-0 left-3 flex items-center text-sm text-gray-400 pointer-events-none">{{ prefix }}</span>
+        <span class="absolute inset-y-0 left-3 flex items-center text-body text-gray-400 pointer-events-none">{{ prefix }}</span>
         <input #field [id]="inputId" type="number" inputmode="decimal" enterkeyhint="done" min="0" step="100"
           [value]="value() ?? ''" [disabled]="state() === states.Saving" (input)="onInput(field)"
           (blur)="unreadable.set(field.validity.badInput)" (keydown.enter)="field.blur()"
-          class="w-full pl-10 pr-3 py-1.5 text-sm text-gray-900 tabular-nums bg-white rounded-lg border focus:outline-none focus:ring-2 focus:ring-brand-300 disabled:bg-gray-50 transition-colors"
+          class="w-full pl-10 pr-3 py-1.5 text-body text-gray-900 tabular-nums bg-white rounded-lg border focus:outline-none focus:ring-2 focus:ring-brand-300 disabled:bg-gray-50 transition-colors"
           [class.border-gray-900]="edited()" [class.border-gray-200]="!edited()" />
       </div>
     </div>
     @if (unreadable()) {
-      <p class="mt-1 text-right text-xs text-gray-900" role="alert">{{ text.unreadableNumber }}</p>
+      <p class="mt-1 text-right text-meta text-gray-900" role="alert">{{ text.unreadableNumber }}</p>
     }
     @switch (state()) {
       @case (states.Saved) {
-        <p class="mt-1 flex items-center justify-end gap-0.5 text-xs text-gray-500" role="status">
+        <p class="mt-1 flex items-center justify-end gap-0.5 text-meta text-gray-500" role="status">
           <app-icon [name]="icons.Check" [size]="12" /> {{ text.saved }}
         </p>
       }
       @case (states.Idle) {
         @if (carriedMonth()) {
-          <p class="mt-1 text-right text-xs text-gray-400">{{ text.sameAs(carriedMonth()) }}</p>
+          <p class="mt-1 text-right text-meta text-gray-400">{{ text.sameAs(carriedMonth()) }}</p>
         }
       }
       @default {
-        <p class="mt-1 text-right text-xs text-gray-900">• {{ text.unsaved }}</p>
+        <p class="mt-1 text-right text-meta text-gray-900">• {{ text.unsaved }}</p>
       }
     }
   `,

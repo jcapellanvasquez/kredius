@@ -12,7 +12,7 @@ const PANEL_WIDTH_PX = 224;
 const PANEL_MAX_GUTTERS_PX = 48;
 const PANEL_EDGE_PX = 16;
 
-const CHIP_BASE = 'inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-xs transition-colors disabled:opacity-40';
+const CHIP_BASE = 'inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-meta transition-colors disabled:opacity-40';
 
 /**
  * Current category + suggestions + "Otra" (searchable list of every category).

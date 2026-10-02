@@ -387,11 +387,17 @@ class BudgetScreenService(
     ): BudgetSavingsSummary {
         val userId = currentUser.id
         val totals = journalLineRepo.findBalanceBefore(userId, savings.id, next)
+        val previous = if (journalLineRepo.existsLineBefore(userId, savings.id, from)) {
+            journalLineRepo.findBalanceBefore(userId, savings.id, from).let { it.totalDebit - it.totalCredit }
+        } else {
+            null
+        }
         return BudgetSavingsSummary(
             accountId = savings.id,
             name = savings.name,
             icon = savings.icon,
             balance = (totals.totalDebit - totals.totalCredit).toDouble(),
+            previousBalance = previous?.toDouble(),
             income = journalLineRepo.findIncomeInto(userId, savings.id, from, next).toDouble(),
             loanPayments = loanPayments,
             cardPayments = cardPayments,

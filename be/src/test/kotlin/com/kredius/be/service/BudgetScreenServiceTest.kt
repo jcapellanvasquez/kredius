@@ -290,6 +290,23 @@ class BudgetScreenServiceTest {
     }
 
     @Test
+    fun `savings shows the previous month's closing balance`() {
+        monthLines()
+        `when`(journalLineRepo.existsLineBefore(0L, 1L, august)).thenReturn(true)
+        `when`(journalLineRepo.findBalanceBefore(0L, 1L, august)).thenReturn(totals("4000.00", "1500.00"))
+
+        assertEquals(2500.0, service.get(august).savings!!.previousBalance)
+    }
+
+    @Test
+    fun `savings has no previous balance in its first month`() {
+        monthLines()
+        `when`(journalLineRepo.existsLineBefore(0L, 1L, august)).thenReturn(false)
+
+        assertNull(service.get(august).savings!!.previousBalance)
+    }
+
+    @Test
     fun `last uploads list both statement accounts, null when never uploaded`() {
         monthLines()
         val upload = StatementImport(account = card)

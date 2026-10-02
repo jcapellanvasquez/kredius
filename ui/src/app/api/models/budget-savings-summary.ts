@@ -33,4 +33,9 @@ export interface BudgetSavingsSummary {
    */
   loanPayments?: Array<BudgetLoanPayment>;
   name: string;
+
+  /**
+   * Ledger balance at the end of the previous month, RD$; null when the account has no lines before this month
+   */
+  previousBalance?: number | null;
 }

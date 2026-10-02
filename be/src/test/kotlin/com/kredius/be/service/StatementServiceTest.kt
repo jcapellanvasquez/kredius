@@ -128,7 +128,7 @@ class StatementServiceTest {
         `when`(lineRepo.saveAll(anyList<JournalLine>()))
             .thenAnswer { (it.arguments[0] as List<*>).filterIsInstance<JournalLine>().also(savedJournalLines::addAll) }
         `when`(installmentRepo.save(any(LoanInstallment::class.java))).thenAnswer { it.arguments[0] }
-        `when`(exchangeRateRepo.findTopByContextOrderByRateDateDesc(RateContext.CREDIT_CARD)).thenAnswer { cardRate }
+        `when`(exchangeRateRepo.findTopByContextOrderByRateDateDescIdDesc(RateContext.CREDIT_CARD)).thenAnswer { cardRate }
         `when`(exchangeRateRepo.save(any(ExchangeRate::class.java)))
             .thenAnswer { (it.arguments[0] as ExchangeRate).also { r -> cardRate = r } }
         `when`(accountRepo.findFirstByUserIdAndStatementTypeAndActiveTrueOrderByCodeAsc(0L, StatementType.SAVINGS))

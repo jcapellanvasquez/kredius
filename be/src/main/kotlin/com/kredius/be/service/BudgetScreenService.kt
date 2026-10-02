@@ -64,7 +64,7 @@ class BudgetScreenService(
         val lines = lineRepo.findByStatementImportUserIdAndStatementImportStatusNotAndBudgetPeriod(
             userId, StatementImportStatus.REVERSED, from,
         )
-        val usdRate by lazy { exchangeRateRepo.findTopByContextOrderByRateDateDesc(RateContext.CREDIT_CARD) }
+        val usdRate by lazy { exchangeRateRepo.findTopByContextOrderByRateDateDescIdDesc(RateContext.CREDIT_CARD) }
         fun rd(line: StatementLine) = line.journalLine?.amountRd ?: amountRd(line, usdRate)
         val expenses = accountRepo.findByUserIdAndType(userId, AccountType.EXPENSE)
         val incomes = accountRepo.findByUserIdAndType(userId, AccountType.INCOME)
@@ -253,7 +253,7 @@ class BudgetScreenService(
             spent = charges.filter { it.journalLine != null }.sumOf(rd).toDouble(),
             budget = budget?.amount?.toDouble(),
             budgetFromMonth = budget?.period,
-            usdRate = exchangeRateRepo.findTopByContextOrderByRateDateDesc(RateContext.CREDIT_CARD)?.value?.toDouble(),
+            usdRate = exchangeRateRepo.findTopByContextOrderByRateDateDescIdDesc(RateContext.CREDIT_CARD)?.value?.toDouble(),
             statement = cardStatement(card, savings, monthEnd),
         )
     }

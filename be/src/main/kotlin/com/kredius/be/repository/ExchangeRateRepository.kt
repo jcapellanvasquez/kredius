@@ -5,5 +5,6 @@ import com.kredius.be.entity.RateContext
 import org.springframework.data.jpa.repository.JpaRepository
 
 interface ExchangeRateRepository : JpaRepository<ExchangeRate, Long> {
-    fun findTopByContextOrderByRateDateDesc(context: RateContext): ExchangeRate?
+    /** The latest rate: newest `rateDate`, and among rates saved the same day the last one saved. */
+    fun findTopByContextOrderByRateDateDescIdDesc(context: RateContext): ExchangeRate?
 }

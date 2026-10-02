@@ -70,7 +70,7 @@ class BudgetScreenServiceTest {
             .thenReturn(savings)
         `when`(journalLineRepo.findBalanceBefore(0L, 1L, august.plusMonths(1))).thenReturn(totals("5000.00", "2000.00"))
         `when`(journalLineRepo.findIncomeInto(0L, 1L, august, august.plusMonths(1))).thenReturn(BigDecimal("1200.00"))
-        `when`(exchangeRateRepo.findTopByContextOrderByRateDateDesc(RateContext.CREDIT_CARD))
+        `when`(exchangeRateRepo.findTopByContextOrderByRateDateDescIdDesc(RateContext.CREDIT_CARD))
             .thenReturn(ExchangeRate(value = BigDecimal("60.00")))
         BudgetScreenService(
             CurrentUserService(userRepo, 0L), accountRepo, importRepo, lineRepo, journalLineRepo, exchangeRateRepo, budgetRepo,

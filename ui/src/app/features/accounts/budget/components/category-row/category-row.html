@@ -3,7 +3,7 @@
 <div class="flex items-center justify-between gap-2 mb-2">
   <div class="flex items-center gap-2.5 min-w-0">
     <app-account-icon [icon]="r.icon" [highlight]="highlight()" />
-    <span class="text-base font-medium text-gray-900 truncate">{{ r.name }}</span>
+    <span class="text-base font-medium text-gray-900 line-clamp-2 break-words">{{ r.name }}</span>
   </div>
   <div class="flex gap-1 shrink-0">
     @for (origin of r.origins; track origin) {

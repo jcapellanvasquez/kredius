@@ -18,7 +18,7 @@ import { CategoryRowView } from '../../models/budget.models';
           <div class="flex items-center justify-between gap-2 mb-1.5">
             <span class="flex items-center gap-1.5 min-w-0 text-sm font-medium text-gray-900">
               <app-account-icon [icon]="row.icon" [size]="iconSize" />
-              <span class="truncate">{{ row.name }}</span>
+              <span class="line-clamp-2 break-words">{{ row.name }}</span>
             </span>
             <span class="text-xs text-gray-500 tabular-nums shrink-0">
               {{ row.actual | money: 0 }}

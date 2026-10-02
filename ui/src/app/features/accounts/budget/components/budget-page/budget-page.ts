@@ -28,6 +28,8 @@ export class BudgetPageComponent implements OnInit, HasUnsavedChanges {
   protected readonly text = BUDGET_TEXT;
   protected readonly icons = UiIcon;
   protected readonly skeletonRows = [0, 1, 2, 3];
+  /** Widths (%) of the summary cards' skeleton rows. */
+  protected readonly skeletonSummaryLines = [100, 100, 80, 60];
   /**
    * Single column up to `xl`; from there a sticky glance column + the editable detail column.
    * `xl` (not `lg`) because the accounts sidebar takes 384px of the viewport.

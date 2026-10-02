@@ -13,9 +13,14 @@ export interface BudgetCategoryRow {
   actual: number;
 
   /**
-   * The budget saved for the month
+   * The budget in force, the latest one saved for this month or an earlier one (it carries forward until changed); null when none was ever saved or the latest is 0
    */
   budget?: number | null;
+
+  /**
+   * First day of the month that budget was saved for; equals the period when saved this month, earlier when carried forward
+   */
+  budgetFromMonth?: string | null;
   icon?: string | null;
 
   /**
@@ -28,10 +33,5 @@ export interface BudgetCategoryRow {
    * Statement accounts the spend came from, card first
    */
   origins: Array<StatementType>;
-
-  /**
-   * The most recent earlier saved budget; only when budget is null (a hint, not a budget)
-   */
-  previousBudget?: number | null;
   transactions: Array<BudgetTransactionLine>;
 }

@@ -282,7 +282,7 @@ function toCategoryRow(r: BudgetCategoryRow): CategoryRow {
     icon: r.icon ?? AccountIcon.Category,
     actual: r.actual,
     budget,
-    previousBudget: budget === null ? positiveOrNull(r.previousBudget) : null,
+    budgetFromMonth: budget === null ? null : r.budgetFromMonth ?? null,
     origins: r.origins.map(o => o as StatementAccountKind),
     transactions: r.transactions.map(toTransaction),
     loanInterest: (r.loanInterest ?? []).map(toLoanPayment),

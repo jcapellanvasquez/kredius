@@ -1191,12 +1191,12 @@ components:
           type: number
           format: double
           nullable: true
-          description: The budget saved for the month
-        previousBudget:
-          type: number
-          format: double
+          description: The budget in force, the latest one saved for this month or an earlier one (it carries forward until changed); null when none was ever saved or the latest is 0
+        budgetFromMonth:
+          type: string
+          format: date
           nullable: true
-          description: The most recent earlier saved budget; only when budget is null (a hint, not a budget)
+          description: First day of the month that budget was saved for; equals the period when saved this month, earlier when carried forward
         origins:
           type: array
           description: Statement accounts the spend came from, card first

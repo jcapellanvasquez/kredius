@@ -100,7 +100,9 @@ export class BudgetStore {
       const saveState = dirty
         ? (batch === SaveState.Saving || batch === SaveState.Error ? batch : SaveState.Dirty)
         : (recent.has(row.accountId) ? SaveState.Saved : SaveState.Idle);
-      return { ...row, budgetInput, pct, level: progressLevel(pct, BUDGET_THRESHOLDS), dirty, saveState };
+      const carried = !dirty && row.budgetFromMonth !== null && row.budgetFromMonth < this.period();
+      return { ...row, budgetInput, pct, level: progressLevel(pct, BUDGET_THRESHOLDS), dirty, saveState,
+        carriedFrom: carried ? row.budgetFromMonth : null };
     });
   });
 

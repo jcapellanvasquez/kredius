@@ -32,8 +32,6 @@ export const BUDGET_TEXT = {
   percent:          '%',
   of:               'de',
   unsaved:          'sin guardar',
-  usePrevious:      'Usar',
-  usePreviousLabel: 'Usar el presupuesto del mes anterior',
   saved:            'Guardado',
   saveFailed:       'No se pudo guardar',
   other:            'Otra',
@@ -130,7 +128,6 @@ export const BUDGET_TEXT = {
   installment: (n: number, total: number | null) => (total ? `Cuota ${n}/${total}` : `Cuota ${n}`),
   loanInterest: (n: number, total: number | null, loan: string) =>
     `Interés ${total ? `cuota ${n}/${total}` : `cuota ${n}`} – ${loan}`,
-  previousBudget: (amount: string) => `${amount} (mes anterior)`,
   transactions: (n: number) => `${n} ${n === 1 ? 'transacción' : 'transacciones'}`,
   lines:        (n: number) => `${n} ${n === 1 ? 'línea' : 'líneas'}`,
   unresolved:   (n: number) => `${n} sin categorizar`,

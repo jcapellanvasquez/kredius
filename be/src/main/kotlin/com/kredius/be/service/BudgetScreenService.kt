@@ -161,8 +161,8 @@ class BudgetScreenService(
         // saves 0, which means "no budget" from that month on.
         val budgets = budgetRepo.findByAccountIdInAndPeriodLessThanEqual(ids, from)
             .groupBy { it.account.id }
-            .mapValues { (_, saved) -> saved.maxBy { it.period }.amount }
-            .filterValues { it.signum() > 0 }
+            .mapValues { (_, saved) -> saved.maxBy { it.period } }
+            .filterValues { it.amount.signum() > 0 }
         val postedByCategory = lines
             .filter { it.journalLine != null && it.categoryAccount != null }
             .groupBy { it.categoryAccount!!.id }
@@ -178,7 +178,8 @@ class BudgetScreenService(
                 name = category.name,
                 icon = category.icon,
                 actual = actual.toDouble(),
-                budget = budget?.toDouble(),
+                budget = budget?.amount?.toDouble(),
+                budgetFromMonth = budget?.period,
                 origins = transactions.map { it.source }.distinct().sortedBy { it.ordinal },
                 transactions = transactions,
                 loanInterest = loanPayments

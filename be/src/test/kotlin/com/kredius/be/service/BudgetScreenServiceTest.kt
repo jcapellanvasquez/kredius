@@ -374,6 +374,7 @@ class BudgetScreenServiceTest {
         assertEquals(listOf("Supermercado", "Comida", "Transporte", "Diversión"), rows.map { it.name })
         assertEquals(listOf(300.0, 1400.0, 50.0, 0.0), rows.map { it.actual })
         assertEquals(listOf(200.0, 2000.0, 900.0, 500.0), rows.map { it.budget })
+        assertEquals(listOf(august, august, august.minusMonths(1), august), rows.map { it.budgetFromMonth })
     }
 
     @Test

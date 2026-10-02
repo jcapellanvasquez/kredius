@@ -39,7 +39,7 @@
   </ul>
 }
 
-<app-budget-input [value]="r.budgetInput" [hint]="r.previousBudget" [state]="r.saveState"
+<app-budget-input [value]="r.budgetInput" [carriedFrom]="r.carriedFrom" [state]="r.saveState"
   (valueChange)="budgetChange.emit($event)" />
 
 @if (r.transactions.length > 0) {

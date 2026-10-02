@@ -135,8 +135,8 @@ export interface CategoryRow {
   icon: string;
   actual: number;
   budget: number | null;
-  /** Most recent earlier saved budget, only when `budget` is null. A hint, never the budget (plan Q4). */
-  previousBudget: number | null;
+  /** First day of the month the budget was saved for; earlier than the period when carried forward. */
+  budgetFromMonth: string | null;
   /** Accounts the spend came from; both when mixed (Decision 1). */
   origins: StatementAccountKind[];
   transactions: TransactionLine[];
@@ -220,6 +220,8 @@ export interface CategoryRowView extends CategoryRow {
   level: ProgressLevel;
   dirty: boolean;
   saveState: SaveState;
+  /** Month the shown budget carries over from; null when saved this month or being edited. */
+  carriedFrom: string | null;
 }
 
 /** The card budget as shown and edited on the card summary. */

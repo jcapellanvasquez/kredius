@@ -7,6 +7,11 @@ import { SaveState } from '../../budget.enums';
 import { BUDGET_TEXT } from '../../budget.texts';
 import { CategoryOption, CategoryOptionGroup } from '../../models/budget.models';
 
+/** The "Otra" panel: `w-56`, capped at `100vw - 3rem`; kept this far from the screen's edges. */
+const PANEL_WIDTH_PX = 224;
+const PANEL_MAX_GUTTERS_PX = 48;
+const PANEL_EDGE_PX = 16;
+
 const CHIP_BASE = 'inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-xs transition-colors disabled:opacity-40';
 
 /**
@@ -39,6 +44,8 @@ export class CategoryChipsComponent {
   };
   protected readonly open = signal(false);
   protected readonly query = signal('');
+  /** The panel's left, relative to the button: 0, or shifted left so it doesn't run off the screen (phones). */
+  protected readonly panelLeft = signal(0);
 
   protected readonly saving = computed(() => this.state() === SaveState.Saving);
 
@@ -64,7 +71,8 @@ export class CategoryChipsComponent {
     if (!this.saving()) this.choose.emit(accountId);
   }
 
-  protected toggle(): void {
+  protected toggle(trigger: HTMLElement): void {
+    if (!this.open()) this.panelLeft.set(this.fitOnScreen(trigger.getBoundingClientRect().left));
     this.open.update(v => !v);
     this.query.set('');
   }
@@ -75,6 +83,14 @@ export class CategoryChipsComponent {
 
   protected onSearch(event: Event): void {
     this.query.set((event.target as HTMLInputElement).value);
+  }
+
+  /** How far left to shift a panel opened at `buttonLeft` so it ends before the screen's right edge. */
+  private fitOnScreen(buttonLeft: number): number {
+    const viewport = window.innerWidth;
+    const width = Math.min(PANEL_WIDTH_PX, viewport - PANEL_MAX_GUTTERS_PX);
+    const left = Math.max(PANEL_EDGE_PX, Math.min(buttonLeft, viewport - PANEL_EDGE_PX - width));
+    return left - buttonLeft;
   }
 
   private matching(options: CategoryOption[]): CategoryOption[] {

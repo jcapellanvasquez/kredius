@@ -40,7 +40,8 @@ import { SavingsSummary } from '../../models/budget.models';
               <span class="text-gray-400">= {{ text.noChange }}</span>
             }
           }
-          <span class="text-gray-400">{{ text.versus(previousMonth()) }}</span>
+          <!-- Leading space inside the span: Angular drops whitespace-only text between elements. -->
+          <span class="text-gray-400"> {{ text.versus(previousMonth()) }}</span>
         </p>
       }
 

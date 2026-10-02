@@ -15,7 +15,8 @@ spring:
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
-      ddl-auto: ${SPRING_JPA_DDL_AUTO:create-drop}
+      # Flyway owns the schema (db/migration); Hibernate only checks the entities match it.
+      ddl-auto: validate
     open-in-view: false
     show-sql: false
 

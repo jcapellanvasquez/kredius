@@ -199,7 +199,7 @@ class StatementService(
                 ?: throw ApiException(ApiException.NOT_FOUND, "Category account not found", HttpStatus.NOT_FOUND)
         }
         if (category != null && line.journalLine == null && line.currency == CurrencyType.USD &&
-            exchangeRateRepo.findTopByContextOrderByRateDateDesc(RateContext.CREDIT_CARD) == null) {
+            exchangeRateRepo.findTopByContextOrderByRateDateDescIdDesc(RateContext.CREDIT_CARD) == null) {
             throw ApiException(ApiException.NO_EXCHANGE_RATE, "Falta la tasa del dólar para registrar líneas en US$",
                 HttpStatus.UNPROCESSABLE_ENTITY)
         }
@@ -331,7 +331,7 @@ class StatementService(
      * lines were posted.
      */
     private fun postPending(import: StatementImport, candidates: List<StatementLine> = import.lines): Int {
-        val usdRate = exchangeRateRepo.findTopByContextOrderByRateDateDesc(RateContext.CREDIT_CARD)
+        val usdRate = exchangeRateRepo.findTopByContextOrderByRateDateDescIdDesc(RateContext.CREDIT_CARD)
         // A US$ line waits for a card rate (POST /exchange-rates) instead of posting at an invented one.
         val pending = candidates.filter { isNewJournalEntry(it) && (it.currency != CurrencyType.USD || usdRate != null) }
         val loanAccountIds = if (pending.isEmpty()) emptySet() else loanRepo.findLoanAccountIds(currentUser.id)

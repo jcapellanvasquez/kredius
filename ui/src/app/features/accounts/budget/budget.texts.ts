@@ -79,6 +79,8 @@ export const BUDGET_TEXT = {
   editCardBudget:   'Cambiar el presupuesto de la tarjeta',
   setCardBudgetHint:'toca ✎ para poner uno',
   done:             'listo',
+  /** The phone's keyboard typed something the number field can't read (e.g. "1.500,50"); nothing was saved. */
+  unreadableNumber: 'No se pudo leer el número. Usa solo dígitos y un punto para los decimales.',
   showDetails:      'Ver detalles',
   hideDetails:      'Ocultar detalles',
   cardDetails:      'Detalles de la tarjeta',

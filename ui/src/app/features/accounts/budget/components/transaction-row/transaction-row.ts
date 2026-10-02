@@ -20,13 +20,15 @@ import { CategoryChipsComponent } from '../category-chips/category-chips';
     '[attr.aria-busy]': 'saving()',
   },
   template: `
-    <div class="flex items-center justify-between gap-2 mb-2">
-      <div class="flex items-center gap-2 min-w-0">
+    <div class="flex items-start justify-between gap-2 mb-1">
+      <div class="flex items-start gap-2 min-w-0">
         <app-account-icon [icon]="line().sourceIcon" [size]="iconSize" />
         <span class="sr-only">{{ text.kind[line().source] }}</span>
-        <span class="text-sm text-gray-700 truncate">
-          {{ line().date | shortDate }} · {{ line().description }}
-        </span>
+        <!-- Up to 2 lines; tap to show the rest (A3 in mobile-fixes-plan.md). -->
+        <button type="button" (click)="expanded.set(!expanded())" [attr.aria-expanded]="expanded()"
+          class="min-w-0 text-left text-sm text-gray-700 break-words" [class.line-clamp-2]="!expanded()">
+          {{ line().description }}
+        </button>
       </div>
       <span class="text-sm text-gray-900 tabular-nums shrink-0">
         @if (isUsd()) {
@@ -38,6 +40,7 @@ import { CategoryChipsComponent } from '../category-chips/category-chips';
     </div>
     <div class="mb-2">
       <div class="flex flex-wrap items-center gap-1.5">
+        <span class="text-xs text-gray-500">{{ line().date | shortDate }} ·</span>
         <button type="button" (click)="helpOpen.set(!helpOpen())" [attr.aria-expanded]="helpOpen()"
           class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-50 text-xs text-gray-500 hover:text-gray-900 transition-colors">
           <app-icon [name]="icons.Info" [size]="12" />
@@ -107,6 +110,8 @@ export class TransactionRowComponent {
     this.noCardRate() && this.isUsd() && this.line().source === StatementAccountKind.CreditCard);
   protected readonly icons = UiIcon;
   protected readonly helpOpen = signal(false);
+  /** The description shows in full instead of clamped to 2 lines. */
+  protected readonly expanded = signal(false);
   protected readonly errors = LineError;
   protected readonly saving = computed(() => this.uiState()?.state === SaveState.Saving);
 

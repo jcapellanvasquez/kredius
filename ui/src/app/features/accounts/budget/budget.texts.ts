@@ -74,6 +74,8 @@ export const BUDGET_TEXT = {
   usdRateHint:      'Las compras en US$ se registran al guardar la tasa.',
   saveRate:         'Guardar',
   changeRate:       'cambiar',
+  confirmRate:      'Sí, guardar',
+  fixRate:          'Corregir',
 
   cardBudget:       'Presupuesto de la tarjeta',
   editCardBudget:   'Cambiar el presupuesto de la tarjeta',
@@ -137,6 +139,10 @@ export const BUDGET_TEXT = {
   usdPosted:    (posted: number, total: number) =>
     `US$: ${posted} de ${total} ${total === 1 ? 'compra registrada' : 'compras registradas'}`,
   versus:       (month: string) => `vs ${month}`,
+  /** The rate typed is far from the last one (or unusual when there's none): confirm before saving. */
+  rateLooksWrong: (rate: string, last: string | null) => last
+    ? `¿Seguro? ${rate} es muy distinto de la tasa anterior, ${last}.`
+    : `¿Seguro? Una tasa de ${rate} RD$ por US$ no es lo usual.`,
   sameAs:       (month: string) => `igual que ${month}`,
   /** Screen-reader wording of the savings arrow. */
   savingsTrend: (direction: 'up' | 'down', month: string) => `${direction === 'up' ? 'Subió' : 'Bajó'} desde ${month}:`,

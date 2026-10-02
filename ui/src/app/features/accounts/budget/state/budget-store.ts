@@ -2,12 +2,14 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
-import { concatMap, from, toArray } from 'rxjs';
+import { concatMap, forkJoin, from, timer, toArray } from 'rxjs';
 import { AccountApiService } from '../../account-api.service';
 import { byName } from '../../../../shared/utils/by-name';
 import { Period, currentPeriod, fromMonthParam, toIsoDate, toMonthParam } from '../../../../shared/utils/period';
 import { percentOf, progressLevel } from '../../../../shared/utils/progress-level';
-import { API_ERROR_CODE, BUDGET_QUERY, BUDGET_THRESHOLDS, SAVED_HINT_MS, STATEMENT_KIND_ORDER } from '../budget.constants';
+import {
+  API_ERROR_CODE, BUDGET_QUERY, BUDGET_THRESHOLDS, MIN_SAVING_MS, SAVED_HINT_MS, STATEMENT_KIND_ORDER,
+} from '../budget.constants';
 import { LineError, LineStatus, SaveState, StatementAccountKind } from '../budget.enums';
 import { BUDGET_TEXT } from '../budget.texts';
 import { BudgetApi } from '../data/budget-api';
@@ -273,7 +275,7 @@ export class BudgetStore {
       ? this.api.recategorize(line.lineId, categoryId)
       : this.api.categorize(line.lineId, categoryId);
 
-    call.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+    forkJoin([call, timer(MIN_SAVING_MS)]).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
         this.setLineState(line.lineId, { state: SaveState.Saved, pendingCategoryId: categoryId });
         this.keepSettling(line);

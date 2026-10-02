@@ -25,6 +25,8 @@ export const API_ERROR_CODE = {
 
 /** How long "Guardado" stays visible after a successful save. */
 export const SAVED_HINT_MS = 1500;
+/** "Guardando…" stays at least this long, so a fast save is still seen (loading system §4). */
+export const MIN_SAVING_MS = 600;
 
 /** Suggested category chips shown next to the current one (plus "Otra"). */
 export const SUGGESTED_CHIPS = 2;

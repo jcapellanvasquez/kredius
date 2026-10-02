@@ -5,7 +5,7 @@
       [attr.aria-pressed]="isSelected" [class]="isSelected ? chipClass.selected : chipClass.idle">
       @if (isSelected) {
         @if (saving()) {
-          <app-icon [name]="icons.Loader" [size]="12" class="animate-spin" />
+          <app-spinner />
         } @else {
           <app-icon [name]="icons.Check" [size]="12" />
         }
@@ -54,6 +54,9 @@
   </div>
 
   @switch (state()) {
+    @case (states.Saving) {
+      <span class="text-xs text-gray-500" role="status">{{ text.saving }}</span>
+    }
     @case (states.Saved) {
       <span class="inline-flex items-center gap-0.5 text-xs text-gray-500" role="status">
         <app-icon [name]="icons.Check" [size]="12" /> {{ text.saved }}

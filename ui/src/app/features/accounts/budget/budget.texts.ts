@@ -33,6 +33,8 @@ export const BUDGET_TEXT = {
   of:               'de',
   unsaved:          'sin guardar',
   saved:            'Guardado',
+  /** On a line just categorized from "Sin categorizar": pick another category (recategorize). */
+  changeCategory:   'Cambiar',
   saveFailed:       'No se pudo guardar',
   other:            'Otra',
   searchCategory:   'Buscar categoría',

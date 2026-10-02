@@ -43,10 +43,14 @@ export class BudgetStore {
   // ── Chip selections, per line ─────────────────────────────────────────────
   readonly lineStates = signal<ReadonlyMap<number, LineUiState>>(new Map());
   /**
-   * Lines just categorized from "Sin categorizar": kept in place (showing "Guardado") until the hint
-   * ends, although the refreshed data no longer lists them. Keyed by line id, with their old position.
+   * Lines categorized from "Sin categorizar" this visit: they stay in place as a confirmation row until
+   * the month changes or reloads, although the refreshed data no longer lists them, so nothing slides
+   * under the finger (B in mobile-fixes-plan.md). Keyed by line id, with their old position; the line
+   * is kept as posted with its new category, so "Cambiar" recategorizes it.
    */
-  private readonly settling = signal<ReadonlyMap<number, { line: TransactionLine; index: number }>>(new Map());
+  private readonly categorizedHere = signal<ReadonlyMap<number, { line: TransactionLine; index: number }>>(new Map());
+  /** Ids of the lines shown as a confirmation row in "Sin categorizar". */
+  readonly doneLineIds = computed<ReadonlySet<number>>(() => new Set(this.categorizedHere().keys()));
 
   readonly savingRate = signal(false);
   /** Bumped by "Poner tasa": the card summary opens and focuses its rate field. */
@@ -78,11 +82,13 @@ export class BudgetStore {
     ].filter(g => g.options.length > 0);
   });
 
-  /** "Sin categorizar" as shown: the server's list plus the lines still settling, at their old position. */
+  /** "Sin categorizar" as shown: the server's list plus the lines categorized here, at their old position. */
   readonly uncategorized = computed<TransactionLine[]>(() => {
-    const list = [...(this.screen()?.uncategorized ?? [])];
-    const settling = [...this.settling().entries()].sort(([, a], [, b]) => a.index - b.index);
-    for (const [lineId, { line, index }] of settling) {
+    const kept = this.categorizedHere();
+    // The kept copy wins: it's the posted one, so "Cambiar" recategorizes instead of categorizing again.
+    const list = (this.screen()?.uncategorized ?? []).map(l => kept.get(l.lineId)?.line ?? l);
+    const done = [...kept.entries()].sort(([, a], [, b]) => a.index - b.index);
+    for (const [lineId, { line, index }] of done) {
       if (!list.some(l => l.lineId === lineId)) list.splice(Math.min(index, list.length), 0, line);
     }
     return list;
@@ -182,6 +188,7 @@ export class BudgetStore {
     if (this.hasUnsavedChanges() && !confirm(BUDGET_TEXT.unsavedConfirm)) return false;
     this.discardDrafts();
     this.lineStates.set(new Map());
+    this.categorizedHere.set(new Map());
     this.period.set(period);
     // replaceUrl: switching months shouldn't fill the back button's history.
     this.router.navigate([], {
@@ -260,6 +267,7 @@ export class BudgetStore {
   /** "Recargar el mes" after a conflict: drop the stale errors and fetch the month again. */
   reloadMonth(): void {
     this.clearLineErrors();
+    this.categorizedHere.set(new Map());
     this.load();
   }
 
@@ -281,14 +289,17 @@ export class BudgetStore {
 
     forkJoin([call, timer(MIN_SAVING_MS)]).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
-        this.setLineState(line.lineId, { state: SaveState.Saved, pendingCategoryId: categoryId });
-        this.keepSettling(line);
+        if (this.keepCategorized(line, categoryId)) {
+          // The confirmation row is the feedback; no "Guardado" on the chips.
+          this.clearLineState(line.lineId);
+        } else {
+          this.setLineState(line.lineId, { state: SaveState.Saved, pendingCategoryId: categoryId });
+          this.afterHint(() => {
+            if (this.lineState(line.lineId)?.state === SaveState.Saved) this.clearLineState(line.lineId);
+          });
+        }
         this.load(true);
         this.refreshSidebar();
-        this.afterHint(() => {
-          if (this.lineState(line.lineId)?.state === SaveState.Saved) this.clearLineState(line.lineId);
-          this.dropSettling(line.lineId);
-        });
       },
       error: (err: unknown) =>
         this.setLineState(line.lineId, { state: SaveState.Error, pendingCategoryId: null, error: lineErrorOf(err) }),
@@ -404,19 +415,18 @@ export class BudgetStore {
     return { ...fresh, categories };
   }
 
-  /** Only lines categorized from "Sin categorizar" settle; posted lines just move on refresh. */
-  private keepSettling(line: TransactionLine): void {
-    const index = this.screen()?.uncategorized.findIndex(l => l.lineId === line.lineId) ?? -1;
-    if (index < 0) return;
-    this.settling.update(map => new Map(map).set(line.lineId, { line, index }));
-  }
-
-  private dropSettling(lineId: number): void {
-    this.settling.update(map => {
-      const next = new Map(map);
-      next.delete(lineId);
-      return next;
-    });
+  /**
+   * Keeps a line categorized from "Sin categorizar" in place, as posted with its new category; a line
+   * already kept gets the new category ("Cambiar"). Returns false for other lines (a category's posted
+   * lines), which just move on refresh.
+   */
+  private keepCategorized(line: TransactionLine, categoryId: number): boolean {
+    const kept = this.categorizedHere().get(line.lineId);
+    const index = kept?.index ?? this.screen()?.uncategorized.findIndex(l => l.lineId === line.lineId) ?? -1;
+    if (index < 0) return false;
+    const posted: TransactionLine = { ...line, status: LineStatus.Posted, categoryId };
+    this.categorizedHere.update(map => new Map(map).set(line.lineId, { line: posted, index }));
+    return true;
   }
 
   private setLineState(lineId: number, state: LineUiState): void {

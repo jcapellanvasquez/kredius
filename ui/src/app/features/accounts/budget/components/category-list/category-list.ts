@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { IconComponent } from '../../../../../shared/components/icon/icon';
 import { UiIcon } from '../../../../../shared/constants/ui-icons';
 import { BUDGET_TEXT } from '../../budget.texts';
@@ -25,11 +25,11 @@ export interface BudgetEdit {
         <p class="flex items-center gap-1.5 mb-1.5 text-base font-medium text-gray-900">
           <app-icon [name]="icons.Alert" [size]="16" class="text-gray-500" />
           {{ text.uncategorized }}
-          <span class="text-sm font-normal text-gray-500">({{ uncategorized().length }})</span>
+          <span class="text-sm font-normal text-gray-500">({{ pendingCount() }})</span>
         </p>
         @for (line of uncategorized(); track line.lineId) {
           <app-transaction-row animate.leave="line-leave" [line]="line" [options]="options()" [optionGroups]="optionGroups()" [uiState]="lineStates().get(line.lineId)"
-            [noCardRate]="noCardRate()"
+            [noCardRate]="noCardRate()" [done]="doneLineIds().has(line.lineId)"
             (choose)="choose.emit({ line, categoryId: $event })" (setRate)="setRate.emit()" (reload)="reload.emit()" />
         }
       </div>
@@ -60,6 +60,8 @@ export class CategoryListComponent {
   readonly highlightId = input<number | null>(null);
   /** The card has no US$ rate yet (US$ card lines show a tag). */
   readonly noCardRate = input(false);
+  /** Lines categorized here, shown as confirmation rows; the count leaves them out. */
+  readonly doneLineIds = input<ReadonlySet<number>>(new Set());
 
   readonly budgetChange = output<BudgetEdit>();
   readonly choose = output<ChipSelection>();
@@ -68,4 +70,6 @@ export class CategoryListComponent {
 
   protected readonly text = BUDGET_TEXT;
   protected readonly icons = UiIcon;
+  protected readonly pendingCount = computed(() =>
+    this.uncategorized().filter(l => !this.doneLineIds().has(l.lineId)).length);
 }

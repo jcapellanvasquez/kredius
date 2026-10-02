@@ -80,6 +80,15 @@
   animation: line-leave 150ms ease-in forwards;
 }
 
+/* A line just categorized: its confirmation row fades from a light brand tint to white (B, mobile-fixes-plan.md). */
+@keyframes done-tint {
+  from { background-color: theme('colors.brand.100'); }
+  to   { background-color: transparent; }
+}
+.done-tint {
+  animation: done-tint 1.1s ease-out;
+}
+
 /* Indeterminate progress: a bar sliding across its track (upload panel). */
 @keyframes progress-indeterminate {
   from { transform: translateX(-100%); }
@@ -100,6 +109,7 @@
 
 /* Reduced motion: loaders stand still (a static block / ring still says "loading"). */
 @media (prefers-reduced-motion: reduce) {
+  .done-tint,
   .skel,
   .brand-pulse,
   .progress-indeterminate,

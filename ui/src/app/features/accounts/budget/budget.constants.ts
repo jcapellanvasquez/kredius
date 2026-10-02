@@ -14,9 +14,6 @@ export const CARD_RING_BANDS = { warningFrom: 71, dangerFrom: 95 } as const;
 /** Ledger and bank balances within this many RD$ count as matching (rounding). */
 export const BALANCE_TOLERANCE = 0.005;
 
-/** How long each "Procesando" step label shows while a statement uploads. */
-export const PROCESSING_STEP_MS = 1400;
-
 /** `ErrorResponse.code` values the budget screen reacts to. */
 export const API_ERROR_CODE = {
   noExchangeRate: 'NO_EXCHANGE_RATE',

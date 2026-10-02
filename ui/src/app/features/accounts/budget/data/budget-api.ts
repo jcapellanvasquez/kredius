@@ -2,7 +2,7 @@ import { Observable } from 'rxjs';
 import { Period } from '../../../../shared/utils/period';
 import { StatementAccountKind } from '../budget.enums';
 import {
-  BudgetScreen, BudgetUpdate, CategoryOption, ImportDetail, ImportSummary, UploadResult,
+  BudgetScreen, BudgetUpdate, CategoryOption, ImportDetail, ImportSummary, UploadEvent,
 } from '../models/budget.models';
 
 /** Data access for the budget screen. `BudgetHttpApi` implements it; provided in `budget.routes.ts`. */
@@ -16,8 +16,9 @@ export abstract class BudgetApi {
   /**
    * `POST /statement-imports` — skips rows already imported, auto-posts known merchants.
    * `statementDate` (`YYYY-MM-DD`) is metadata for the history; each row posts on its own date.
+   * Emits the real upload progress, then one `done` event with the result.
    */
-  abstract upload(kind: StatementAccountKind, file: File, statementDate: string): Observable<UploadResult>;
+  abstract upload(kind: StatementAccountKind, file: File, statementDate: string): Observable<UploadEvent>;
 
   /** Unposted line: `PATCH /statement-lines/{id}` posts it. */
   abstract categorize(lineId: number, categoryId: number): Observable<void>;

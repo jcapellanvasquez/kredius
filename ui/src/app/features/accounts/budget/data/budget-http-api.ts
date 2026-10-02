@@ -1,7 +1,8 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpEventType } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, map, switchMap, throwError } from 'rxjs';
+import { EMPTY, Observable, map, of, switchMap, throwError } from 'rxjs';
 import { ApiConfiguration } from '../../../../api/api-configuration';
+import { RequestBuilder } from '../../../../api/request-builder';
 import { getAccounts } from '../../../../api/fn/accounts/get-accounts';
 import { getBudgetScreen } from '../../../../api/fn/budget-screen/get-budget-screen';
 import { saveExchangeRate } from '../../../../api/fn/exchange-rates/save-exchange-rate';
@@ -18,6 +19,7 @@ import { BudgetLoanPayment } from '../../../../api/models/budget-loan-payment';
 import { BudgetScreenResponse } from '../../../../api/models/budget-screen-response';
 import { BudgetStatementTotals } from '../../../../api/models/budget-statement-totals';
 import { BudgetTransactionLine } from '../../../../api/models/budget-transaction-line';
+import { StatementImportResponse } from '../../../../api/models/statement-import-response';
 import { StatementImportSummaryResponse } from '../../../../api/models/statement-import-summary-response';
 import { StatementLineDto } from '../../../../api/models/statement-line-dto';
 import { StatementType } from '../../../../api/models/statement-type';
@@ -28,7 +30,7 @@ import { KIND_ICON } from '../budget.constants';
 import { CurrencyCode, ImportStatus, LineStatus, LoanKind, StatementAccountKind } from '../budget.enums';
 import {
   BudgetScreen, BudgetUpdate, CategoryOption, CategoryRow, ImportDetail, ImportSummary, LoanPayment,
-  StatementTotals, TransactionLine, UploadResult,
+  StatementTotals, TransactionLine, UploadEvent,
 } from '../models/budget.models';
 import { BudgetApi } from './budget-api';
 
@@ -59,26 +61,38 @@ export class BudgetHttpApi extends BudgetApi {
     );
   }
 
-  upload(kind: StatementAccountKind, file: File, statementDate: string): Observable<UploadResult> {
+  upload(kind: StatementAccountKind, file: File, statementDate: string): Observable<UploadEvent> {
     return getAccounts(this.http, this.rootUrl).pipe(
       map(res => res.body.find(a => a.statementType === kind && a.active !== false)?.id),
       switchMap(accountId => accountId == null
         ? throwError(() => new Error(`No account for ${kind} statements`))
-        : uploadStatement(this.http, this.rootUrl, {
-          body: { file, accountId, type: kind as StatementType, statementDate },
-        })),
-      switchMap(res => {
-        const imp = res.body;
+        : this.http.request<StatementImportResponse>(this.uploadRequest(file, accountId, kind, statementDate))),
+      switchMap((event): Observable<UploadEvent> => {
+        if (event.type === HttpEventType.UploadProgress) {
+          return of({ type: 'progress', percent: event.total ? Math.round((event.loaded / event.total) * 100) : null });
+        }
+        if (event.type !== HttpEventType.Response || !event.body) return EMPTY;
+        const imp = event.body;
         if (imp.status === FAILED_IMPORT) return throwError(() => new Error(imp.errorMessage ?? FAILED_IMPORT));
-        return [{
-          kind,
-          newCount: imp.newCount ?? 0,
-          autoPostedCount: imp.autoPostedCount ?? 0,
-          uncategorizedCount: imp.uncategorizedCount ?? 0,
-          uploadedAt: imp.uploadedAt ?? new Date().toISOString(),
-        }];
+        return of({
+          type: 'done',
+          result: {
+            kind,
+            newCount: imp.newCount ?? 0,
+            autoPostedCount: imp.autoPostedCount ?? 0,
+            uncategorizedCount: imp.uncategorizedCount ?? 0,
+            uploadedAt: imp.uploadedAt ?? new Date().toISOString(),
+          },
+        });
       }),
     );
+  }
+
+  /** The generated `uploadStatement` request, with upload progress events turned on. */
+  private uploadRequest(file: File, accountId: number, kind: StatementAccountKind, statementDate: string) {
+    const rb = new RequestBuilder(this.rootUrl, uploadStatement.PATH, 'post');
+    rb.body({ file, accountId, type: kind as StatementType, statementDate }, 'multipart/form-data');
+    return rb.build<StatementImportResponse>({ responseType: 'json', accept: 'application/json' }).clone({ reportProgress: true });
   }
 
   categorize(lineId: number, categoryId: number): Observable<void> {

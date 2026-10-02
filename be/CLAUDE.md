@@ -21,7 +21,7 @@ Run all of these from `be/`:
 
 - To start a local database, run `docker compose up postgres` from the repo root. The datasource defaults to `jdbc:postgresql://10.0.0.49:5432/kredius`, so point it at localhost with `SPRING_DATASOURCE_URL`.
 - The unit tests (parsers and services, with Mockito) need no database: run them with `./mvnw test -Dtest='!BeApplicationTests' -Dsurefire.failIfNoSpecifiedTests=false`.
-- `BeApplicationTests` is a `@SpringBootTest` context-load test. It needs a reachable Postgres and, with `create-drop`, recreates the schema of whatever database it points at.
+- `BeApplicationTests` is a `@SpringBootTest` context-load test. It needs a reachable Postgres, runs the Flyway migrations on whatever database it points at, and validates the entities against it.
 - The project has no linter or formatter configured.
 
 ## OpenAPI-first workflow
@@ -51,9 +51,11 @@ Entity enums and API enums often share names. When both are needed in one file, 
 - Repositories still scope queries explicitly (`findByIdAndUserId`, etc.). Keep doing that; don't rely on the filter alone.
 
 **Schema:**
-- Hibernate owns the schema. `ddl-auto` defaults to `create-drop` (override with `SPRING_JPA_DDL_AUTO`), and the project has no migrations.
-- Every restart wipes the database. `config/DataInitializer` then re-seeds a user and a chart of accounts.
-- Uniqueness and dedup rules therefore live in JPA `@Table(uniqueConstraints = …)`.
+- Flyway owns the schema: versioned SQL in `src/main/resources/db/migration`, applied at startup and recorded in `flyway_schema_history`. Hibernate runs with `ddl-auto: validate`: it only checks that entities match the tables and fails startup when they don't.
+- **Entity change ⇒ a new `V<n>__<what_in_snake_case>.sql` in the same commit.** Never edit a migration that has run anywhere (Flyway checks checksums); write a new one. A `NOT NULL` column on a table with rows is add nullable → backfill → `SET NOT NULL`. Renames use `RENAME COLUMN`, so data is kept.
+- Enum columns are plain `varchar` with no CHECK constraint, so a new enum value needs no migration.
+- Restarts keep the data. `config/DataInitializer` seeds a user and a chart of accounts only when it finds no rows. To start over locally, empty the schema (`docker compose down -v && docker compose up -d postgres`, or `DROP SCHEMA public CASCADE; CREATE SCHEMA public;`); Flyway refuses a non-empty schema that has no `flyway_schema_history`.
+- Uniqueness and dedup rules live in the migrations, mirrored in JPA `@Table(uniqueConstraints = …)`.
 
 **Double-entry ledger:**
 - `Account` has an `AccountType`: ASSET, LIABILITY, EQUITY, INCOME or EXPENSE. Each type owns a code range (1000s, 2000s, …; see `AccountType.codeRange`).

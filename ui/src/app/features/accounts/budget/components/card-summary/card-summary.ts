@@ -63,15 +63,18 @@ import { CardBudgetView, CardSummary } from '../../models/budget.models';
             }
           } @else {
             <div class="mt-0.5 flex items-center gap-1">
-              <input #budgetField type="number" inputmode="decimal" min="0" step="100" [value]="budgetValue() ?? ''"
-                [attr.aria-label]="text.cardBudget" (keydown.enter)="finishBudgetEdit(budgetField.value)"
+              <input #budgetField type="number" inputmode="decimal" enterkeyhint="done" min="0" step="100" [value]="budgetValue() ?? ''"
+                [attr.aria-label]="text.cardBudget" (keydown.enter)="finishBudgetEdit(budgetField)"
                 (keydown.escape)="$event.stopPropagation(); editingBudget.set(false)"
                 class="w-24 px-1.5 py-0.5 text-xs text-gray-900 tabular-nums bg-white rounded-md border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-300" />
-              <button type="button" (click)="finishBudgetEdit(budgetField.value)"
+              <button type="button" (click)="finishBudgetEdit(budgetField)"
                 class="text-xs text-gray-700 underline underline-offset-2 hover:text-gray-900">
                 {{ text.done }}
               </button>
             </div>
+            @if (budgetUnreadable()) {
+              <p class="mt-0.5 text-[11px] text-gray-900" role="alert">{{ text.unreadableNumber }}</p>
+            }
           }
         </div>
       </div>
@@ -235,6 +238,7 @@ export class CardSummaryComponent {
   protected readonly rateId = 'card-usd-rate';
   protected readonly chargesHelpId = 'card-charges-help';
   protected readonly editingBudget = signal(false);
+  protected readonly budgetUnreadable = signal(false);
   /** The Consumos tooltip, opened by tap/click (hover also shows it). */
   protected readonly chargesHelpOpen = signal(false);
   protected readonly prefix = { rd: CURRENCY_PREFIX, usd: USD_PREFIX };
@@ -318,11 +322,16 @@ export class CardSummaryComponent {
 
   protected startBudgetEdit(): void {
     this.editingBudget.set(true);
+    this.budgetUnreadable.set(false);
     afterNextRender(() => this.budgetField()?.nativeElement.select(), { injector: this.injector });
   }
 
-  protected finishBudgetEdit(raw: string): void {
+  protected finishBudgetEdit(field: HTMLInputElement): void {
+    // Unreadable input reads as '', which would clear the budget: keep the field open instead.
+    this.budgetUnreadable.set(field.validity.badInput);
+    if (field.validity.badInput) return;
     this.editingBudget.set(false);
+    const raw = field.value;
     const value = raw.trim() === '' ? null : Number(raw);
     if (value !== null && (Number.isNaN(value) || value < 0)) return;
     this.budgetChange.emit(value === 0 ? null : value);

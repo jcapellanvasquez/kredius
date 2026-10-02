@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
 import { IconComponent } from '../../../../../shared/components/icon/icon';
 import { CURRENCY_PREFIX } from '../../../../../shared/constants/locale';
 import { UiIcon } from '../../../../../shared/constants/ui-icons';
@@ -19,12 +19,16 @@ let nextId = 0;
       <label [for]="inputId" class="text-sm text-gray-500 shrink-0 w-24">{{ text.budget }}</label>
       <div class="relative flex-1">
         <span class="absolute inset-y-0 left-3 flex items-center text-sm text-gray-400 pointer-events-none">{{ prefix }}</span>
-        <input [id]="inputId" type="number" inputmode="decimal" min="0" step="100"
-          [value]="value() ?? ''" [disabled]="state() === states.Saving" (input)="onInput($event)"
+        <input #field [id]="inputId" type="number" inputmode="decimal" enterkeyhint="done" min="0" step="100"
+          [value]="value() ?? ''" [disabled]="state() === states.Saving" (input)="onInput(field)"
+          (blur)="unreadable.set(field.validity.badInput)" (keydown.enter)="field.blur()"
           class="w-full pl-10 pr-3 py-1.5 text-sm text-gray-900 tabular-nums bg-white rounded-lg border focus:outline-none focus:ring-2 focus:ring-brand-300 disabled:bg-gray-50 transition-colors"
           [class.border-gray-900]="edited()" [class.border-gray-200]="!edited()" />
       </div>
     </div>
+    @if (unreadable()) {
+      <p class="mt-1 text-right text-xs text-gray-900" role="alert">{{ text.unreadableNumber }}</p>
+    }
     @switch (state()) {
       @case (states.Saved) {
         <p class="mt-1 flex items-center justify-end gap-0.5 text-xs text-gray-500" role="status">
@@ -54,6 +58,8 @@ export class BudgetInputComponent {
   protected readonly states = SaveState;
   protected readonly prefix = CURRENCY_PREFIX;
   protected readonly inputId = `budget-input-${nextId++}`;
+  /** What's typed can't be read as a number (shown on blur, so a half-typed "12." doesn't flash it). */
+  protected readonly unreadable = signal(false);
 
   protected readonly carriedMonth = computed(() => {
     const from = this.carriedFrom();
@@ -63,8 +69,11 @@ export class BudgetInputComponent {
   protected readonly edited = computed(() =>
     this.state() === SaveState.Dirty || this.state() === SaveState.Saving || this.state() === SaveState.Error);
 
-  protected onInput(event: Event): void {
-    const raw = (event.target as HTMLInputElement).value;
+  protected onInput(field: HTMLInputElement): void {
+    // Unreadable input reads as '': keep the last value instead of emitting null, which would clear the budget.
+    if (field.validity.badInput) return;
+    this.unreadable.set(false);
+    const raw = field.value;
     const parsed = raw === '' ? null : Number(raw);
     this.valueChange.emit(parsed == null || Number.isNaN(parsed) ? null : Math.max(0, parsed));
   }

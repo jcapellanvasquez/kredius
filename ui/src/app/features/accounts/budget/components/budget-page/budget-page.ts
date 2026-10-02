@@ -5,19 +5,18 @@ import { BUDGET_TEXT } from '../../budget.texts';
 import { HasUnsavedChanges } from '../../guards/unsaved-budget.guard';
 import { BudgetStore } from '../../state/budget-store';
 import { BudgetHeaderComponent } from '../budget-header/budget-header';
-import { CardSummaryComponent } from '../card-summary/card-summary';
 import { CategoryListComponent } from '../category-list/category-list';
 import { QuickCompareComponent } from '../quick-compare/quick-compare';
 import { SaveBarComponent } from '../save-bar/save-bar';
-import { SavingsSummaryComponent } from '../savings-summary/savings-summary';
+import { SummaryCardsComponent } from '../summary-cards/summary-cards';
 import { UploadHistoryComponent } from '../upload-history/upload-history';
 import { UploadPanelComponent } from '../upload-panel/upload-panel';
 
 @Component({
   selector: 'app-budget-page',
   imports: [
-    IconComponent, BudgetHeaderComponent, UploadPanelComponent, UploadHistoryComponent, CardSummaryComponent,
-    SavingsSummaryComponent, QuickCompareComponent, CategoryListComponent, SaveBarComponent,
+    IconComponent, BudgetHeaderComponent, UploadPanelComponent, UploadHistoryComponent, SummaryCardsComponent,
+    QuickCompareComponent, CategoryListComponent, SaveBarComponent,
   ],
   providers: [BudgetStore],
   changeDetection: ChangeDetectionStrategy.OnPush,

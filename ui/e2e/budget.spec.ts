@@ -61,7 +61,7 @@ test('A1: the "Otra" menu opens inside the screen', async ({ page }) => {
   const viewport = page.viewportSize()!;
   for (const text of ['Pago Intereses CA', 'Google YouTube']) {
     await row(page, text).getByRole('button', { name: 'Otra' }).click();
-    const panel = page.getByRole('textbox', { name: 'Buscar categoría' }).locator('xpath=ancestor::div[contains(@class, "absolute")][1]');
+    const panel = page.getByRole('textbox', { name: 'Buscar cuenta' }).locator('xpath=ancestor::div[contains(@class, "absolute")][1]');
     const b = await box(panel);
     expect(b.x, `${text}: left edge`).toBeGreaterThanOrEqual(0);
     expect(b.x + b.width, `${text}: right edge`).toBeLessThanOrEqual(viewport.width);
@@ -180,6 +180,24 @@ test('Otra 3: savings money in offers only Ingresos', async ({ page }) => {
   const list = await openOther(row(page, 'Pago Intereses CA'));
   expect(await groupsOf(list)).toEqual(['Ingresos']);
   await expect(list.getByRole('button', { name: /Supermercado|Tarjeta/ })).toHaveCount(0);
+});
+
+test('Otra 4: a search lists one flat list with each kind; other accounts come last under "Otras cuentas"', async ({ page }) => {
+  const savingsOut = row(page, 'PAGO DE TC');
+  let list = await openOther(savingsOut);
+  await savingsOut.getByRole('textbox', { name: 'Buscar cuenta' }).fill('pago');
+  expect(await groupsOf(list), 'no group headers while searching').toEqual([]);
+  await expect(list.getByRole('button')).toHaveText([/Tarjeta\s*Pago de tarjeta/, /Préstamo vehículo\s*Pago de préstamo/]);
+  await page.keyboard.press('Escape');
+
+  const cardPurchase = row(page, 'Google YouTube');
+  list = await openOther(cardPurchase);
+  const search = cardPurchase.getByRole('textbox', { name: 'Buscar cuenta' });
+  await search.fill('salario');
+  expect(await groupsOf(list)).toEqual(['Otras cuentas']);
+  await expect(list.getByRole('button')).toHaveText([/Salario\s*Ingreso/]);
+  await search.fill('tarjeta');
+  await expect(list, 'the card is never offered on a card row').toHaveText('Sin resultados');
 });
 
 test('Otra 7: "Cambiar" on a categorized row offers the same groups', async ({ page }) => {

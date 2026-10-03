@@ -37,11 +37,13 @@ export const BUDGET_TEXT = {
   changeCategory:   'Cambiar',
   saveFailed:       'No se pudo guardar',
   other:            'Otra',
-  searchCategory:   'Buscar categoría',
+  searchAccount:    'Buscar cuenta',
   loans:            'Préstamos',
   incomes:          'Ingresos',
   expenses:         'Gastos',
   betweenAccounts:  'Entre mis cuentas',
+  /** Search matches outside the line's groups (an escape hatch, only while searching). */
+  otherAccounts:    'Otras cuentas',
   /** What picking an account in "Otra" books, next to search results. */
   optionKind: {
     EXPENSE: 'Gasto',

@@ -28,19 +28,38 @@
         [style.left.px]="panelLeft()">
         <label class="flex items-center gap-1.5 px-2 py-1.5 mb-1 rounded-md border border-gray-200 focus-within:border-gray-400">
           <app-icon [name]="icons.Search" [size]="14" class="text-gray-400" />
-          <input type="text" class="flex-1 min-w-0 text-body outline-none" [placeholder]="text.searchCategory"
-            [attr.aria-label]="text.searchCategory" [value]="query()" (input)="onSearch($event)" />
+          <input type="text" class="flex-1 min-w-0 text-body outline-none" [placeholder]="text.searchAccount"
+            [attr.aria-label]="text.searchAccount" [value]="query()" (input)="onSearch($event)" />
         </label>
         <ul class="max-h-56 overflow-y-auto">
-          @for (group of filteredGroups(); track group.label) {
-            <li class="px-2 pt-2 pb-1 text-meta font-medium text-gray-400" role="presentation">{{ group.label }}</li>
-            @for (opt of group.options; track opt.accountId) {
+          @if (searching()) {
+            @for (opt of results(); track opt.accountId) {
               <li>
-                <ng-container *ngTemplateOutlet="option; context: { $implicit: opt }" />
+                <ng-container *ngTemplateOutlet="option; context: { $implicit: opt, kind: true }" />
               </li>
             }
-          } @empty {
-            <li class="px-2 py-1.5 text-meta text-gray-400">{{ text.noMatches }}</li>
+            @if (otherResults().length > 0) {
+              <ng-container *ngTemplateOutlet="header; context: { $implicit: text.otherAccounts }" />
+              @for (opt of otherResults(); track opt.accountId) {
+                <li>
+                  <ng-container *ngTemplateOutlet="option; context: { $implicit: opt, kind: true }" />
+                </li>
+              }
+            }
+            @if (results().length === 0 && otherResults().length === 0) {
+              <li class="px-2 py-1.5 text-meta text-gray-400">{{ text.noMatches }}</li>
+            }
+          } @else {
+            @for (group of groups(); track group.label) {
+              <ng-container *ngTemplateOutlet="header; context: { $implicit: group.label }" />
+              @for (opt of group.options; track opt.accountId) {
+                <li>
+                  <ng-container *ngTemplateOutlet="option; context: { $implicit: opt, kind: false }" />
+                </li>
+              }
+            } @empty {
+              <li class="px-2 py-1.5 text-meta text-gray-400">{{ text.noMatches }}</li>
+            }
           }
         </ul>
       </div>
@@ -64,15 +83,30 @@
   }
 </div>
 
-<ng-template #option let-opt>
+<ng-template #header let-label>
+  <li class="sticky top-0 z-10 bg-white px-2 pt-2 pb-1 text-meta font-medium text-gray-400" role="presentation">{{ label }}</li>
+</ng-template>
+
+<!-- `kind`: search results show what picking it books on the right; otherwise transfers show it under the name. -->
+<ng-template #option let-opt let-kind="kind">
   <button type="button" (click)="pick(opt.accountId)"
     class="w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-md text-left text-meta text-gray-700 hover:bg-gray-50">
-    <span class="flex items-center gap-1.5">
-      <app-icon [name]="opt.icon" [size]="14" class="text-gray-400" />
-      {{ opt.name }}
+    <span class="flex items-center gap-1.5 min-w-0">
+      <app-icon [name]="opt.icon" [size]="14" class="shrink-0 text-gray-400" />
+      <span class="min-w-0">
+        <span class="block">{{ opt.name }}</span>
+        @if (!kind && isTransfer(opt)) {
+          <span class="block text-caption text-gray-400">{{ kindLabel(opt) }}</span>
+        }
+      </span>
     </span>
-    @if (opt.accountId === selectedId()) {
-      <app-icon [name]="icons.Check" [size]="14" class="text-gray-900" />
-    }
+    <span class="flex items-center gap-1.5 shrink-0">
+      @if (kind) {
+        <span class="text-caption text-gray-400">{{ kindLabel(opt) }}</span>
+      }
+      @if (opt.accountId === selectedId()) {
+        <app-icon [name]="icons.Check" [size]="14" class="text-gray-900" />
+      }
+    </span>
   </button>
 </ng-template>

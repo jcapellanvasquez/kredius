@@ -3,14 +3,20 @@ import { ChangeDetectionStrategy, Component, computed, input, output, signal } f
 import { IconComponent } from '../../../../../shared/components/icon/icon';
 import { SpinnerComponent } from '../../../../../shared/components/spinner/spinner';
 import { UiIcon } from '../../../../../shared/constants/ui-icons';
-import { SaveState } from '../../budget.enums';
+import { AccountOptionKind, SaveState } from '../../budget.enums';
 import { BUDGET_TEXT } from '../../budget.texts';
-import { CategoryOption, OptionGroup } from '../../models/budget.models';
+import { AccountOption, CategoryOption, OptionGroup } from '../../models/budget.models';
 
 /** The "Otra" panel: `w-56`, capped at `100vw - 3rem`; kept this far from the screen's edges. */
 const PANEL_WIDTH_PX = 224;
 const PANEL_MAX_GUTTERS_PX = 48;
 const PANEL_EDGE_PX = 16;
+
+/** Options that get a short line under the name ("Pago de tarjeta"): money moving between your accounts. */
+const TRANSFER_KINDS: ReadonlySet<AccountOptionKind> = new Set([AccountOptionKind.Card, AccountOptionKind.Loan]);
+
+/** Lower case without accents, so "prestamo" finds "Préstamo". */
+const normalize = (text: string) => text.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
 
 const CHIP_BASE = 'inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-meta transition-colors disabled:opacity-40';
 
@@ -33,6 +39,8 @@ export class CategoryChipsComponent {
   readonly options = input<CategoryOption[]>([]);
   /** The groups "Otra" lists for this line, in order (`optionsForLine`). */
   readonly groups = input<OptionGroup[]>([]);
+  /** Accounts outside the groups: listed under "Otras cuentas" only while searching. */
+  readonly others = input<AccountOption[]>([]);
   readonly state = input(SaveState.Idle);
   readonly choose = output<number>();
 
@@ -49,6 +57,8 @@ export class CategoryChipsComponent {
   protected readonly panelLeft = signal(0);
 
   protected readonly saving = computed(() => this.state() === SaveState.Saving);
+  /** Typing turns the groups into one flat list, each result labelled with its kind. */
+  protected readonly searching = computed(() => this.query().trim() !== '');
 
   /** Selected chip first (even if it came from "Otra"), then suggestions. */
   protected readonly chips = computed(() => {
@@ -60,10 +70,8 @@ export class CategoryChipsComponent {
     return selected ? [selected, ...rest] : rest;
   });
 
-  protected readonly filteredGroups = computed(() =>
-    this.groups()
-      .map(g => ({ label: g.label, options: this.matching(g.options) }))
-      .filter(g => g.options.length > 0));
+  protected readonly results = computed(() => this.matching(this.groups().flatMap(g => g.options)));
+  protected readonly otherResults = computed(() => this.matching(this.others()));
 
   protected pick(accountId: number): void {
     this.close();
@@ -92,8 +100,17 @@ export class CategoryChipsComponent {
     return left - buttonLeft;
   }
 
-  private matching(options: CategoryOption[]): CategoryOption[] {
-    const q = this.query().trim().toLowerCase();
-    return q ? options.filter(o => o.name.toLowerCase().includes(q)) : options;
+  protected kindLabel(option: AccountOption): string {
+    return this.text.optionKind[option.kind];
+  }
+
+  protected isTransfer(option: AccountOption): boolean {
+    return TRANSFER_KINDS.has(option.kind);
+  }
+
+  /** Matches the name or the kind ("pago" finds the card), ignoring case and accents. */
+  private matching(options: AccountOption[]): AccountOption[] {
+    const q = normalize(this.query().trim());
+    return options.filter(o => normalize(o.name).includes(q) || normalize(this.kindLabel(o)).includes(q));
   }
 }

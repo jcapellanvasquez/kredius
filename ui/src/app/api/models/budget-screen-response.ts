@@ -5,6 +5,7 @@ import { BudgetAccountOption } from '../models/budget-account-option';
 import { BudgetCardSummary } from '../models/budget-card-summary';
 import { BudgetCategoryRow } from '../models/budget-category-row';
 import { BudgetLastUpload } from '../models/budget-last-upload';
+import { BudgetMonthStatus } from '../models/budget-month-status';
 import { BudgetSavingsSummary } from '../models/budget-savings-summary';
 import { BudgetTransactionLine } from '../models/budget-transaction-line';
 export interface BudgetScreenResponse {
@@ -20,6 +21,7 @@ export interface BudgetScreenResponse {
   card?: BudgetCardSummary;
   categories: Array<BudgetCategoryRow>;
   lastUploads: Array<BudgetLastUpload>;
+  monthStatus: BudgetMonthStatus;
   period: string;
 
   /**

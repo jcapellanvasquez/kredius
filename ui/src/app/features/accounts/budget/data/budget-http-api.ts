@@ -139,6 +139,10 @@ export class BudgetHttpApi extends BudgetApi {
     const { card, savings } = dto;
     return {
       period: dto.period,
+      monthStatus: {
+        pendingCount: dto.monthStatus.pendingCount,
+        missingStatements: dto.monthStatus.missingStatements.map(k => k as StatementAccountKind),
+      },
       card: {
         accountId: card.accountId,
         name: card.name,

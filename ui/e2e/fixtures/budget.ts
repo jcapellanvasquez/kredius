@@ -1,5 +1,6 @@
 import { AccountResponse } from '../../src/app/api/models/account-response';
 import { AccountSummaryResponse } from '../../src/app/api/models/account-summary-response';
+import { BudgetAccountOption } from '../../src/app/api/models/budget-account-option';
 import { BudgetScreenResponse } from '../../src/app/api/models/budget-screen-response';
 import { BudgetTransactionLine } from '../../src/app/api/models/budget-transaction-line';
 
@@ -21,6 +22,7 @@ export const SUSCRIPCIONES = 14;
 export const DIVERSION = 15;
 export const CASHBACK = 40;
 export const SALARIO = 41;
+export const PRESTAMO = 50;
 
 const option = (accountId: number, name: string, icon: string) => ({ accountId, name, icon });
 
@@ -45,6 +47,7 @@ export const UNCATEGORIZED: BudgetTransactionLine[] = [
   pending(105, '2026-08-26', 'Google YouTube 650-2530000-US', 521.29,
     [option(SUSCRIPCIONES, 'Suscripciones', 'device-mobile'), option(DIVERSION, 'Diversión', 'confetti')],
     { source: 'CREDIT_CARD', sourceIcon: 'credit-card', currency: 'USD', originalAmount: 8.49 }),
+  pending(106, '2026-08-25', 'PAGO DE TC 4000-XXXX-XXXX-0000', 25000, []),
 ];
 
 export function budgetScreen(uncategorized: BudgetTransactionLine[]): BudgetScreenResponse {
@@ -88,8 +91,9 @@ export function budgetScreen(uncategorized: BudgetTransactionLine[]): BudgetScre
       income: 1.64, loanPayments: [], cardPayments: [],
       bankBalance: { date: '2026-08-31', bank: 96762.17, ledger: 96356.2 },
     },
-    loanOptions: [],
+    loanOptions: [option(PRESTAMO, 'Préstamo vehículo', 'car')],
     incomeOptions: [option(CASHBACK, 'Cashback y reembolsos', 'refresh'), option(SALARIO, 'Salario', 'briefcase')],
+    accountOptions: ACCOUNT_OPTIONS,
   };
 }
 
@@ -101,6 +105,15 @@ export const EXPENSE_ACCOUNTS: AccountResponse[] = [
   [16, 'Compras online', 'shopping-cart'], [17, 'Gasolina', 'gas-station'], [18, 'Mantenimiento del vehículo', 'car'],
   [19, 'Personales', 'user'], [20, 'Gastos financieros', 'coins'],
 ].map(([id, name, icon]) => ({ id: id as number, name: name as string, icon: icon as string, type: 'EXPENSE', active: true }));
+
+/** `accountOptions` of the budget screen: everything "Otra" can offer, with its kind. */
+export const ACCOUNT_OPTIONS: BudgetAccountOption[] = [
+  ...EXPENSE_ACCOUNTS.map(a => ({ accountId: a.id!, name: a.name!, icon: a.icon, kind: 'EXPENSE' as const })),
+  { accountId: CASHBACK, name: 'Cashback y reembolsos', icon: 'refresh', kind: 'INCOME' },
+  { accountId: SALARIO, name: 'Salario', icon: 'briefcase', kind: 'INCOME' },
+  { accountId: CARD_ID, name: 'Tarjeta', icon: 'credit-card', kind: 'CARD' },
+  { accountId: PRESTAMO, name: 'Préstamo vehículo', icon: 'car', kind: 'LOAN' },
+];
 
 /** `GET /accounts`: every account (the upload panel looks up the statement accounts here). */
 export const ALL_ACCOUNTS: AccountResponse[] = [

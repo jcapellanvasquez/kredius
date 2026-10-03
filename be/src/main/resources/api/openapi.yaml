@@ -892,16 +892,6 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/BudgetCategoryRow'
-        loanOptions:
-          type: array
-          description: Active loans, offered in a separate "Préstamos" group when picking a category
-          items:
-            $ref: '#/components/schemas/BudgetCategoryOption'
-        incomeOptions:
-          type: array
-          description: Active income accounts, offered in a separate "Ingresos" group when picking a category
-          items:
-            $ref: '#/components/schemas/BudgetCategoryOption'
         accountOptions:
           type: array
           description: >-

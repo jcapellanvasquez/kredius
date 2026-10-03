@@ -497,7 +497,7 @@ class BudgetScreenServiceTest {
         val financialRow = screen.categories.single { it.name == "Gastos Financieros" }
         assertEquals(listOf(payment), financialRow.loanInterest)
         assertEquals(1200.0, financialRow.actual)
-        assertEquals(listOf("Préstamo BHD"), screen.loanOptions!!.map { it.name })
+        assertEquals(listOf("Préstamo BHD"), screen.accountOptions!!.filter { it.kind == Kind.LOAN }.map { it.name })
     }
 
     @Test
@@ -544,7 +544,7 @@ class BudgetScreenServiceTest {
         val byAmount = screen.uncategorized.associateBy { it.amount }
         assertEquals(listOf("Salario", "Intereses Ganados"), byAmount.getValue(-198450.0).suggestions.map { it.name })
         assertEquals(listOf("Comida", "Supermercado"), byAmount.getValue(500.0).suggestions.map { it.name })
-        assertEquals(listOf("Salario", "Intereses Ganados"), screen.incomeOptions!!.map { it.name })
+        assertEquals(listOf("Salario", "Intereses Ganados"), screen.accountOptions!!.filter { it.kind == Kind.INCOME }.map { it.name })
     }
 
     @Test

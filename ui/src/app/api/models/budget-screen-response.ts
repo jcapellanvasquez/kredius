@@ -3,7 +3,6 @@
 
 import { BudgetAccountOption } from '../models/budget-account-option';
 import { BudgetCardSummary } from '../models/budget-card-summary';
-import { BudgetCategoryOption } from '../models/budget-category-option';
 import { BudgetCategoryRow } from '../models/budget-category-row';
 import { BudgetLastUpload } from '../models/budget-last-upload';
 import { BudgetSavingsSummary } from '../models/budget-savings-summary';
@@ -20,17 +19,7 @@ export interface BudgetScreenResponse {
    */
   card?: BudgetCardSummary;
   categories: Array<BudgetCategoryRow>;
-
-  /**
-   * Active income accounts, offered in a separate "Ingresos" group when picking a category
-   */
-  incomeOptions?: Array<BudgetCategoryOption>;
   lastUploads: Array<BudgetLastUpload>;
-
-  /**
-   * Active loans, offered in a separate "Préstamos" group when picking a category
-   */
-  loanOptions?: Array<BudgetCategoryOption>;
   period: string;
 
   /**

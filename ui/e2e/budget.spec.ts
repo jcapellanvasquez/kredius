@@ -216,12 +216,14 @@ test('Otra 5: on phones the panel is as wide as the row and options are 44px tal
   }
 });
 
-test('Otra 6: the search gets focus; ↓ ↓ Enter picks the second option; Esc closes and focuses "Otra"', async ({ page }) => {
+test('Otra 6: the search gets focus on desktop only; ↓ ↓ Enter picks the second option; Esc closes and focuses "Otra"', async ({ page }) => {
   const line = row(page, 'PAGO DE TC');
   const other = line.getByRole('button', { name: 'Otra' });
   await openOther(line);
   const search = line.getByRole('combobox', { name: 'Buscar cuenta' });
-  await expect(search).toBeFocused();
+  // On phones focusing it would open the keyboard every time; you tap the search when you want it.
+  if (isPhone()) await expect(search).not.toBeFocused();
+  else await expect(search).toBeFocused();
   await expect(line.getByText('↑↓ moverse')).toBeVisible({ visible: !isPhone() });
 
   await page.keyboard.press('Escape');
@@ -229,6 +231,7 @@ test('Otra 6: the search gets focus; ↓ ↓ Enter picks the second option; Esc 
   await expect(other).toBeFocused();
 
   await openOther(line);
+  if (isPhone()) await search.click();
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
   const active = await search.getAttribute('aria-activedescendant');
@@ -236,6 +239,18 @@ test('Otra 6: the search gets focus; ↓ ↓ Enter picks the second option; Esc 
   await expect(line.locator(`[id="${active}"]`)).toContainText('Préstamo vehículo');
   await page.keyboard.press('Enter');
   await expect.poll(() => api.writes(/statement-lines\/106$/).map(c => c.body)).toEqual([{ categoryAccountId: PRESTAMO }]);
+});
+
+test('Otra 8: a panel opened near the bottom of the screen scrolls fully into view', async ({ page }) => {
+  const line = row(page, 'PAGO DE TC');
+  const other = line.getByRole('button', { name: 'Otra' });
+  await other.evaluate(el => el.scrollIntoView({ block: 'end' }));
+  await other.click();
+  const panel = line.locator('app-category-chips div.absolute');
+  const viewport = page.viewportSize()!;
+  await expect.poll(async () => (await box(panel)).y + (await box(panel)).height, 'bottom edge')
+    .toBeLessThanOrEqual(viewport.height);
+  expect((await box(panel)).y, 'top edge').toBeGreaterThanOrEqual(0);
 });
 
 test('Otra 7: "Cambiar" on a categorized row offers the same groups', async ({ page }) => {

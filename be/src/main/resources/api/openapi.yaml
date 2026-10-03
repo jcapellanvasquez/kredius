@@ -902,6 +902,13 @@ components:
           description: Active income accounts, offered in a separate "Ingresos" group when picking a category
           items:
             $ref: '#/components/schemas/BudgetCategoryOption'
+        accountOptions:
+          type: array
+          description: >-
+            Every account a line can be categorized to, each with its kind: active expense and income
+            accounts, active loans and the card. The UI picks which kinds each line offers.
+          items:
+            $ref: '#/components/schemas/BudgetAccountOption'
 
     BudgetCardSummary:
       type: object
@@ -1269,6 +1276,22 @@ components:
         icon:
           type: string
           nullable: true
+
+    BudgetAccountOption:
+      type: object
+      required: [accountId, name, kind]
+      properties:
+        accountId:
+          type: integer
+          format: int64
+        name:
+          type: string
+        icon:
+          type: string
+          nullable: true
+        kind:
+          type: string
+          enum: [EXPENSE, INCOME, LOAN, CARD]
 
 
     BudgetReportResponse:

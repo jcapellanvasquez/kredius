@@ -12,6 +12,8 @@ import com.kredius.be.entity.StatementImportStatus
 import com.kredius.be.entity.StatementLine
 import com.kredius.be.entity.StatementLineType
 import com.kredius.be.entity.StatementType
+import com.kredius.be.model.BudgetAccountOption
+import com.kredius.be.model.BudgetAccountOption.Kind
 import com.kredius.be.model.BudgetBankBalance
 import com.kredius.be.model.BudgetCardCheck
 import com.kredius.be.model.BudgetCardPayment
@@ -83,6 +85,10 @@ class BudgetScreenService(
             .map { it to it.toLoanPayment(savings) }
 
         val categories = categories(from, expenses, lines, ::transaction, loanPayments)
+        val byCode = compareBy<Account> { it.code ?: Int.MAX_VALUE }
+        val activeExpenses = expenses.filter { it.active }.sortedWith(byCode)
+        val activeIncomes = incomes.filter { it.active }.sortedWith(byCode)
+        val loans = loanRepo.findByUserId(userId).filter { it.active }.map { it.account }
 
         return BudgetScreenResponse(
             period = from,
@@ -105,15 +111,16 @@ class BudgetScreenService(
                 .sortedByDescending { it.lineDate }
                 .map(::transaction),
             categories = categories,
-            loanOptions = loanRepo.findByUserId(userId)
-                .filter { it.active }
-                .map { BudgetCategoryOption(accountId = it.account.id, name = it.account.name, icon = it.account.icon) },
-            incomeOptions = incomes
-                .filter { it.active }
-                .sortedBy { it.code ?: Int.MAX_VALUE }
-                .map { BudgetCategoryOption(accountId = it.id, name = it.name, icon = it.icon) },
+            loanOptions = loans.map { BudgetCategoryOption(accountId = it.id, name = it.name, icon = it.icon) },
+            incomeOptions = activeIncomes.map { BudgetCategoryOption(accountId = it.id, name = it.name, icon = it.icon) },
+            accountOptions = activeExpenses.map { it.toOption(Kind.EXPENSE) } +
+                activeIncomes.map { it.toOption(Kind.INCOME) } +
+                loans.map { it.toOption(Kind.LOAN) } +
+                listOfNotNull(card).map { it.toOption(Kind.CARD) },
         )
     }
+
+    private fun Account.toOption(kind: Kind) = BudgetAccountOption(accountId = id, name = name, kind = kind, icon = icon)
 
     /**
      * An installment's payment, read from its journal entry: the amount is the entry's line on savings

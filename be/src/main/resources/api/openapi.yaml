@@ -866,11 +866,13 @@ components:
   schemas:
     BudgetScreenResponse:
       type: object
-      required: [period, lastUploads, uncategorized, categories]
+      required: [period, monthStatus, lastUploads, uncategorized, categories]
       properties:
         period:
           type: string
           format: date
+        monthStatus:
+          $ref: '#/components/schemas/BudgetMonthStatus'
         card:
           $ref: '#/components/schemas/BudgetCardSummary'
           nullable: true
@@ -899,6 +901,23 @@ components:
             accounts, active loans and the card. The UI picks which kinds each line offers.
           items:
             $ref: '#/components/schemas/BudgetAccountOption'
+
+    BudgetMonthStatus:
+      type: object
+      description: How complete the month is, from its statements
+      required: [pendingCount, missingStatements]
+      properties:
+        pendingCount:
+          type: integer
+          description: The month's lines (by budget period) still unposted and not excluded
+        missingStatements:
+          type: array
+          description: >-
+            The statement accounts (card, savings) whose statement for the month isn't uploaded: for the
+            card, a statement cut in the month; for savings, rows in the month and a statement whose cut-off
+            is on or after its last day. Reversed and failed statements don't count.
+          items:
+            $ref: '#/components/schemas/StatementType'
 
     BudgetCardSummary:
       type: object

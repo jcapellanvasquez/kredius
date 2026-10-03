@@ -27,6 +27,7 @@ import com.kredius.be.model.BudgetCardStatement
 import com.kredius.be.model.BudgetStatementTotals
 import com.kredius.be.model.BudgetTransactionLine
 import com.kredius.be.model.BudgetLoanPayment
+import com.kredius.be.model.BudgetMonthStatus
 import com.kredius.be.repository.BudgetRepository
 import com.kredius.be.repository.LoanInstallmentRepository
 import com.kredius.be.repository.LoanRepository
@@ -92,6 +93,7 @@ class BudgetScreenService(
 
         return BudgetScreenResponse(
             period = from,
+            monthStatus = monthStatus(card, savings, lines, next.minusDays(1)),
             card = card?.let { account ->
                 cardSummary(account, savings, lines.filter { it.account.id == account.id }, ::rd, from, next.minusDays(1))
             },
@@ -117,6 +119,25 @@ class BudgetScreenService(
                 listOfNotNull(card).map { it.toOption(Kind.CARD) },
         )
     }
+
+    /**
+     * How complete the month is: its [lines] still waiting for a category, and which statements aren't in yet.
+     * A card statement counts whole in its cut-off month, so any card row in the month means it's uploaded.
+     * Savings needs rows in the month and a statement reaching its last day, so a mid-month one isn't enough.
+     */
+    private fun monthStatus(card: Account?, savings: Account?, lines: List<StatementLine>, monthEnd: LocalDate) =
+        BudgetMonthStatus(
+            pendingCount = lines.count { it.journalLine == null && !it.isExcluded },
+            missingStatements = listOfNotNull(
+                card?.takeIf { account -> lines.none { it.account.id == account.id } },
+                savings?.takeIf { account ->
+                    lines.none { it.account.id == account.id } ||
+                        !importRepo.existsByAccountIdAndStatusNotInAndCutOffDateGreaterThanEqual(
+                            account.id, listOf(StatementImportStatus.REVERSED, StatementImportStatus.FAILED), monthEnd,
+                        )
+                },
+            ).map { ApiStatementType.valueOf(it.statementType!!.name) },
+        )
 
     private fun Account.toOption(kind: Kind) = BudgetAccountOption(accountId = id, name = name, kind = kind, icon = icon)
 

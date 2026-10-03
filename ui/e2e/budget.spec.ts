@@ -117,12 +117,12 @@ test('A4: a usual rate saves right away, rounded to 2 decimals', async ({ page }
 test('B: a categorized line stays in place as a confirmation row; "Cambiar" recategorizes', async ({ page }) => {
   const line = row(page, 'SUPERMERCADO PLAZA CENTRAL');
   const before = await topInList(page, line);
-  await expect(uncategorizedTitle(page, 5)).toBeVisible();
+  await expect(uncategorizedTitle(page, 6)).toBeVisible();
 
   await line.getByRole('button', { name: 'Supermercado', exact: true }).click();
   const confirmation = line.getByRole('status');
   await expect(confirmation).toContainText('→ Supermercado');
-  await expect(uncategorizedTitle(page, 4), 'the count leaves it out').toBeVisible();
+  await expect(uncategorizedTitle(page, 5), 'the count leaves it out').toBeVisible();
   expect(Math.abs(await topInList(page, line) - before), 'the row didn\'t move').toBeLessThan(2);
   expect(api.writes(/statement-lines\/102$/)).toHaveLength(1);
 

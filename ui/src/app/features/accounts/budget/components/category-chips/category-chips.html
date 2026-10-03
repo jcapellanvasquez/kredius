@@ -28,40 +28,36 @@
         [style.left.px]="panelLeft()">
         <label class="flex items-center gap-1.5 px-2 py-1.5 mb-1 rounded-md border border-gray-200 focus-within:border-gray-400">
           <app-icon [name]="icons.Search" [size]="14" class="text-gray-400" />
-          <input type="text" class="flex-1 min-w-0 text-body outline-none" [placeholder]="text.searchAccount"
-            [attr.aria-label]="text.searchAccount" [value]="query()" (input)="onSearch($event)" />
+          <input #search type="text" role="combobox" class="flex-1 min-w-0 text-body outline-none" [placeholder]="text.searchAccount"
+            [attr.aria-label]="text.searchAccount" aria-expanded="true" aria-autocomplete="list" [attr.aria-controls]="listId"
+            [attr.aria-activedescendant]="activeId()" [value]="query()" (input)="onSearch($event)" (keydown)="onSearchKey($event)" />
         </label>
-        <ul class="max-h-80 sm:max-h-64 overflow-y-auto">
+        <ul [id]="listId" role="listbox" [attr.aria-label]="text.other" class="max-h-80 sm:max-h-64 overflow-y-auto">
           @if (searching()) {
             @for (opt of results(); track opt.accountId) {
-              <li>
-                <ng-container *ngTemplateOutlet="option; context: { $implicit: opt, kind: true }" />
-              </li>
+              <ng-container *ngTemplateOutlet="option; context: { $implicit: opt, kind: true }" />
             }
             @if (otherResults().length > 0) {
               <ng-container *ngTemplateOutlet="header; context: { $implicit: text.otherAccounts }" />
               @for (opt of otherResults(); track opt.accountId) {
-                <li>
-                  <ng-container *ngTemplateOutlet="option; context: { $implicit: opt, kind: true }" />
-                </li>
+                <ng-container *ngTemplateOutlet="option; context: { $implicit: opt, kind: true }" />
               }
             }
             @if (results().length === 0 && otherResults().length === 0) {
-              <li class="px-2 py-1.5 text-meta text-gray-400">{{ text.noMatches }}</li>
+              <li class="px-2 py-1.5 text-meta text-gray-400" role="presentation">{{ text.noMatches }}</li>
             }
           } @else {
             @for (group of groups(); track group.label) {
               <ng-container *ngTemplateOutlet="header; context: { $implicit: group.label }" />
               @for (opt of group.options; track opt.accountId) {
-                <li>
-                  <ng-container *ngTemplateOutlet="option; context: { $implicit: opt, kind: false }" />
-                </li>
+                <ng-container *ngTemplateOutlet="option; context: { $implicit: opt, kind: false }" />
               }
             } @empty {
-              <li class="px-2 py-1.5 text-meta text-gray-400">{{ text.noMatches }}</li>
+              <li class="px-2 py-1.5 text-meta text-gray-400" role="presentation">{{ text.noMatches }}</li>
             }
           }
         </ul>
+        <p class="hidden sm:block px-2 pt-1.5 mt-1 border-t border-gray-100 text-caption text-gray-400" aria-hidden="true">{{ text.optionKeys }}</p>
       </div>
     }
   </div>
@@ -89,8 +85,11 @@
 
 <!-- `kind`: search results show what picking it books on the right; otherwise transfers show it under the name. -->
 <ng-template #option let-opt let-kind="kind">
-  <button type="button" (click)="pick(opt.accountId)"
-    class="w-full min-h-11 sm:min-h-[34px] flex items-center justify-between gap-2 px-2 py-1.5 rounded-md text-left text-meta text-gray-700 hover:bg-gray-50">
+  @let active = optionId(opt) === activeId();
+  <li [id]="optionId(opt)" role="option" tabindex="-1" [attr.aria-selected]="active"
+    (click)="pick(opt.accountId)" (keydown.enter)="pick(opt.accountId)"
+    class="w-full min-h-11 sm:min-h-[34px] flex items-center justify-between gap-2 px-2 py-1.5 rounded-md text-meta text-gray-700 cursor-pointer hover:bg-gray-50"
+    [class.bg-gray-100]="active">
     <span class="flex items-center gap-1.5 min-w-0">
       <app-icon [name]="opt.icon" [size]="14" class="shrink-0 text-gray-400" />
       <span class="min-w-0">
@@ -108,5 +107,5 @@
         <app-icon [name]="icons.Check" [size]="14" class="text-gray-900" />
       }
     </span>
-  </button>
+  </li>
 </ng-template>

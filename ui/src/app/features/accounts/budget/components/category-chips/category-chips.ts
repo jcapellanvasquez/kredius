@@ -1,5 +1,7 @@
 import { NgTemplateOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy, Component, ElementRef, computed, effect, input, output, signal, viewChild,
+} from '@angular/core';
 import { IconComponent } from '../../../../../shared/components/icon/icon';
 import { SpinnerComponent } from '../../../../../shared/components/spinner/spinner';
 import { UiIcon } from '../../../../../shared/constants/ui-icons';
@@ -22,6 +24,9 @@ const TRANSFER_KINDS: ReadonlySet<AccountOptionKind> = new Set([AccountOptionKin
 /** Lower case without accents, so "prestamo" finds "Préstamo". */
 const normalize = (text: string) => text.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
 
+/** Makes each panel's element ids unique on the page (`aria-activedescendant`). */
+let nextPanelId = 0;
+
 const CHIP_BASE = 'inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-meta transition-colors disabled:opacity-40';
 
 /**
@@ -32,7 +37,7 @@ const CHIP_BASE = 'inline-flex items-center gap-1 px-2.5 py-1 rounded-full borde
   selector: 'app-category-chips',
   imports: [IconComponent, NgTemplateOutlet, SpinnerComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { class: 'block relative', '(keydown.escape)': 'close()' },
+  host: { class: 'block relative', '(keydown.escape)': 'closeToTrigger()' },
   templateUrl: './category-chips.html',
 })
 export class CategoryChipsComponent {
@@ -59,6 +64,12 @@ export class CategoryChipsComponent {
   protected readonly query = signal('');
   /** Desktop: the panel's left, relative to "Otra", shifted so it stays on screen. Null on phones (full width). */
   protected readonly panelLeft = signal<number | null>(null);
+  /** The option ↑ ↓ moved to, in `visible()`; -1 = none (Enter does nothing). */
+  protected readonly activeIndex = signal(-1);
+  protected readonly listId = `otra-${nextPanelId++}`;
+
+  private readonly trigger = viewChild.required<ElementRef<HTMLButtonElement>>('trigger');
+  private readonly search = viewChild<ElementRef<HTMLInputElement>>('search');
 
   protected readonly saving = computed(() => this.state() === SaveState.Saving);
   /** Typing turns the groups into one flat list, each result labelled with its kind. */
@@ -76,6 +87,23 @@ export class CategoryChipsComponent {
 
   protected readonly results = computed(() => this.matching(this.groups().flatMap(g => g.options)));
   protected readonly otherResults = computed(() => this.matching(this.others()));
+  /** The options in the order shown, for ↑ ↓. */
+  protected readonly visible = computed(() => this.searching()
+    ? [...this.results(), ...this.otherResults()]
+    : this.groups().flatMap(g => g.options));
+  protected readonly activeId = computed(() => {
+    const option = this.visible()[this.activeIndex()];
+    return option ? this.optionId(option) : null;
+  });
+
+  constructor() {
+    // The search gets focus when the panel opens (the input only exists while it's open).
+    effect(() => this.search()?.nativeElement.focus());
+    effect(() => {
+      const id = this.activeId();
+      if (id) document.getElementById(id)?.scrollIntoView({ block: 'nearest' });
+    });
+  }
 
   protected pick(accountId: number): void {
     this.close();
@@ -89,14 +117,39 @@ export class CategoryChipsComponent {
     }
     this.open.update(v => !v);
     this.query.set('');
+    this.activeIndex.set(-1);
   }
 
   protected close(): void {
     this.open.set(false);
   }
 
+  /** Esc: closes and gives the focus back to "Otra". */
+  protected closeToTrigger(): void {
+    if (!this.open()) return;
+    this.close();
+    this.trigger().nativeElement.focus();
+  }
+
   protected onSearch(event: Event): void {
     this.query.set((event.target as HTMLInputElement).value);
+    this.activeIndex.set(-1);
+  }
+
+  /** ↑ ↓ move through the options (stopping at the ends), Enter picks the active one. */
+  protected onSearchKey(event: KeyboardEvent): void {
+    const last = this.visible().length - 1;
+    if (event.key === 'ArrowDown') this.activeIndex.update(i => Math.min(i + 1, last));
+    else if (event.key === 'ArrowUp') this.activeIndex.update(i => Math.max(i - 1, 0));
+    else if (event.key === 'Enter') {
+      const option = this.visible()[this.activeIndex()];
+      if (option) this.pick(option.accountId);
+    } else return;
+    event.preventDefault();
+  }
+
+  protected optionId(option: AccountOption): string {
+    return `${this.listId}-${option.accountId}`;
   }
 
   /** How far left to shift a panel opened at `buttonLeft` so it ends before the screen's right edge. */

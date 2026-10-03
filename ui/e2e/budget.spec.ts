@@ -1,5 +1,5 @@
 import { Locator, Page, expect, test } from '@playwright/test';
-import { CARD_ID, MONTH_PARAM } from './fixtures/budget';
+import { CARD_ID, MONTH_PARAM, PRESTAMO } from './fixtures/budget';
 import { MockApi } from './support/mock-api';
 
 /**
@@ -61,7 +61,7 @@ test('A1: the "Otra" menu opens inside the screen', async ({ page }) => {
   const viewport = page.viewportSize()!;
   for (const text of ['Pago Intereses CA', 'Google YouTube']) {
     await row(page, text).getByRole('button', { name: 'Otra' }).click();
-    const panel = page.getByRole('textbox', { name: 'Buscar cuenta' }).locator('xpath=ancestor::div[contains(@class, "absolute")][1]');
+    const panel = page.getByRole('combobox', { name: 'Buscar cuenta' }).locator('xpath=ancestor::div[contains(@class, "absolute")][1]');
     const b = await box(panel);
     expect(b.x, `${text}: left edge`).toBeGreaterThanOrEqual(0);
     expect(b.x + b.width, `${text}: right edge`).toBeLessThanOrEqual(viewport.width);
@@ -166,36 +166,36 @@ test('Otra 1: a savings payment out offers "Entre mis cuentas" with the card; pi
   const line = row(page, 'PAGO DE TC');
   const list = await openOther(line);
   expect(await groupsOf(list)).toEqual(['Entre mis cuentas', 'Gastos']);
-  await list.getByRole('button', { name: /Tarjeta/ }).click();
+  await list.getByRole('option', { name: /Tarjeta/ }).click();
   await expect.poll(() => api.writes(/statement-lines\/106$/).map(c => c.body)).toEqual([{ categoryAccountId: CARD_ID }]);
 });
 
 test('Otra 2: a card purchase offers only Gastos, never the card', async ({ page }) => {
   const list = await openOther(row(page, 'Google YouTube'));
   expect(await groupsOf(list)).toEqual(['Gastos']);
-  await expect(list.getByRole('button', { name: /Tarjeta|Salario|Préstamo/ })).toHaveCount(0);
+  await expect(list.getByRole('option', { name: /Tarjeta|Salario|Préstamo/ })).toHaveCount(0);
 });
 
 test('Otra 3: savings money in offers only Ingresos', async ({ page }) => {
   const list = await openOther(row(page, 'Pago Intereses CA'));
   expect(await groupsOf(list)).toEqual(['Ingresos']);
-  await expect(list.getByRole('button', { name: /Supermercado|Tarjeta/ })).toHaveCount(0);
+  await expect(list.getByRole('option', { name: /Supermercado|Tarjeta/ })).toHaveCount(0);
 });
 
 test('Otra 4: a search lists one flat list with each kind; other accounts come last under "Otras cuentas"', async ({ page }) => {
   const savingsOut = row(page, 'PAGO DE TC');
   let list = await openOther(savingsOut);
-  await savingsOut.getByRole('textbox', { name: 'Buscar cuenta' }).fill('pago');
+  await savingsOut.getByRole('combobox', { name: 'Buscar cuenta' }).fill('pago');
   expect(await groupsOf(list), 'no group headers while searching').toEqual([]);
-  await expect(list.getByRole('button')).toHaveText([/Tarjeta\s*Pago de tarjeta/, /Préstamo vehículo\s*Pago de préstamo/]);
+  await expect(list.getByRole('option')).toHaveText([/Tarjeta\s*Pago de tarjeta/, /Préstamo vehículo\s*Pago de préstamo/]);
   await page.keyboard.press('Escape');
 
   const cardPurchase = row(page, 'Google YouTube');
   list = await openOther(cardPurchase);
-  const search = cardPurchase.getByRole('textbox', { name: 'Buscar cuenta' });
+  const search = cardPurchase.getByRole('combobox', { name: 'Buscar cuenta' });
   await search.fill('salario');
   expect(await groupsOf(list)).toEqual(['Otras cuentas']);
-  await expect(list.getByRole('button')).toHaveText([/Salario\s*Ingreso/]);
+  await expect(list.getByRole('option')).toHaveText([/Salario\s*Ingreso/]);
   await search.fill('tarjeta');
   await expect(list, 'the card is never offered on a card row').toHaveText('Sin resultados');
 });
@@ -211,20 +211,42 @@ test('Otra 5: on phones the panel is as wide as the row and options are 44px tal
   } else {
     expect(p.width).toBe(340);
   }
-  for (const option of await list.getByRole('button').all()) {
+  for (const option of await list.getByRole('option').all()) {
     expect((await box(option)).height).toBeGreaterThanOrEqual(isPhone() ? 44 : 34);
   }
 });
 
+test('Otra 6: the search gets focus; ↓ ↓ Enter picks the second option; Esc closes and focuses "Otra"', async ({ page }) => {
+  const line = row(page, 'PAGO DE TC');
+  const other = line.getByRole('button', { name: 'Otra' });
+  await openOther(line);
+  const search = line.getByRole('combobox', { name: 'Buscar cuenta' });
+  await expect(search).toBeFocused();
+  await expect(line.getByText('↑↓ moverse')).toBeVisible({ visible: !isPhone() });
+
+  await page.keyboard.press('Escape');
+  await expect(search).toHaveCount(0);
+  await expect(other).toBeFocused();
+
+  await openOther(line);
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  const active = await search.getAttribute('aria-activedescendant');
+  await expect(line.locator(`[id="${active}"]`)).toHaveAttribute('role', 'option');
+  await expect(line.locator(`[id="${active}"]`)).toContainText('Préstamo vehículo');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => api.writes(/statement-lines\/106$/).map(c => c.body)).toEqual([{ categoryAccountId: PRESTAMO }]);
+});
+
 test('Otra 7: "Cambiar" on a categorized row offers the same groups', async ({ page }) => {
   const line = row(page, 'PAGO DE TC');
-  await (await openOther(line)).getByRole('button', { name: /Comisiones/ }).click();
+  await (await openOther(line)).getByRole('option', { name: /Comisiones/ }).click();
   await expect(line.getByRole('status')).toContainText('→ Comisiones bancarias');
 
   await line.getByRole('button', { name: 'Cambiar', exact: true }).click();
   const list = await openOther(line);
   expect(await groupsOf(list)).toEqual(['Entre mis cuentas', 'Gastos']);
-  await list.getByRole('button', { name: /Tarjeta/ }).click();
+  await list.getByRole('option', { name: /Tarjeta/ }).click();
   await expect(line.getByRole('status')).toContainText('→ Tarjeta');
   await expect.poll(() => api.writes(/statement-lines\/106\/recategorize$/).map(c => c.body))
     .toEqual([{ categoryAccountId: CARD_ID }]);

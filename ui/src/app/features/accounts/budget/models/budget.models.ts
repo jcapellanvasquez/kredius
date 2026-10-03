@@ -4,12 +4,23 @@
  */
 import { Period } from '../../../../shared/utils/period';
 import { ProgressLevel } from '../../../../shared/utils/progress-level';
-import { CurrencyCode, ImportStatus, LineError, LineStatus, LoanKind, SaveState, StatementAccountKind } from '../budget.enums';
+import { AccountOptionKind, CurrencyCode, ImportStatus, LineError, LineStatus, LoanKind, SaveState, StatementAccountKind } from '../budget.enums';
 
 export interface CategoryOption {
   accountId: number;
   name: string;
   icon: string;
+}
+
+/** An account "Otra" can offer, with what picking it books. */
+export interface AccountOption extends CategoryOption {
+  kind: AccountOptionKind;
+}
+
+/** A labelled group of "Otra" (Gastos, Ingresos, Entre mis cuentas). */
+export interface OptionGroup {
+  label: string;
+  options: AccountOption[];
 }
 
 export interface TransactionLine {

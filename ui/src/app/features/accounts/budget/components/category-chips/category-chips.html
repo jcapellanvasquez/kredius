@@ -24,7 +24,7 @@
     @if (open()) {
       <button type="button" tabindex="-1" class="fixed inset-0 z-10 cursor-default" [attr.aria-label]="text.close"
         (click)="close()"></button>
-      <div class="absolute inset-x-0 top-full mt-1 z-20 rounded-lg border border-gray-200 bg-white shadow-lg p-1.5 sm:right-auto sm:w-[340px] sm:max-w-[calc(100vw-3rem)]"
+      <div #panel class="absolute inset-x-0 top-full mt-1 z-20 rounded-lg border border-gray-200 bg-white shadow-lg p-1.5 sm:right-auto sm:w-[340px] sm:max-w-[calc(100vw-3rem)]"
         [style.left.px]="panelLeft()">
         <label class="flex items-center gap-1.5 px-2 py-1.5 mb-1 rounded-md border border-gray-200 focus-within:border-gray-400">
           <app-icon [name]="icons.Search" [size]="14" class="text-gray-400" />

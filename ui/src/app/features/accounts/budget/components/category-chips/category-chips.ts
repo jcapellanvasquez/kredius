@@ -70,6 +70,7 @@ export class CategoryChipsComponent {
 
   private readonly trigger = viewChild.required<ElementRef<HTMLButtonElement>>('trigger');
   private readonly search = viewChild<ElementRef<HTMLInputElement>>('search');
+  private readonly panel = viewChild<ElementRef<HTMLElement>>('panel');
 
   protected readonly saving = computed(() => this.state() === SaveState.Saving);
   /** Typing turns the groups into one flat list, each result labelled with its kind. */
@@ -97,8 +98,14 @@ export class CategoryChipsComponent {
   });
 
   constructor() {
-    // The search gets focus when the panel opens (the input only exists while it's open).
-    effect(() => this.search()?.nativeElement.focus());
+    // When the panel opens (it only exists while open): scroll just enough to show all of it, then focus the
+    // search on desktop. Not on phones: that would open the keyboard every time.
+    effect(() => {
+      const panel = this.panel()?.nativeElement;
+      if (!panel) return;
+      panel.scrollIntoView({ block: 'nearest' });
+      if (window.matchMedia(DESKTOP_QUERY).matches) this.search()?.nativeElement.focus({ preventScroll: true });
+    });
     effect(() => {
       const id = this.activeId();
       if (id) document.getElementById(id)?.scrollIntoView({ block: 'nearest' });

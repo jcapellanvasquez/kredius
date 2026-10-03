@@ -509,6 +509,32 @@ class StatementServiceTest {
     }
 
     @Test
+    fun `a savings payment categorized to the card lowers the card's debt`() {
+        val import = uploadSavings(row(17, "PAGO DE TC 4641 3300 0032 7971", "10000.00"))
+
+        patch(import.lines.single(), categoryAccountId = card.id)
+
+        assertEquals(
+            mapOf("Tarjeta" to (EntrySide.DEBIT to BigDecimal("10000.00")), "Ahorros" to (EntrySide.CREDIT to BigDecimal("10000.00"))),
+            savedEntries.single().sides(),
+        )
+    }
+
+    @Test
+    fun `a savings payment booked as an expense moves to the card through a correction`() {
+        val import = uploadSavings(row(17, "PAGO DE TC 4641 3300 0032 7971", "10000.00"))
+        patch(import.lines.single(), categoryAccountId = food.id)
+
+        recategorize(import.lines.single(), card.id)
+
+        assertEquals(CorrectionType.RECATEGORIZATION, savedEntries.last().correctionType)
+        val net = netByAccount()
+        assertEquals(0, net.getValue("Comida").signum())
+        assertEquals(BigDecimal("10000.00"), net.getValue("Tarjeta"))
+        assertEquals(BigDecimal("-10000.00"), net.getValue("Ahorros"))
+    }
+
+    @Test
     fun `reversing after a recategorization nets every account to zero`() {
         val import = cardImport(food, null)
         service.confirm(1)

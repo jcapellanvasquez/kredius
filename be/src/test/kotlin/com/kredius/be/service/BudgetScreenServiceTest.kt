@@ -20,6 +20,7 @@ import com.kredius.be.entity.StatementLine
 import com.kredius.be.entity.StatementLineType
 import com.kredius.be.entity.StatementType
 import com.kredius.be.entity.User
+import com.kredius.be.model.BudgetAccountOption.Kind
 import com.kredius.be.model.BudgetTransactionLine
 import com.kredius.be.repository.AccountBalanceView
 import com.kredius.be.repository.AccountRepository
@@ -497,6 +498,34 @@ class BudgetScreenServiceTest {
         assertEquals(listOf(payment), financialRow.loanInterest)
         assertEquals(1200.0, financialRow.actual)
         assertEquals(listOf("Préstamo BHD"), screen.loanOptions!!.map { it.name })
+    }
+
+    @Test
+    fun `account options list every active account a line can go to, each with its kind`() {
+        ledger()
+        monthLines()
+        val closedExpense = Account(id = 12, code = 5020, name = "Vieja", type = AccountType.EXPENSE, active = false)
+        `when`(accountRepo.findByUserIdAndType(0L, AccountType.EXPENSE)).thenReturn(listOf(market, closedExpense, food))
+        val salary = Account(id = 4, code = 4001, name = "Salario", type = AccountType.INCOME)
+        val closedIncome = Account(id = 13, code = 4003, name = "Viejo", type = AccountType.INCOME, active = false)
+        `when`(accountRepo.findByUserIdAndType(0L, AccountType.INCOME)).thenReturn(listOf(closedIncome, salary))
+        val loanAccount = Account(id = 20, name = "Préstamo BHD", type = AccountType.LIABILITY, icon = "car")
+        `when`(loanRepo.findByUserId(0L)).thenReturn(listOf(
+            Loan(account = loanAccount, type = LoanType.RECEIVED),
+            Loan(account = Account(id = 21, name = "Préstamo viejo"), active = false),
+        ))
+
+        val options = service.get(august).accountOptions!!
+
+        assertEquals(
+            listOf(
+                "Comida" to Kind.EXPENSE, "Supermercado" to Kind.EXPENSE, "Salario" to Kind.INCOME,
+                "Préstamo BHD" to Kind.LOAN, "Tarjeta" to Kind.CARD,
+            ),
+            options.map { it.name to it.kind },
+        )
+        assertEquals(listOf(6L, 7L, 4L, 20L, 2L), options.map { it.accountId })
+        assertEquals("credit-card", options.last().icon)
     }
 
     @Test

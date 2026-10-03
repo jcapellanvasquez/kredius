@@ -32,15 +32,6 @@
             [attr.aria-label]="text.searchCategory" [value]="query()" (input)="onSearch($event)" />
         </label>
         <ul class="max-h-56 overflow-y-auto">
-          @for (opt of filtered(); track opt.accountId) {
-            <li>
-              <ng-container *ngTemplateOutlet="option; context: { $implicit: opt }" />
-            </li>
-          } @empty {
-            @if (filteredGroups().length === 0) {
-              <li class="px-2 py-1.5 text-meta text-gray-400">{{ text.noMatches }}</li>
-            }
-          }
           @for (group of filteredGroups(); track group.label) {
             <li class="px-2 pt-2 pb-1 text-meta font-medium text-gray-400" role="presentation">{{ group.label }}</li>
             @for (opt of group.options; track opt.accountId) {
@@ -48,6 +39,8 @@
                 <ng-container *ngTemplateOutlet="option; context: { $implicit: opt }" />
               </li>
             }
+          } @empty {
+            <li class="px-2 py-1.5 text-meta text-gray-400">{{ text.noMatches }}</li>
           }
         </ul>
       </div>

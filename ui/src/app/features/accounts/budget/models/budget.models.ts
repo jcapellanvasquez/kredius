@@ -163,16 +163,8 @@ export interface BudgetScreen {
   uncategorized: TransactionLine[];
   /** Sorted server-side: highest actual / budget first, no budget last. */
   categories: CategoryRow[];
-  /** Active loans: the "Préstamos" group of "Otra" (plan Q8c). */
-  loanOptions: CategoryOption[];
-  /** Active income accounts: the "Ingresos" group of "Otra", for money coming in. */
-  incomeOptions: CategoryOption[];
-}
-
-/** A labelled group of extra choices in "Otra" (e.g. "Ingresos", "Préstamos"), listed after the categories. */
-export interface CategoryOptionGroup {
-  label: string;
-  options: CategoryOption[];
+  /** Every active account "Otra" can offer, with its kind; `optionsForLine` picks a line's groups. */
+  accountOptions: AccountOption[];
 }
 
 export interface UploadResult {

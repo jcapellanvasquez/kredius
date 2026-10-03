@@ -12,7 +12,6 @@ import { listStatementImports } from '../../../../api/fn/statements/list-stateme
 import { patchStatementLine } from '../../../../api/fn/statements/patch-statement-line';
 import { recategorizeStatementLine } from '../../../../api/fn/statements/recategorize-statement-line';
 import { uploadStatement } from '../../../../api/fn/statements/upload-statement';
-import { AccountType } from '../../../../api/models/account-type';
 import { BudgetCategoryOption } from '../../../../api/models/budget-category-option';
 import { BudgetCategoryRow } from '../../../../api/models/budget-category-row';
 import { BudgetLoanPayment } from '../../../../api/models/budget-loan-payment';
@@ -24,10 +23,9 @@ import { StatementImportSummaryResponse } from '../../../../api/models/statement
 import { StatementLineDto } from '../../../../api/models/statement-line-dto';
 import { StatementType } from '../../../../api/models/statement-type';
 import { AccountIcon } from '../../../../shared/constants/account-icons';
-import { byName } from '../../../../shared/utils/by-name';
 import { Period } from '../../../../shared/utils/period';
 import { KIND_ICON } from '../budget.constants';
-import { CurrencyCode, ImportStatus, LineStatus, LoanKind, StatementAccountKind } from '../budget.enums';
+import { AccountOptionKind, CurrencyCode, ImportStatus, LineStatus, LoanKind, StatementAccountKind } from '../budget.enums';
 import {
   BudgetScreen, BudgetUpdate, CategoryOption, CategoryRow, ImportDetail, ImportSummary, LoanPayment,
   StatementTotals, TransactionLine, UploadEvent,
@@ -35,7 +33,6 @@ import {
 import { BudgetApi } from './budget-api';
 
 const FAILED_IMPORT = 'FAILED';
-const EXPENSE: AccountType = 'EXPENSE';
 const INITIAL_BALANCE = 'INITIAL_BALANCE';
 const CREDIT = 'CREDIT';
 
@@ -50,15 +47,6 @@ export class BudgetHttpApi extends BudgetApi {
 
   getScreen(period: Period): Observable<BudgetScreen> {
     return getBudgetScreen(this.http, this.rootUrl, { period }).pipe(map(res => this.toScreen(res.body)));
-  }
-
-  getCategoryOptions(): Observable<CategoryOption[]> {
-    return getAccounts(this.http, this.rootUrl, { type: EXPENSE }).pipe(
-      map(res => res.body
-        .filter(a => a.active !== false && !a.loanAccount && a.id != null)
-        .map(a => ({ accountId: a.id as number, name: a.name ?? '', icon: a.icon ?? AccountIcon.Category }))
-        .sort(byName)),
-    );
   }
 
   upload(kind: StatementAccountKind, file: File, statementDate: string): Observable<UploadEvent> {
@@ -186,8 +174,7 @@ export class BudgetHttpApi extends BudgetApi {
       })),
       uncategorized: dto.uncategorized.map(toTransaction),
       categories: dto.categories.map(toCategoryRow),
-      loanOptions: (dto.loanOptions ?? []).map(toOption),
-      incomeOptions: (dto.incomeOptions ?? []).map(toOption),
+      accountOptions: (dto.accountOptions ?? []).map(o => ({ ...toOption(o), kind: o.kind as AccountOptionKind })),
     };
   }
 

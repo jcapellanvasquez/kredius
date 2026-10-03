@@ -5,7 +5,7 @@ import { SpinnerComponent } from '../../../../../shared/components/spinner/spinn
 import { UiIcon } from '../../../../../shared/constants/ui-icons';
 import { SaveState } from '../../budget.enums';
 import { BUDGET_TEXT } from '../../budget.texts';
-import { CategoryOption, CategoryOptionGroup } from '../../models/budget.models';
+import { CategoryOption, OptionGroup } from '../../models/budget.models';
 
 /** The "Otra" panel: `w-56`, capped at `100vw - 3rem`; kept this far from the screen's edges. */
 const PANEL_WIDTH_PX = 224;
@@ -15,7 +15,7 @@ const PANEL_EDGE_PX = 16;
 const CHIP_BASE = 'inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-meta transition-colors disabled:opacity-40';
 
 /**
- * Current category + suggestions + "Otra" (searchable list of every category).
+ * Current category + suggestions + "Otra" (searchable list of the line's groups).
  * Outline-only chips: selected = dark border + check; no fill colour anywhere.
  */
 @Component({
@@ -29,9 +29,10 @@ export class CategoryChipsComponent {
   /** Category shown as selected (optimistic while saving). */
   readonly selectedId = input<number | null>(null);
   readonly suggestions = input<CategoryOption[]>([]);
+  /** Every account "Otra" can offer: names the selected chip when it isn't in the row's groups. */
   readonly options = input<CategoryOption[]>([]);
-  /** Extra labelled groups in "Otra" (Ingresos, Préstamos), after the categories. */
-  readonly groups = input<CategoryOptionGroup[]>([]);
+  /** The groups "Otra" lists for this line, in order (`optionsForLine`). */
+  readonly groups = input<OptionGroup[]>([]);
   readonly state = input(SaveState.Idle);
   readonly choose = output<number>();
 
@@ -54,13 +55,11 @@ export class CategoryChipsComponent {
     const id = this.selectedId();
     const selected = id == null ? null
       : this.options().find(o => o.accountId === id)
-        ?? this.groups().flatMap(g => g.options).find(o => o.accountId === id)
         ?? this.suggestions().find(o => o.accountId === id) ?? null;
     const rest = this.suggestions().filter(o => o.accountId !== id);
     return selected ? [selected, ...rest] : rest;
   });
 
-  protected readonly filtered = computed(() => this.matching(this.options()));
   protected readonly filteredGroups = computed(() =>
     this.groups()
       .map(g => ({ label: g.label, options: this.matching(g.options) }))

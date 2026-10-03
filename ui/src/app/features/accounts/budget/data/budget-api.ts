@@ -2,7 +2,7 @@ import { Observable } from 'rxjs';
 import { Period } from '../../../../shared/utils/period';
 import { StatementAccountKind } from '../budget.enums';
 import {
-  BudgetScreen, BudgetUpdate, CategoryOption, ImportDetail, ImportSummary, UploadEvent,
+  BudgetScreen, BudgetUpdate, ImportDetail, ImportSummary, UploadEvent,
 } from '../models/budget.models';
 
 /** Data access for the budget screen. `BudgetHttpApi` implements it; provided in `budget.routes.ts`. */
@@ -11,7 +11,6 @@ export abstract class BudgetApi {
   abstract getScreen(period: Period): Observable<BudgetScreen>;
 
   /** Every expense category, for the "Otra" dropdown. */
-  abstract getCategoryOptions(): Observable<CategoryOption[]>;
 
   /**
    * `POST /statement-imports` — skips rows already imported, auto-posts known merchants.

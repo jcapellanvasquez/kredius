@@ -3,7 +3,7 @@ import { IconComponent } from '../../../../../shared/components/icon/icon';
 import { UiIcon } from '../../../../../shared/constants/ui-icons';
 import { BUDGET_TEXT } from '../../budget.texts';
 import {
-  CategoryOption, CategoryOptionGroup, CategoryRowView, ChipSelection, LineUiState, TransactionLine,
+  AccountOption, CategoryRowView, ChipSelection, LineUiState, TransactionLine,
 } from '../../models/budget.models';
 import { CategoryRowComponent } from '../category-row/category-row';
 import { TransactionRowComponent } from '../transaction-row/transaction-row';
@@ -28,7 +28,7 @@ export interface BudgetEdit {
           <span class="text-body font-normal text-gray-500">({{ pendingCount() }})</span>
         </p>
         @for (line of uncategorized(); track line.lineId) {
-          <app-transaction-row animate.leave="line-leave" [line]="line" [options]="options()" [optionGroups]="optionGroups()" [uiState]="lineStates().get(line.lineId)"
+          <app-transaction-row animate.leave="line-leave" [line]="line" [options]="options()" [uiState]="lineStates().get(line.lineId)"
             [noCardRate]="noCardRate()" [done]="doneLineIds().has(line.lineId)"
             (choose)="choose.emit({ line, categoryId: $event })" (setRate)="setRate.emit()" (reload)="reload.emit()" />
         }
@@ -40,7 +40,7 @@ export interface BudgetEdit {
         <app-category-row
           [row]="row"
           [options]="options()"
-          [optionGroups]="optionGroups()"
+         
           [lineStates]="lineStates()"
           [highlight]="row.accountId === highlightId()"
           (budgetChange)="budgetChange.emit({ accountId: row.accountId, value: $event })"
@@ -54,8 +54,7 @@ export interface BudgetEdit {
 export class CategoryListComponent {
   readonly uncategorized = input<TransactionLine[]>([]);
   readonly rows = input<CategoryRowView[]>([]);
-  readonly options = input<CategoryOption[]>([]);
-  readonly optionGroups = input<CategoryOptionGroup[]>([]);
+  readonly options = input<AccountOption[]>([]);
   readonly lineStates = input<ReadonlyMap<number, LineUiState>>(new Map());
   readonly highlightId = input<number | null>(null);
   /** The card has no US$ rate yet (US$ card lines show a tag). */

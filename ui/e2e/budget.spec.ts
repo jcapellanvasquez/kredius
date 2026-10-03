@@ -6,7 +6,7 @@ import { MockApi } from './support/mock-api';
  * The budget screen at phone and desktop width (projects in playwright.config.ts). Covers the fixes from
  * the phone testing in be/external-files/statament/mobile-fixes-plan.md: A1 "Otra" menu, A2 summary cards,
  * A3 names, A4 rate check, B categorize in place, C text sizes. "Otra" row options: be/external-files/statament/
- * otra-dropdown-plan.md (e2e 1–7).
+ * otra-dropdown-plan.md (e2e 1–7). Month card: be/external-files/month-navigation-idea/month-navigation-plan.md.
  */
 
 let api: MockApi;
@@ -265,4 +265,61 @@ test('Otra 7: "Cambiar" on a categorized row offers the same groups', async ({ p
   await expect(line.getByRole('status')).toContainText('→ Tarjeta');
   await expect.poll(() => api.writes(/statement-lines\/106\/recategorize$/).map(c => c.body))
     .toEqual([{ categoryAccountId: CARD_ID }]);
+});
+
+test.describe('month card', () => {
+  const picker = (page: Page) => page.locator('app-month-picker');
+  const arrow = (page: Page, name: 'Mes anterior' | 'Mes siguiente') => picker(page).getByRole('button', { name });
+
+  test('phones: the month fills a card under the title and Actualizar, with 44px arrows', async ({ page }) => {
+    test.skip(!isPhone(), 'desktop keeps the compact picker');
+    await expect(picker(page).getByText('agosto 2026')).toBeVisible();
+    const card = await box(picker(page));
+    expect(card.width).toBeCloseTo((await box(page.locator('app-budget-header'))).width, 0);
+    for (const name of ['Mes anterior', 'Mes siguiente'] as const) {
+      const b = await box(arrow(page, name));
+      expect(Math.min(b.width, b.height)).toBeGreaterThanOrEqual(44);
+    }
+    const title = await box(page.getByRole('heading', { name: 'Presupuesto' }));
+    const update = await box(page.getByRole('button', { name: 'Actualizar' }));
+    expect(Math.abs((title.y + title.height / 2) - (update.y + update.height / 2))).toBeLessThan(4);
+    expect(card.y).toBeGreaterThanOrEqual(update.y + update.height);
+  });
+
+  test('phones: the month\'s pending lines read "6 sin categorizar" and tapping it goes to them', async ({ page }) => {
+    test.skip(!isPhone(), 'the status shows on phones only');
+    const pill = picker(page).getByRole('button', { name: '6 sin categorizar' });
+    await expect(pill).toBeVisible();
+    await expect(uncategorizedTitle(page)).not.toBeInViewport();
+    await pill.click();
+    await expect(uncategorizedTitle(page)).toBeInViewport();
+  });
+
+  test('phones: the status names a missing statement, or says the month is confirmed', async ({ page }) => {
+    test.skip(!isPhone(), 'the status shows on phones only');
+    api.monthStatus = { pendingCount: 0, missingStatements: ['CREDIT_CARD'] };
+    await page.reload();
+    await expect(picker(page).getByText('Falta el estado de la tarjeta')).toBeVisible();
+    api.monthStatus = { pendingCount: 0, missingStatements: ['CREDIT_CARD', 'SAVINGS'] };
+    await page.reload();
+    await expect(picker(page).getByText('Sin estados de cuenta')).toBeVisible();
+    api.monthStatus = { pendingCount: 0, missingStatements: [] };
+    await page.reload();
+    await expect(picker(page).getByText('Confirmado')).toBeVisible();
+  });
+
+  test('the next arrow stops at next month', async ({ page }) => {
+    await page.clock.setFixedTime(new Date('2026-10-03T12:00:00'));
+    await page.reload();
+    for (let i = 0; i < 3; i++) await arrow(page, 'Mes siguiente').click(); // septiembre, octubre, noviembre
+    await expect(page).toHaveURL(/month=2026-11/);
+    await expect(arrow(page, 'Mes siguiente')).toBeDisabled();
+    if (isPhone()) await expect(picker(page).getByText('Planificando')).toBeVisible();
+  });
+
+  test('desktop: the compact picker stays, without the status', async ({ page }) => {
+    test.skip(isPhone(), 'phones get the card');
+    expect((await box(picker(page))).height).toBeLessThan(40);
+    await expect(picker(page).getByText('6 sin categorizar')).toBeHidden();
+  });
 });

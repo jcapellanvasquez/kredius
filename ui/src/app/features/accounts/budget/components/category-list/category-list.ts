@@ -13,6 +13,9 @@ export interface BudgetEdit {
   value: number | null;
 }
 
+/** Id of the "Sin categorizar" block, which the month card's status scrolls to. */
+export const UNCATEGORIZED_ID = 'uncategorized';
+
 /** "Sin categorizar" (always first, hidden when empty) followed by the server-sorted categories. */
 @Component({
   selector: 'app-category-list',
@@ -21,7 +24,7 @@ export interface BudgetEdit {
   host: { class: 'flex flex-col gap-2' },
   template: `
     @if (uncategorized().length > 0) {
-      <div class="rounded-lg bg-white border border-dashed border-gray-300 p-3.5">
+      <div [id]="uncategorizedId" class="rounded-lg bg-white border border-dashed border-gray-300 p-3.5 scroll-mt-3">
         <p class="flex items-center gap-1.5 mb-1.5 text-base font-medium text-gray-900">
           <app-icon [name]="icons.Alert" [size]="16" class="text-gray-500" />
           {{ text.uncategorized }}
@@ -69,6 +72,7 @@ export class CategoryListComponent {
 
   protected readonly text = BUDGET_TEXT;
   protected readonly icons = UiIcon;
+  protected readonly uncategorizedId = UNCATEGORIZED_ID;
   protected readonly pendingCount = computed(() =>
     this.uncategorized().filter(l => !this.doneLineIds().has(l.lineId)).length);
 }

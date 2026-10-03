@@ -50,6 +50,11 @@ export function periodLabel(period: Period): string {
   return `${month.replace('.', '')} ${year}`;
 }
 
+/** e.g. "agosto 2026" */
+export function periodLongLabel(period: Period): string {
+  return `${monthName(period)} ${parsePeriod(period).year}`;
+}
+
 /** e.g. "agosto" */
 export function monthName(period: Period): string {
   const { year, monthIndex } = parsePeriod(period);

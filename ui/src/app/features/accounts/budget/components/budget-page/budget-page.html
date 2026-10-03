@@ -2,11 +2,14 @@
 
   <app-budget-header
     [period]="store.period()"
+    [max]="store.maxPeriod"
+    [status]="store.monthStatus()"
     [busy]="store.loading()"
     [uploadOpen]="store.uploadOpen()"
     [summary]="store.uploadSummary()"
     (periodChange)="store.changePeriod($event)"
-    (toggleUpload)="store.toggleUpload()" />
+    (toggleUpload)="store.toggleUpload()"
+    (showPending)="showUncategorized()" />
 
   @if (store.uploadOpen()) {
     <app-upload-panel

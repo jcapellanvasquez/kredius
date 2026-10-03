@@ -1,4 +1,5 @@
 import { Page, Route } from '@playwright/test';
+import { BudgetMonthStatus } from '../../src/app/api/models/budget-month-status';
 import { ACCOUNTS_SUMMARY, ALL_ACCOUNTS, EXPENSE_ACCOUNTS, UNCATEGORIZED, budgetScreen } from '../fixtures/budget';
 
 /** A write the page sent, for assertions ("Cambiar" recategorizes, a confirmed rate is saved…). */
@@ -17,6 +18,8 @@ export class MockApi {
   readonly calls: ApiCall[] = [];
   readonly unhandled: string[] = [];
   private readonly categorized = new Set<number>();
+  /** Replaces the month's status the fixture works out from the pending lines. */
+  monthStatus?: BudgetMonthStatus;
 
   async install(page: Page): Promise<void> {
     await page.route(url => url.pathname.startsWith('/api/v1/'), route => this.handle(route));
@@ -37,7 +40,7 @@ export class MockApi {
     const json = (body: unknown, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
 
     if (method === 'GET' && path === '/api/v1/budget-screen') {
-      return json(budgetScreen(UNCATEGORIZED.filter(l => !this.categorized.has(l.lineId))));
+      return json(budgetScreen(UNCATEGORIZED.filter(l => !this.categorized.has(l.lineId)), this.monthStatus));
     }
     if (method === 'GET' && path === '/api/v1/accounts/summary') return json(ACCOUNTS_SUMMARY);
     if (method === 'GET' && path === '/api/v1/accounts') {

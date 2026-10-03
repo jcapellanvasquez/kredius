@@ -26,6 +26,12 @@ export const BUDGET_TEXT = {
   quickCompareEmpty:'Sin movimientos ni presupuesto este mes.',
   detail:           'Detalle por categoría',
   uncategorized:    'Sin categorizar',
+  /** Month card status (month-navigation-plan.md). */
+  monthConfirmed:      'Confirmado',
+  monthMissingCard:    'Falta el estado de la tarjeta',
+  monthMissingSavings: 'Falta el estado de ahorros',
+  monthNoStatements:   'Sin estados de cuenta',
+  monthPlanning:       'Planificando',
   budget:           'Presupuesto',
   noBudget:         'sin presupuesto',
   noPct:            '—',

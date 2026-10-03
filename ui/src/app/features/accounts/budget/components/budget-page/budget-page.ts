@@ -5,7 +5,7 @@ import { BUDGET_TEXT } from '../../budget.texts';
 import { HasUnsavedChanges } from '../../guards/unsaved-budget.guard';
 import { BudgetStore } from '../../state/budget-store';
 import { BudgetHeaderComponent } from '../budget-header/budget-header';
-import { CategoryListComponent } from '../category-list/category-list';
+import { CategoryListComponent, UNCATEGORIZED_ID } from '../category-list/category-list';
 import { QuickCompareComponent } from '../quick-compare/quick-compare';
 import { SaveBarComponent } from '../save-bar/save-bar';
 import { SummaryCardsComponent } from '../summary-cards/summary-cards';
@@ -42,6 +42,11 @@ export class BudgetPageComponent implements OnInit, HasUnsavedChanges {
 
   ngOnInit(): void {
     this.store.init();
+  }
+
+  /** The month card's "N sin categorizar" goes to the list. */
+  protected showUncategorized(): void {
+    document.getElementById(UNCATEGORIZED_ID)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   hasUnsavedChanges(): boolean {

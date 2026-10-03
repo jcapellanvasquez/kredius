@@ -4,17 +4,17 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { concatMap, filter, forkJoin, from, map, tap, timer, toArray } from 'rxjs';
 import { AccountApiService } from '../../account-api.service';
-import { Period, currentPeriod, fromMonthParam, toIsoDate, toMonthParam } from '../../../../shared/utils/period';
+import { Period, currentPeriod, fromMonthParam, shiftPeriod, toIsoDate, toMonthParam } from '../../../../shared/utils/period';
 import { percentOf, progressLevel } from '../../../../shared/utils/progress-level';
 import {
   API_ERROR_CODE, BUDGET_QUERY, BUDGET_THRESHOLDS, MIN_SAVING_MS, SAVED_HINT_MS, STATEMENT_KIND_ORDER,
 } from '../budget.constants';
-import { LineError, LineStatus, SaveState, StatementAccountKind } from '../budget.enums';
+import { LineError, LineStatus, MonthStatusTone, SaveState, StatementAccountKind } from '../budget.enums';
 import { BUDGET_TEXT } from '../budget.texts';
 import { BudgetApi } from '../data/budget-api';
 import {
   AccountOption, BudgetScreen, CardBudgetView, CategoryRowView, ImportSummary,
-  LineUiState, TransactionLine, UploadProgress, UploadResult,
+  LineUiState, MonthStatusView, TransactionLine, UploadProgress, UploadResult,
 } from '../models/budget.models';
 
 /** Page-level state for the budget screen. Provided by `BudgetPageComponent`. */
@@ -28,6 +28,25 @@ export class BudgetStore {
 
   // ── Screen data ───────────────────────────────────────────────────────────
   readonly period = signal<Period>(currentPeriod());
+  /** › stops at next month: there's nothing to plan further ahead. */
+  readonly maxPeriod = shiftPeriod(currentPeriod(), 1);
+  /**
+   * What the month card says under the month: next month is "Planificando"; otherwise the loaded
+   * month's statements (pending lines first, then the missing statements). Null while another month loads.
+   */
+  readonly monthStatus = computed<MonthStatusView | null>(() => {
+    if (this.period() > currentPeriod()) return { tone: MonthStatusTone.Planning, text: BUDGET_TEXT.monthPlanning };
+    const screen = this.screen();
+    if (screen?.period !== this.period()) return null;
+    const { pendingCount, missingStatements } = screen.monthStatus;
+    if (pendingCount > 0) return { tone: MonthStatusTone.Pending, text: BUDGET_TEXT.unresolved(pendingCount) };
+    if (missingStatements.length === 0) return { tone: MonthStatusTone.Confirmed, text: BUDGET_TEXT.monthConfirmed };
+    if (missingStatements.length > 1) return { tone: MonthStatusTone.Missing, text: BUDGET_TEXT.monthNoStatements };
+    return {
+      tone: MonthStatusTone.Missing,
+      text: missingStatements[0] === StatementAccountKind.CreditCard ? BUDGET_TEXT.monthMissingCard : BUDGET_TEXT.monthMissingSavings,
+    };
+  });
   readonly screen = signal<BudgetScreen | null>(null);
   readonly loading = signal(false);
   readonly loadError = signal(false);

@@ -4,7 +4,7 @@
  */
 import { Period } from '../../../../shared/utils/period';
 import { ProgressLevel } from '../../../../shared/utils/progress-level';
-import { AccountOptionKind, CurrencyCode, ImportStatus, LineError, LineStatus, LoanKind, SaveState, StatementAccountKind } from '../budget.enums';
+import { AccountOptionKind, CurrencyCode, ImportStatus, LineError, LineStatus, LoanKind, MonthStatusTone, SaveState, StatementAccountKind } from '../budget.enums';
 
 export interface CategoryOption {
   accountId: number;
@@ -161,6 +161,12 @@ export interface MonthStatus {
   pendingCount: number;
   /** Statement accounts whose statement for the month isn't uploaded yet. */
   missingStatements: StatementAccountKind[];
+}
+
+/** What the month card says under the month. */
+export interface MonthStatusView {
+  tone: MonthStatusTone;
+  text: string;
 }
 
 export interface BudgetScreen {

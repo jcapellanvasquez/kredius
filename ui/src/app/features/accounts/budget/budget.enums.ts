@@ -64,3 +64,14 @@ export enum SaveState {
   Saved  = 'saved',
   Error  = 'error',
 }
+
+/** The month card's status pill (month-navigation-plan.md, option B). */
+export enum MonthStatusTone {
+  /** Lines still waiting for a category; tapping it goes to them. */
+  Pending   = 'pending',
+  Confirmed = 'confirmed',
+  /** A statement for the month isn't uploaded yet. */
+  Missing   = 'missing',
+  /** Next month: no statement can exist yet. */
+  Planning  = 'planning',
+}

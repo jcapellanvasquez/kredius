@@ -111,8 +111,6 @@ class BudgetScreenService(
                 .sortedByDescending { it.lineDate }
                 .map(::transaction),
             categories = categories,
-            loanOptions = loans.map { BudgetCategoryOption(accountId = it.id, name = it.name, icon = it.icon) },
-            incomeOptions = activeIncomes.map { BudgetCategoryOption(accountId = it.id, name = it.name, icon = it.icon) },
             accountOptions = activeExpenses.map { it.toOption(Kind.EXPENSE) } +
                 activeIncomes.map { it.toOption(Kind.INCOME) } +
                 loans.map { it.toOption(Kind.LOAN) } +

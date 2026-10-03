@@ -91,8 +91,6 @@ export function budgetScreen(uncategorized: BudgetTransactionLine[]): BudgetScre
       income: 1.64, loanPayments: [], cardPayments: [],
       bankBalance: { date: '2026-08-31', bank: 96762.17, ledger: 96356.2 },
     },
-    loanOptions: [option(PRESTAMO, 'Préstamo vehículo', 'car')],
-    incomeOptions: [option(CASHBACK, 'Cashback y reembolsos', 'refresh'), option(SALARIO, 'Salario', 'briefcase')],
     accountOptions: ACCOUNT_OPTIONS,
   };
 }

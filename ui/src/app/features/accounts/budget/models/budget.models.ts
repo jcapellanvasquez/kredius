@@ -155,8 +155,17 @@ export interface CategoryRow {
   loanInterest: LoanPayment[];
 }
 
+/** How complete the month is, from its statements. */
+export interface MonthStatus {
+  /** The month's lines still waiting for a category. */
+  pendingCount: number;
+  /** Statement accounts whose statement for the month isn't uploaded yet. */
+  missingStatements: StatementAccountKind[];
+}
+
 export interface BudgetScreen {
   period: Period;
+  monthStatus: MonthStatus;
   card: CardSummary;
   savings: SavingsSummary;
   lastUploads: LastUpload[];

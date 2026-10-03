@@ -3,6 +3,7 @@ import { AccountSummaryResponse } from '../../src/app/api/models/account-summary
 import { BudgetAccountOption } from '../../src/app/api/models/budget-account-option';
 import { BudgetScreenResponse } from '../../src/app/api/models/budget-screen-response';
 import { BudgetTransactionLine } from '../../src/app/api/models/budget-transaction-line';
+import { StatementType } from '../../src/app/api/models/statement-type';
 
 /**
  * Sample data for the budget screen, typed with the generated API models (`npm run e2e:typecheck` fails
@@ -50,9 +51,14 @@ export const UNCATEGORIZED: BudgetTransactionLine[] = [
   pending(106, '2026-08-25', 'PAGO DE TC 4000-XXXX-XXXX-0000', 25000, []),
 ];
 
-export function budgetScreen(uncategorized: BudgetTransactionLine[]): BudgetScreenResponse {
+/** Every pending line is August's, so it counts in the month's status. */
+export function budgetScreen(
+  uncategorized: BudgetTransactionLine[],
+  missingStatements: StatementType[] = [],
+): BudgetScreenResponse {
   return {
     period: PERIOD,
+    monthStatus: { pendingCount: uncategorized.length, missingStatements },
     lastUploads: [
       { kind: 'CREDIT_CARD', accountId: CARD_ID, uploadedAt: '2026-09-01T14:00:00Z' },
       { kind: 'SAVINGS', accountId: SAVINGS_ID, uploadedAt: '2026-09-01T14:01:00Z' },

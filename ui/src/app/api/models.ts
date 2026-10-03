@@ -16,6 +16,7 @@ export type { BudgetCategoryOption } from './models/budget-category-option';
 export type { BudgetCategoryRow } from './models/budget-category-row';
 export type { BudgetLastUpload } from './models/budget-last-upload';
 export type { BudgetLoanPayment } from './models/budget-loan-payment';
+export type { BudgetMonthStatus } from './models/budget-month-status';
 export type { BudgetReportAccountRow } from './models/budget-report-account-row';
 export type { BudgetReportResponse } from './models/budget-report-response';
 export type { BudgetSavingsSummary } from './models/budget-savings-summary';

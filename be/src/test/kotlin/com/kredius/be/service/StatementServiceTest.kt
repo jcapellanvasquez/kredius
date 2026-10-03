@@ -535,6 +535,22 @@ class StatementServiceTest {
     }
 
     @Test
+    fun `a line can't be categorized to its own statement account`() {
+        val cardRow = cardImport(null).lines.single()
+        assertStatus(HttpStatus.BAD_REQUEST) { patch(cardRow, categoryAccountId = card.id) }
+        val savingsRow = uploadSavings(row(17, "TRANSFERENCIA", "500.00")).lines.single()
+        assertStatus(HttpStatus.BAD_REQUEST) { patch(savingsRow, categoryAccountId = savings.id) }
+
+        val posted = cardImport(food).lines.single()
+        service.confirm(1)
+        assertStatus(HttpStatus.BAD_REQUEST) { recategorize(posted, card.id) }
+
+        assertEquals(1, savedEntries.size) // only the confirmed card row
+        assertNull(cardRow.journalLine)
+        assertNull(savingsRow.journalLine)
+    }
+
+    @Test
     fun `reversing after a recategorization nets every account to zero`() {
         val import = cardImport(food, null)
         service.confirm(1)

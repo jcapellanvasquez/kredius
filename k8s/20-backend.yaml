@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: backend
-          image: kredius-backend:0.1.6
+          image: kredius-backend:0.1.7
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080

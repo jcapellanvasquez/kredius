@@ -421,6 +421,45 @@ class BudgetScreenServiceTest {
         assertEquals(listOf(450.0, 75.0), uncategorized.map { it.amount })
     }
 
+    @Test
+    fun `month status counts the month's lines still waiting for a category`() {
+        ledger()
+        val payment = cardLine("800.00", type = StatementLineType.CREDIT).apply { exclude(ExclusionReason.CARD_PAYMENT_AVOID_DOUBLE_ENTRY) }
+        monthLines(cardLine("450.00"), savingsLine("90.00"), payment, cardLine("100.00", postedRd = "100.00"))
+
+        assertEquals(2, service.get(august).monthStatus.pendingCount)
+    }
+
+    @Test
+    fun `month status misses both statements when the month has no rows`() {
+        ledger()
+        monthLines()
+
+        assertEquals(listOf(ApiStatementType.CREDIT_CARD, ApiStatementType.SAVINGS), service.get(august).monthStatus.missingStatements)
+    }
+
+    @Test
+    fun `month status misses savings while no savings statement reaches the month's end`() {
+        ledger()
+        monthLines(cardLine("100.00", postedRd = "100.00"), savingsLine("90.00", postedRd = "90.00"))
+
+        assertEquals(listOf(ApiStatementType.SAVINGS), service.get(august).monthStatus.missingStatements)
+    }
+
+    @Test
+    fun `month status misses nothing once the card statement and a savings statement to the month's end are in`() {
+        ledger()
+        monthLines(cardLine("100.00", postedRd = "100.00"), savingsLine("90.00", postedRd = "90.00"))
+        `when`(importRepo.existsByAccountIdAndStatusNotInAndCutOffDateGreaterThanEqual(
+            savings.id, listOf(StatementImportStatus.REVERSED, StatementImportStatus.FAILED), LocalDate.of(2026, 8, 31),
+        )).thenReturn(true)
+
+        val status = service.get(august).monthStatus
+
+        assertEquals(emptyList(), status.missingStatements)
+        assertEquals(0, status.pendingCount)
+    }
+
     /** A matcher for a Kotlin non-null parameter; the fallback only avoids Kotlin's null check. */
     private fun anyDate(): LocalDate = any(LocalDate::class.java) ?: LocalDate.MIN
 

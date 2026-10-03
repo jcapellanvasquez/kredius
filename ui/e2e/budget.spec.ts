@@ -1,11 +1,12 @@
 import { Locator, Page, expect, test } from '@playwright/test';
-import { MONTH_PARAM } from './fixtures/budget';
+import { CARD_ID, MONTH_PARAM } from './fixtures/budget';
 import { MockApi } from './support/mock-api';
 
 /**
  * The budget screen at phone and desktop width (projects in playwright.config.ts). Covers the fixes from
  * the phone testing in be/external-files/statament/mobile-fixes-plan.md: A1 "Otra" menu, A2 summary cards,
- * A3 names, A4 rate check, B categorize in place, C text sizes.
+ * A3 names, A4 rate check, B categorize in place, C text sizes. "Otra" row options: be/external-files/statament/
+ * otra-dropdown-plan.md (e2e 1–7).
  */
 
 let api: MockApi;
@@ -29,6 +30,13 @@ const row = (page: Page, text: string) => page.locator('app-transaction-row').fi
  */
 const topInList = async (page: Page, locator: Locator) =>
   (await box(locator)).y - (await box(uncategorizedTitle(page))).y;
+/** Opens "Otra" on a row and returns its list. */
+async function openOther(line: Locator): Promise<Locator> {
+  await line.getByRole('button', { name: 'Otra' }).click();
+  return line.locator('app-category-chips ul');
+}
+/** The group headers of an open "Otra" list, in order. */
+const groupsOf = (list: Locator) => list.locator('li[role="presentation"]').allInnerTexts();
 const box = async (locator: Locator) => {
   const b = await locator.boundingBox();
   expect(b, 'element is on the page').not.toBeNull();
@@ -152,4 +160,38 @@ test('A3: quick compare doesn\'t break a name mid-word next to a long amount (ph
 
 test('savings: the month-over-month change reads "… vs julio" with a space', async ({ page }) => {
   await expect(page.locator('app-savings-summary')).toContainText(/\d vs julio/);
+});
+
+test('Otra 1: a savings payment out offers "Entre mis cuentas" with the card; picking it posts to the card', async ({ page }) => {
+  const line = row(page, 'PAGO DE TC');
+  const list = await openOther(line);
+  expect(await groupsOf(list)).toEqual(['Entre mis cuentas', 'Gastos']);
+  await list.getByRole('button', { name: /Tarjeta/ }).click();
+  await expect.poll(() => api.writes(/statement-lines\/106$/).map(c => c.body)).toEqual([{ categoryAccountId: CARD_ID }]);
+});
+
+test('Otra 2: a card purchase offers only Gastos, never the card', async ({ page }) => {
+  const list = await openOther(row(page, 'Google YouTube'));
+  expect(await groupsOf(list)).toEqual(['Gastos']);
+  await expect(list.getByRole('button', { name: /Tarjeta|Salario|Préstamo/ })).toHaveCount(0);
+});
+
+test('Otra 3: savings money in offers only Ingresos', async ({ page }) => {
+  const list = await openOther(row(page, 'Pago Intereses CA'));
+  expect(await groupsOf(list)).toEqual(['Ingresos']);
+  await expect(list.getByRole('button', { name: /Supermercado|Tarjeta/ })).toHaveCount(0);
+});
+
+test('Otra 7: "Cambiar" on a categorized row offers the same groups', async ({ page }) => {
+  const line = row(page, 'PAGO DE TC');
+  await (await openOther(line)).getByRole('button', { name: /Comisiones/ }).click();
+  await expect(line.getByRole('status')).toContainText('→ Comisiones bancarias');
+
+  await line.getByRole('button', { name: 'Cambiar', exact: true }).click();
+  const list = await openOther(line);
+  expect(await groupsOf(list)).toEqual(['Entre mis cuentas', 'Gastos']);
+  await list.getByRole('button', { name: /Tarjeta/ }).click();
+  await expect(line.getByRole('status')).toContainText('→ Tarjeta');
+  await expect.poll(() => api.writes(/statement-lines\/106\/recategorize$/).map(c => c.body))
+    .toEqual([{ categoryAccountId: CARD_ID }]);
 });

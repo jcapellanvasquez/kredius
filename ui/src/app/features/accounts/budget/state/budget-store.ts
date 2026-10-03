@@ -4,7 +4,6 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { concatMap, filter, forkJoin, from, map, tap, timer, toArray } from 'rxjs';
 import { AccountApiService } from '../../account-api.service';
-import { byName } from '../../../../shared/utils/by-name';
 import { Period, currentPeriod, fromMonthParam, toIsoDate, toMonthParam } from '../../../../shared/utils/period';
 import { percentOf, progressLevel } from '../../../../shared/utils/progress-level';
 import {
@@ -14,7 +13,7 @@ import { LineError, LineStatus, SaveState, StatementAccountKind } from '../budge
 import { BUDGET_TEXT } from '../budget.texts';
 import { BudgetApi } from '../data/budget-api';
 import {
-  BudgetScreen, CardBudgetView, CategoryOption, CategoryOptionGroup, CategoryRowView, ImportSummary,
+  AccountOption, BudgetScreen, CardBudgetView, CategoryRowView, ImportSummary,
   LineUiState, TransactionLine, UploadProgress, UploadResult,
 } from '../models/budget.models';
 
@@ -32,7 +31,6 @@ export class BudgetStore {
   readonly screen = signal<BudgetScreen | null>(null);
   readonly loading = signal(false);
   readonly loadError = signal(false);
-  readonly categoryOptions = signal<CategoryOption[]>([]);
 
   // ── Budget edits (batched, never autosaved) ───────────────────────────────
   readonly drafts = signal<ReadonlyMap<number, number | null>>(new Map());
@@ -73,14 +71,8 @@ export class BudgetStore {
   readonly historyLoading = signal(false);
 
   // ── Derived ───────────────────────────────────────────────────────────────
-  /** Extra groups in "Otra", after the expense categories; each sorted by name. */
-  readonly optionGroups = computed<CategoryOptionGroup[]>(() => {
-    const screen = this.screen();
-    return [
-      { label: BUDGET_TEXT.incomes, options: [...(screen?.incomeOptions ?? [])].sort(byName) },
-      { label: BUDGET_TEXT.loans, options: [...(screen?.loanOptions ?? [])].sort(byName) },
-    ].filter(g => g.options.length > 0);
-  });
+  /** Every account "Otra" can offer; each row picks its groups with `optionsForLine`. */
+  readonly accountOptions = computed<AccountOption[]>(() => this.screen()?.accountOptions ?? []);
 
   /** "Sin categorizar" as shown: the server's list plus the lines categorized here, at their old position. */
   readonly uncategorized = computed<TransactionLine[]>(() => {
@@ -160,9 +152,6 @@ export class BudgetStore {
     const fromUrl = fromMonthParam(this.route.snapshot.queryParamMap.get(BUDGET_QUERY.month));
     if (fromUrl) this.period.set(fromUrl);
     this.load();
-    this.api.getCategoryOptions()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(options => this.categoryOptions.set(options));
   }
 
   /** `silent` refreshes data after a mutation without flashing the skeleton. */

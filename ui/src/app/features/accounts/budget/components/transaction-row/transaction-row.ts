@@ -6,7 +6,8 @@ import { MoneyPipe } from '../../../../../shared/pipes/money.pipe';
 import { ShortDatePipe } from '../../../../../shared/pipes/short-date.pipe';
 import { CurrencyCode, LineEffect, LineError, SaveState, StatementAccountKind } from '../../budget.enums';
 import { BUDGET_TEXT } from '../../budget.texts';
-import { CategoryOption, CategoryOptionGroup, LineUiState, TransactionLine } from '../../models/budget.models';
+import { AccountOption, LineUiState, TransactionLine } from '../../models/budget.models';
+import { optionsForLine } from '../../state/line-options';
 import { CategoryChipsComponent } from '../category-chips/category-chips';
 
 @Component({
@@ -85,7 +86,7 @@ import { CategoryChipsComponent } from '../category-chips/category-chips';
         [selectedId]="selectedId()"
         [suggestions]="line().suggestions"
         [options]="options()"
-        [groups]="optionGroups()"
+        [groups]="groups()"
         [state]="chipState()"
         (choose)="onChoose($event)" />
       @switch (knownError()) {
@@ -117,8 +118,8 @@ import { CategoryChipsComponent } from '../category-chips/category-chips';
 })
 export class TransactionRowComponent {
   readonly line = input.required<TransactionLine>();
-  readonly options = input<CategoryOption[]>([]);
-  readonly optionGroups = input<CategoryOptionGroup[]>([]);
+  /** Every account "Otra" can offer; the line gets its groups from `optionsForLine`. */
+  readonly options = input<AccountOption[]>([]);
   readonly uiState = input<LineUiState | undefined>(undefined);
   /** The card has no US$ rate yet. */
   readonly noCardRate = input(false);
@@ -144,6 +145,7 @@ export class TransactionRowComponent {
   protected readonly changingFrom = signal<number | null>(null);
   protected readonly errors = LineError;
   protected readonly saving = computed(() => this.uiState()?.state === SaveState.Saving);
+  protected readonly groups = computed(() => optionsForLine(this.line(), this.options()));
 
   /** An error with its own message under the chips (the generic one stays inside the chips). */
   protected readonly knownError = computed(() => {
@@ -170,7 +172,7 @@ export class TransactionRowComponent {
 
   protected readonly categoryName = computed(() => {
     const id = this.line().categoryId;
-    const all = [...this.options(), ...this.optionGroups().flatMap(g => g.options), ...this.line().suggestions];
+    const all = [...this.options(), ...this.line().suggestions];
     return all.find(o => o.accountId === id)?.name ?? this.text.saved;
   });
 

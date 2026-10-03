@@ -22,7 +22,7 @@ function line(lineId: number, description: string): TransactionLine {
 
 /** Only what "Sin categorizar" reads; the rest of the screen isn't touched by these tests. */
 function screenWith(uncategorized: TransactionLine[]): BudgetScreen {
-  return { uncategorized, categories: [], loanOptions: [], incomeOptions: [], lastUploads: [] } as unknown as BudgetScreen;
+  return { uncategorized, categories: [], accountOptions: [], lastUploads: [] } as unknown as BudgetScreen;
 }
 
 describe('BudgetStore: categorizing from "Sin categorizar" (B, categorize in place)', () => {
@@ -38,8 +38,7 @@ describe('BudgetStore: categorizing from "Sin categorizar" (B, categorize in pla
   }
 
   beforeEach(() => {
-    api = jasmine.createSpyObj<BudgetApi>('BudgetApi', ['getScreen', 'getCategoryOptions', 'categorize', 'recategorize']);
-    api.getCategoryOptions.and.returnValue(of([]));
+    api = jasmine.createSpyObj<BudgetApi>('BudgetApi', ['getScreen', 'categorize', 'recategorize']);
     api.categorize.and.returnValue(of(undefined));
     api.recategorize.and.returnValue(of(undefined));
     serverLists([a, b, c]);

@@ -14,7 +14,7 @@
     </button>
   }
 
-  <div class="relative">
+  <div class="sm:relative">
     <button #trigger type="button" (click)="toggle(trigger)" [disabled]="saving()" [attr.aria-expanded]="open()"
       class="inline-flex items-center gap-0.5 px-2.5 py-1 rounded-full border border-gray-200 text-meta text-gray-500 hover:border-gray-400 disabled:opacity-40 transition-colors">
       {{ text.other }}
@@ -24,14 +24,14 @@
     @if (open()) {
       <button type="button" tabindex="-1" class="fixed inset-0 z-10 cursor-default" [attr.aria-label]="text.close"
         (click)="close()"></button>
-      <div class="absolute top-full mt-1 z-20 w-56 max-w-[calc(100vw-3rem)] rounded-lg border border-gray-200 bg-white shadow-lg p-1.5"
+      <div class="absolute inset-x-0 top-full mt-1 z-20 rounded-lg border border-gray-200 bg-white shadow-lg p-1.5 sm:right-auto sm:w-[340px] sm:max-w-[calc(100vw-3rem)]"
         [style.left.px]="panelLeft()">
         <label class="flex items-center gap-1.5 px-2 py-1.5 mb-1 rounded-md border border-gray-200 focus-within:border-gray-400">
           <app-icon [name]="icons.Search" [size]="14" class="text-gray-400" />
           <input type="text" class="flex-1 min-w-0 text-body outline-none" [placeholder]="text.searchAccount"
             [attr.aria-label]="text.searchAccount" [value]="query()" (input)="onSearch($event)" />
         </label>
-        <ul class="max-h-56 overflow-y-auto">
+        <ul class="max-h-80 sm:max-h-64 overflow-y-auto">
           @if (searching()) {
             @for (opt of results(); track opt.accountId) {
               <li>
@@ -90,7 +90,7 @@
 <!-- `kind`: search results show what picking it books on the right; otherwise transfers show it under the name. -->
 <ng-template #option let-opt let-kind="kind">
   <button type="button" (click)="pick(opt.accountId)"
-    class="w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-md text-left text-meta text-gray-700 hover:bg-gray-50">
+    class="w-full min-h-11 sm:min-h-[34px] flex items-center justify-between gap-2 px-2 py-1.5 rounded-md text-left text-meta text-gray-700 hover:bg-gray-50">
     <span class="flex items-center gap-1.5 min-w-0">
       <app-icon [name]="opt.icon" [size]="14" class="shrink-0 text-gray-400" />
       <span class="min-w-0">

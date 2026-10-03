@@ -200,6 +200,22 @@ test('Otra 4: a search lists one flat list with each kind; other accounts come l
   await expect(list, 'the card is never offered on a card row').toHaveText('Sin resultados');
 });
 
+test('Otra 5: on phones the panel is as wide as the row and options are 44px tall; 340px on desktop', async ({ page }) => {
+  const line = row(page, 'PAGO DE TC');
+  const list = await openOther(line);
+  const panel = line.locator('app-category-chips div.absolute');
+  const [p, chips] = [await box(panel), await box(line.locator('app-category-chips'))];
+  if (isPhone()) {
+    expect(Math.abs(p.x - chips.x), 'left edge').toBeLessThan(1);
+    expect(Math.abs(p.width - chips.width), 'width').toBeLessThan(1);
+  } else {
+    expect(p.width).toBe(340);
+  }
+  for (const option of await list.getByRole('button').all()) {
+    expect((await box(option)).height).toBeGreaterThanOrEqual(isPhone() ? 44 : 34);
+  }
+});
+
 test('Otra 7: "Cambiar" on a categorized row offers the same groups', async ({ page }) => {
   const line = row(page, 'PAGO DE TC');
   await (await openOther(line)).getByRole('button', { name: /Comisiones/ }).click();

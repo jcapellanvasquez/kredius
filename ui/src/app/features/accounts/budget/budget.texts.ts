@@ -44,6 +44,8 @@ export const BUDGET_TEXT = {
   betweenAccounts:  'Entre mis cuentas',
   /** Search matches outside the line's groups (an escape hatch, only while searching). */
   otherAccounts:    'Otras cuentas',
+  /** Key hints at the foot of "Otra" (desktop). */
+  optionKeys:       '↑↓ moverse · Enter elegir · Esc cerrar',
   /** What picking an account in "Otra" books, next to search results. */
   optionKind: {
     EXPENSE: 'Gasto',

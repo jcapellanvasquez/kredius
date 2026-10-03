@@ -28,3 +28,15 @@ export function optionsForLine(line: TransactionLine, options: AccountOption[]):
     : (moneyIn ? [incomes] : [transfers, expenses]);
   return groups.filter(g => g.options.length > 0);
 }
+
+/**
+ * The accounts outside the line's groups, sorted by name: "Otra" lists the ones a search matches under
+ * "Otras cuentas", for rare cases such as a loan disbursement coming into savings. Never the card on a card line.
+ */
+export function otherOptionsForLine(line: TransactionLine, options: AccountOption[]): AccountOption[] {
+  const inGroups = new Set(optionsForLine(line, options).flatMap(g => g.options).map(o => o.accountId));
+  const ownCard = line.source === StatementAccountKind.CreditCard;
+  return options
+    .filter(o => !inGroups.has(o.accountId) && !(ownCard && o.kind === AccountOptionKind.Card))
+    .sort(byName);
+}

@@ -7,7 +7,7 @@ import { ShortDatePipe } from '../../../../../shared/pipes/short-date.pipe';
 import { CurrencyCode, LineEffect, LineError, SaveState, StatementAccountKind } from '../../budget.enums';
 import { BUDGET_TEXT } from '../../budget.texts';
 import { AccountOption, LineUiState, TransactionLine } from '../../models/budget.models';
-import { optionsForLine } from '../../state/line-options';
+import { optionsForLine, otherOptionsForLine } from '../../state/line-options';
 import { CategoryChipsComponent } from '../category-chips/category-chips';
 
 @Component({
@@ -87,6 +87,7 @@ import { CategoryChipsComponent } from '../category-chips/category-chips';
         [suggestions]="line().suggestions"
         [options]="options()"
         [groups]="groups()"
+        [others]="others()"
         [state]="chipState()"
         (choose)="onChoose($event)" />
       @switch (knownError()) {
@@ -146,6 +147,7 @@ export class TransactionRowComponent {
   protected readonly errors = LineError;
   protected readonly saving = computed(() => this.uiState()?.state === SaveState.Saving);
   protected readonly groups = computed(() => optionsForLine(this.line(), this.options()));
+  protected readonly others = computed(() => otherOptionsForLine(this.line(), this.options()));
 
   /** An error with its own message under the chips (the generic one stays inside the chips). */
   protected readonly knownError = computed(() => {

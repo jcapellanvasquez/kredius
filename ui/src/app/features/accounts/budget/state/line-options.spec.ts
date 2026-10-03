@@ -1,6 +1,6 @@
 import { AccountOptionKind, CurrencyCode, LineStatus, StatementAccountKind } from '../budget.enums';
 import { AccountOption, TransactionLine } from '../models/budget.models';
-import { optionsForLine } from './line-options';
+import { optionsForLine, otherOptionsForLine } from './line-options';
 
 const option = (accountId: number, name: string, kind: AccountOptionKind): AccountOption =>
   ({ accountId, name, icon: 'category', kind });
@@ -53,5 +53,18 @@ describe('optionsForLine: which groups "Otra" offers on a line', () => {
   it('leaves empty groups out', () => {
     const expensesOnly = OPTIONS.filter(o => o.kind === AccountOptionKind.Expense);
     expect(shape(line(StatementAccountKind.Savings, 25000), expensesOnly)).toEqual(['Gastos: Comisiones, Supermercado']);
+  });
+});
+
+describe('otherOptionsForLine: the accounts "Otras cuentas" can list while searching', () => {
+  const names = (l: TransactionLine) => otherOptionsForLine(l, OPTIONS).map(o => o.name);
+
+  it('lists what the line\'s groups leave out, by name', () => {
+    expect(names(line(StatementAccountKind.Savings, -1.64)))
+      .toEqual(['Comisiones', 'Préstamo vehículo', 'Supermercado', 'Tarjeta']);
+  });
+
+  it('never lists the card on a card line', () => {
+    expect(names(line(StatementAccountKind.CreditCard, 500))).toEqual(['Préstamo vehículo', 'Salario']);
   });
 });

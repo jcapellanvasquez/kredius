@@ -4,6 +4,14 @@ export enum StatementAccountKind {
   Savings    = 'SAVINGS',
 }
 
+/** Mirrors the budget screen's `accountOptions[].kind`: what picking the account in "Otra" books. */
+export enum AccountOptionKind {
+  Expense = 'EXPENSE',
+  Income  = 'INCOME',
+  Loan    = 'LOAN',
+  Card    = 'CARD',
+}
+
 /** Mirrors backend `LoanType`: RECEIVED = you pay installments, GIVEN = you collect them. */
 export enum LoanKind {
   Received = 'RECEIVED',

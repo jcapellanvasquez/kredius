@@ -1,4 +1,4 @@
-import { ImportStatus, LineEffect, StatementAccountKind } from './budget.enums';
+import { AccountOptionKind, ImportStatus, LineEffect, StatementAccountKind } from './budget.enums';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -40,6 +40,15 @@ export const BUDGET_TEXT = {
   searchCategory:   'Buscar categoría',
   loans:            'Préstamos',
   incomes:          'Ingresos',
+  expenses:         'Gastos',
+  betweenAccounts:  'Entre mis cuentas',
+  /** What picking an account in "Otra" books, next to search results. */
+  optionKind: {
+    EXPENSE: 'Gasto',
+    INCOME:  'Ingreso',
+    LOAN:    'Pago de préstamo',
+    CARD:    'Pago de tarjeta',
+  } satisfies Record<AccountOptionKind, string>,
   noMatches:        'Sin resultados',
 
   saveChanges:      'Guardar cambios',

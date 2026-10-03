@@ -7,8 +7,12 @@ import { AccountOptionKind, SaveState } from '../../budget.enums';
 import { BUDGET_TEXT } from '../../budget.texts';
 import { AccountOption, CategoryOption, OptionGroup } from '../../models/budget.models';
 
-/** The "Otra" panel: `w-56`, capped at `100vw - 3rem`; kept this far from the screen's edges. */
-const PANEL_WIDTH_PX = 224;
+/**
+ * The "Otra" panel. Phones (below Tailwind's `sm`): as wide as the chips, under them. Desktop: a `w-[340px]`
+ * popover under "Otra", capped at `100vw - 3rem` and kept this far from the screen's edges.
+ */
+const DESKTOP_QUERY = '(min-width: 640px)';
+const PANEL_WIDTH_PX = 340;
 const PANEL_MAX_GUTTERS_PX = 48;
 const PANEL_EDGE_PX = 16;
 
@@ -28,7 +32,7 @@ const CHIP_BASE = 'inline-flex items-center gap-1 px-2.5 py-1 rounded-full borde
   selector: 'app-category-chips',
   imports: [IconComponent, NgTemplateOutlet, SpinnerComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { class: 'block', '(keydown.escape)': 'close()' },
+  host: { class: 'block relative', '(keydown.escape)': 'close()' },
   templateUrl: './category-chips.html',
 })
 export class CategoryChipsComponent {
@@ -53,8 +57,8 @@ export class CategoryChipsComponent {
   };
   protected readonly open = signal(false);
   protected readonly query = signal('');
-  /** The panel's left, relative to the button: 0, or shifted left so it doesn't run off the screen (phones). */
-  protected readonly panelLeft = signal(0);
+  /** Desktop: the panel's left, relative to "Otra", shifted so it stays on screen. Null on phones (full width). */
+  protected readonly panelLeft = signal<number | null>(null);
 
   protected readonly saving = computed(() => this.state() === SaveState.Saving);
   /** Typing turns the groups into one flat list, each result labelled with its kind. */
@@ -79,7 +83,10 @@ export class CategoryChipsComponent {
   }
 
   protected toggle(trigger: HTMLElement): void {
-    if (!this.open()) this.panelLeft.set(this.fitOnScreen(trigger.getBoundingClientRect().left));
+    if (!this.open()) {
+      const desktop = window.matchMedia(DESKTOP_QUERY).matches;
+      this.panelLeft.set(desktop ? this.fitOnScreen(trigger.getBoundingClientRect().left) : null);
+    }
     this.open.update(v => !v);
     this.query.set('');
   }

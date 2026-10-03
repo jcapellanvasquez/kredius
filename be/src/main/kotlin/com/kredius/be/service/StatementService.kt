@@ -198,6 +198,7 @@ class StatementService(
             accountRepo.findByIdAndUserId(accId, currentUser.id)
                 ?: throw ApiException(ApiException.NOT_FOUND, "Category account not found", HttpStatus.NOT_FOUND)
         }
+        category?.let { requireValidCategory(line, it) }
         if (category != null && line.journalLine == null && line.currency == CurrencyType.USD &&
             exchangeRateRepo.findTopByContextOrderByRateDateDescIdDesc(RateContext.CREDIT_CARD) == null) {
             throw ApiException(ApiException.NO_EXCHANGE_RATE, "Falta la tasa del dólar para registrar líneas en US$",
@@ -240,6 +241,7 @@ class StatementService(
         requireNotReversed(line.statementImport)
         val newCategory = accountRepo.findByIdAndUserId(request.categoryAccountId, currentUser.id)
             ?: throw ApiException(ApiException.NOT_FOUND, "Category account not found", HttpStatus.NOT_FOUND)
+        requireValidCategory(line, newCategory)
         val oldCategory = line.categoryAccount!!
         if (oldCategory.id in loanRepo.findLoanAccountIds(currentUser.id))
             throw ApiException(ApiException.CONFLICT, "A loan payment line can't be recategorized", HttpStatus.CONFLICT)
@@ -277,6 +279,15 @@ class StatementService(
     private fun requireNotReversed(import: StatementImport) {
         if (import.status == StatementImportStatus.REVERSED)
             throw ApiException(ApiException.CONFLICT, "Import is reversed", HttpStatus.CONFLICT)
+    }
+
+    /** A line can't post against its own statement account, nor a card row against a card (paying the card is a savings row). */
+    private fun requireValidCategory(line: StatementLine, category: Account) {
+        val cardOnCardRow = category.statementType == EntityStatementType.CREDIT_CARD &&
+            line.statementImport.type == EntityStatementType.CREDIT_CARD
+        if (category.id == line.account.id || cardOnCardRow)
+            throw ApiException(ApiException.INVALID_CATEGORY, "A line can't be categorized to its statement account",
+                HttpStatus.BAD_REQUEST)
     }
 
     private fun learnMerchant(description: String, account: Account) {

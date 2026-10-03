@@ -13,5 +13,6 @@ class ApiException(
         val BAD_REQUEST = "BAD_REQUEST"
         val CONFLICT = "CONFLICT"
         val NO_EXCHANGE_RATE = "NO_EXCHANGE_RATE"
+        val INVALID_CATEGORY = "INVALID_CATEGORY"
     }
 }
